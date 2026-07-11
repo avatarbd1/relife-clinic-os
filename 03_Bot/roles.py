@@ -1,40 +1,79 @@
-STAFF = {
-    111111111: {"name": "Malik Vai", "role": "owner"},
-    222222222: {"name": "Receptionist Apa", "role": "receptionist"},
-    333333333: {"name": "Therapist Bhai", "role": "therapist"},
-    444444444: {"name": "Manager Apu", "role": "manager"},
+"""
+roles.py
+Role-Based Access Control (RBAC) — অ্যাপ্লিকেশন লেভেলে।
+(মনে রাখতে হবে: ডেটাবেস Google Sheets, তাই DB-level RLS নেই —
+ এই ফাইলই একমাত্র জায়গা যেখানে "কে কী দেখতে পারবে" নিয়ন্ত্রিত হয়।)
+"""
+
+from enum import Enum
+
+
+class Role(str, Enum):
+    OWNER = "Owner"
+    RECEPTIONIST = "Receptionist"
+    THERAPIST = "Therapist"
+    MANAGER = "Manager"
+
+
+# ---- মেনু আইটেমসমূহ (diagram অনুযায়ী) ----
+MENU_HOME = "🏠 হোম"
+MENU_PATIENT_REG = "👤 রোগী রেজিস্ট্রেশন"
+MENU_APPOINTMENT = "📅 অ্যাপয়েন্টমেন্ট বুকিং"
+MENU_MY_PATIENTS = "🧑‍⚕️ আমার রোগী / সেশন"
+MENU_TREATMENT_NOTE = "📝 ট্রিটমেন্ট নোট"
+MENU_PAYMENT = "💳 পেমেন্ট তথ্য"
+MENU_REPORTS = "📊 রিপোর্ট ও অ্যানালিটিক্স"
+MENU_SETTINGS = "⚙️ সেটিংস"
+
+# ---- Role অনুযায়ী কোন মেনু দেখা যাবে (diagram-এর legend অনুযায়ী) ----
+ROLE_MENUS: dict[Role, list[str]] = {
+    Role.OWNER: [
+        MENU_HOME,
+        MENU_PATIENT_REG,
+        MENU_APPOINTMENT,
+        MENU_MY_PATIENTS,
+        MENU_TREATMENT_NOTE,
+        MENU_PAYMENT,
+        MENU_REPORTS,
+        MENU_SETTINGS,
+    ],
+    Role.RECEPTIONIST: [
+        MENU_HOME,
+        MENU_PATIENT_REG,
+        MENU_APPOINTMENT,
+        MENU_PAYMENT,
+        MENU_REPORTS,
+    ],
+    Role.THERAPIST: [
+        MENU_HOME,
+        MENU_MY_PATIENTS,
+        MENU_TREATMENT_NOTE,
+    ],
+    Role.MANAGER: [
+        MENU_HOME,
+        MENU_APPOINTMENT,
+        MENU_REPORTS,
+    ],
 }
 
-ROLE_PERMISSIONS = {
-    "owner": {
-        "patients", "add_patient", "appointments", "add_appointment",
-        "payments", "add_payment", "staff", "inventory", "reports",
-        "therapy_notes", "settings",
-    },
-    "receptionist": {
-        "patients", "add_patient", "appointments", "add_appointment",
-        "payments", "add_payment", "reports_basic",
-    },
-    "therapist": {
-        "my_sessions", "add_therapy_note", "my_patients",
-    },
-    "manager": {
-        "appointments", "reports", "inventory",
-    },
-}
+
+def get_menu_for_role(role_str: str) -> list[str]:
+    """Staff শীটের Role কলাম থেকে আসা স্ট্রিং দিয়ে সঠিক মেনু বের করে।"""
+    try:
+        role = Role(role_str.strip())
+    except ValueError:
+        return []
+    return ROLE_MENUS.get(role, [])
 
 
-def get_staff_info(telegram_id: int):
-    return STAFF.get(telegram_id)
+def can_access(role_str: str, menu_item: str) -> bool:
+    """একটা নির্দিষ্ট মেনু আইটেমে এই role-এর অ্যাক্সেস আছে কিনা।"""
+    return menu_item in get_menu_for_role(role_str)
 
 
-def get_role(telegram_id: int):
-    info = STAFF.get(telegram_id)
-    return info["role"] if info else None
-
-
-def has_permission(telegram_id: int, permission: str) -> bool:
-    role = get_role(telegram_id)
-    if not role:
-        return False
-    return permission in ROLE_PERMISSIONS.get(role, set())
+def is_therapist_owner_of_patient(therapist_name: str, patient_row: dict) -> bool:
+    """
+    Therapist শুধু নিজের Assigned Patient দেখবে —
+    02_Patients শীটের 'Therapist' কলামের সাথে মিলিয়ে চেক করা হয়।
+    """
+    return patient_row.get("Therapist", "").strip() == therapist_name.strip()

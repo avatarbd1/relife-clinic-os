@@ -1,6 +1,14 @@
+"""
+sheets.py
+Google Sheets-কে ডেটাবেস হিসেবে ব্যবহার করার জন্য gspread wrapper।
+সব read/write এই ফাইলের মধ্য দিয়ে যাবে — bot.py সরাসরি gspread ছুঁবে না,
+এতে ভবিষ্যতে ডেটাবেস বদলাতে হলে (যেমন Postgres-এ migrate) শুধু এই ফাইলটাই বদলালেই হবে।
+"""
+
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
+
 import config
 
 SCOPES = [
@@ -8,109 +16,115 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-
-def get_client():
-    creds = Credentials.from_service_account_file(config.CREDENTIALS_FILE, scopes=SCOPES)
-    return gspread.authorize(creds)
+_client = None
+_spreadsheet = None
 
 
-def get_sheet(tab_name, headers=None):
-    client = get_client()
-    spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID)
-    try:
-        ws = spreadsheet.worksheet(tab_name)
-    except gspread.WorksheetNotFound:
-        ws = spreadsheet.add_worksheet(title=tab_name, rows=1000, cols=10)
-        if headers:
-            ws.append_row(headers)
-    return ws
+def _get_client():
+    global _client
+    if _client is None:
+        creds = Credentials.from_service_account_file(
+            config.GOOGLE_CREDENTIALS_PATH, scopes=SCOPES
+        )
+        _client = gspread.authorize(creds)
+    return _client
 
 
-def add_patient(name, phone, note=""):
-    ws = get_sheet("Patients", headers=["Date", "Name", "Phone", "Note"])
-    ws.append_row([datetime.now().strftime("%Y-%m-%d %H:%M"), name, phone, note])
+def _get_spreadsheet():
+    global _spreadsheet
+    if _spreadsheet is None:
+        _spreadsheet = _get_client().open_by_key(config.GOOGLE_SHEET_ID)
+    return _spreadsheet
 
 
-def get_all_patients():
-    ws = get_sheet("Patients", headers=["Date", "Name", "Phone", "Note"])
+def _worksheet(name: str):
+    return _get_spreadsheet().worksheet(name)
+
+
+def get_staff_by_telegram_id(telegram_id: int) -> dict | None:
+    ws = _worksheet(config.SHEET_STAFF)
+    records = ws.get_all_records()
+    for row in records:
+        if str(row.get("Telegram_ID", "")).strip() == str(telegram_id):
+            if str(row.get("Status", "")).strip().lower() == "inactive":
+                return None
+            return row
+    return None
+
+
+def _next_patient_id(ws) -> str:
+    ids = ws.col_values(1)[1:]
+    numbers = []
+    for v in ids:
+        if v.startswith("PT"):
+            try:
+                numbers.append(int(v[2:]))
+            except ValueError:
+                pass
+    next_num = (max(numbers) + 1) if numbers else 1
+    return f"PT{next_num:04d}"
+
+
+def add_patient(data: dict, created_by: str) -> str:
+    ws = _worksheet(config.SHEET_PATIENTS)
+    patient_id = _next_patient_id(ws)
+    now = datetime.now()
+
+    row = [
+        patient_id,
+        now.strftime("%Y-%m-%d"),
+        now.strftime("%H:%M"),
+        data.get("Full_Name", ""),
+        data.get("Father_Husband_Name", ""),
+        data.get("Phone", ""),
+        data.get("Alternative_Phone", ""),
+        data.get("Date_of_Birth", ""),
+        data.get("Age", ""),
+        data.get("Gender", ""),
+        data.get("Blood_Group", ""),
+        data.get("Occupation", ""),
+        data.get("Address", ""),
+        data.get("Department", ""),
+        data.get("Diagnosis", ""),
+        data.get("Therapist", ""),
+        "",
+        "",
+        "",
+        "Due",
+        data.get("Total_Bill", 0),
+        0,
+        data.get("Total_Bill", 0),
+        data.get("Referral", ""),
+        data.get("Remarks", ""),
+        "Active",
+        created_by,
+        now.strftime("%Y-%m-%d %H:%M"),
+        now.strftime("%Y-%m-%d %H:%M"),
+    ]
+    ws.append_row(row, value_input_option="USER_ENTERED")
+    return patient_id
+
+
+def get_all_patients() -> list[dict]:
+    ws = _worksheet(config.SHEET_PATIENTS)
     return ws.get_all_records()
 
 
-def add_appointment(patient_name, date, time, doctor):
-    ws = get_sheet("Appointments", headers=["Date", "Time", "Patient", "Doctor", "Status"])
-    ws.append_row([date, time, patient_name, doctor, "Pending"])
-
-
-def get_today_appointments():
-    ws = get_sheet("Appointments", headers=["Date", "Time", "Patient", "Doctor", "Status"])
-    rows = ws.get_all_records()
-    today = datetime.now().strftime("%Y-%m-%d")
-    return [r for r in rows if str(r.get("Date")) == today]
-
-
-def add_payment(patient_name, amount, method, note=""):
-    ws = get_sheet("Payments", headers=["Date", "Patient", "Amount", "Method", "Note"])
-    ws.append_row([datetime.now().strftime("%Y-%m-%d %H:%M"), patient_name, amount, method, note])
-
-
-def get_today_payments():
-    ws = get_sheet("Payments", headers=["Date", "Patient", "Amount", "Method", "Note"])
-    rows = ws.get_all_records()
-    today = datetime.now().strftime("%Y-%m-%d")
-    total = 0.0
-    entries = []
-    for r in rows:
-        if str(r.get("Date", "")).startswith(today):
-            try:
-                total += float(r.get("Amount", 0))
-            except (TypeError, ValueError):
-                pass
-            entries.append(r)
-    return total, entries
-
-
-def add_therapy_note(therapist_name, patient_name, note):
-    ws = get_sheet("TherapyNotes", headers=["Date", "Therapist", "Patient", "Note"])
-    ws.append_row([datetime.now().strftime("%Y-%m-%d %H:%M"), therapist_name, patient_name, note])
-
-
-def get_notes_for_therapist(therapist_name):
-    ws = get_sheet("TherapyNotes", headers=["Date", "Therapist", "Patient", "Note"])
-    rows = ws.get_all_records()
-    return [r for r in rows if str(r.get("Therapist")) == therapist_name]
-
-
-def get_sessions_for_therapist_today(therapist_name):
-    ws = get_sheet("Appointments", headers=["Date", "Time", "Patient", "Doctor", "Status"])
-    rows = ws.get_all_records()
-    today = datetime.now().strftime("%Y-%m-%d")
+def get_patients_for_therapist(therapist_name: str) -> list[dict]:
+    all_patients = get_all_patients()
     return [
-        r for r in rows
-        if str(r.get("Date")) == today and str(r.get("Doctor")) == therapist_name
+        p for p in all_patients
+        if p.get("Therapist", "").strip() == therapist_name.strip()
+        and p.get("Status", "").strip() == "Active"
     ]
 
 
-def get_inventory():
-    ws = get_sheet("Inventory", headers=["Item", "Quantity", "Unit", "LastUpdated"])
-    return ws.get_all_records()
-
-
-def update_inventory(item, quantity, unit=""):
-    ws = get_sheet("Inventory", headers=["Item", "Quantity", "Unit", "LastUpdated"])
-    records = ws.get_all_values()
-    today = datetime.now().strftime("%Y-%m-%d %H:%M")
-    for idx, row in enumerate(records[1:], start=2):
-        if row and row[0] == item:
-            ws.update(f"A{idx}:D{idx}", [[item, quantity, unit, today]])
-            return
-    ws.append_row([item, quantity, unit, today])
-
-
-def get_staff_list():
-    ws = get_sheet("Staff", headers=["Name", "Role", "Phone"])
-    return ws.get_all_records()
-
-
-def add_staff(name, role, phone):
-    ws = get_sheet("Staff", headers=["Name", "Role", "Phone"])
-    ws.append_row([name, role, phone])
+def search_patients(query: str) -> list[dict]:
+    query = query.strip().lower()
+    all_patients = get_all_patients()
+    return [
+        p for p in all_patients
+        if query in str(p.get("Full_Name", "")).lower()
+        or query in str(p.get("Phone", ""))
+        or query in str(p.get("Patient_ID", "")).lower()
+    ]

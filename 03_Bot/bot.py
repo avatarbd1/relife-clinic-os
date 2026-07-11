@@ -1,14 +1,12 @@
 """
-Relife Clinic - Telegram Management Bot (Role-based)
-Owner / Receptionist / Therapist / Manager - shobar jonno alada menu.
+bot.py — Relife Clinic OS Telegram Bot (প্রথম ভার্সন)
 """
-import logging
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+import logging
+from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (
     Application,
     CommandHandler,
-    CallbackQueryHandler,
     MessageHandler,
     ConversationHandler,
     ContextTypes,
@@ -20,323 +18,221 @@ import sheets
 import roles
 
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
 
 (
-    ADD_PATIENT_NAME, ADD_PATIENT_PHONE,
-    ADD_APPT_PATIENT, ADD_APPT_DATE, ADD_APPT_TIME, ADD_APPT_DOCTOR,
-    ADD_PAYMENT_PATIENT, ADD_PAYMENT_AMOUNT, ADD_PAYMENT_METHOD,
-    ADD_NOTE_PATIENT, ADD_NOTE_TEXT,
-) = range(11)
+    REG_NAME,
+    REG_PHONE,
+    REG_AGE,
+    REG_GENDER,
+    REG_ADDRESS,
+    REG_DEPARTMENT,
+    REG_DIAGNOSIS,
+    REG_CONFIRM,
+) = range(8)
 
 
-async def guard(update: Update):
-    user_id = update.effective_user.id
-    info = roles.get_staff_info(user_id)
-    if not info:
-        await update.effective_message.reply_text(
-            f"Tumi ei bot use korar onumoti pao ni.\n"
-            f"Tomar Telegram ID: {user_id}\n"
-            "Ei ID ta roles.py file-e jog korte bolo malik-ke."
+def _menu_keyboard(role_str: str) -> ReplyKeyboardMarkup:
+    items = roles.get_menu_for_role(role_str)
+    rows = [items[i : i + 2] for i in range(0, len(items), 2)]
+    return ReplyKeyboardMarkup(rows, resize_keyboard=True)
+
+
+async def _require_staff(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    telegram_id = update.effective_user.id
+    staff = sheets.get_staff_by_telegram_id(telegram_id)
+    if staff is None:
+        await update.message.reply_text(
+            "❌ তোমাকে সিস্টেমে স্টাফ হিসেবে খুঁজে পাওয়া যায়নি।\n"
+            f"তোমার Telegram ID: {telegram_id}\n"
+            "এই ID-টা ক্লিনিক ম্যানেজারকে দাও, তিনি 08_Staff শীটে যোগ করে দেবেন।"
         )
         return None
-    return info
-
-
-def menu_for_role(role: str):
-    buttons = []
-    if role == "owner":
-        buttons = [
-            [InlineKeyboardButton("Ajker Appointment", callback_data="today_appt")],
-            [InlineKeyboardButton("Notun Rogi", callback_data="add_patient")],
-            [InlineKeyboardButton("Notun Appointment", callback_data="add_appt")],
-            [InlineKeyboardButton("Ajker Payment", callback_data="today_payment")],
-            [InlineKeyboardButton("Payment Jog Koro", callback_data="add_payment")],
-            [InlineKeyboardButton("Staff Talika", callback_data="staff_list")],
-            [InlineKeyboardButton("Inventory", callback_data="inventory")],
-            [InlineKeyboardButton("Reports", callback_data="reports")],
-        ]
-    elif role == "receptionist":
-        buttons = [
-            [InlineKeyboardButton("Ajker Appointment", callback_data="today_appt")],
-            [InlineKeyboardButton("Notun Rogi", callback_data="add_patient")],
-            [InlineKeyboardButton("Notun Appointment", callback_data="add_appt")],
-            [InlineKeyboardButton("Ajker Payment", callback_data="today_payment")],
-            [InlineKeyboardButton("Payment Jog Koro", callback_data="add_payment")],
-        ]
-    elif role == "therapist":
-        buttons = [
-            [InlineKeyboardButton("Ajker Amar Session", callback_data="my_sessions")],
-            [InlineKeyboardButton("Treatment Note Jog Koro", callback_data="add_note")],
-        ]
-    elif role == "manager":
-        buttons = [
-            [InlineKeyboardButton("Appointment Overview", callback_data="today_appt")],
-            [InlineKeyboardButton("Inventory", callback_data="inventory")],
-            [InlineKeyboardButton("Reports", callback_data="reports")],
-        ]
-    return InlineKeyboardMarkup(buttons)
+    return staff
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    info = await guard(update)
-    if not info:
+    staff = await _require_staff(update, context)
+    if staff is None:
+        return
+    context.user_data["staff"] = staff
+    role = staff.get("Role", "")
+    name = staff.get("Full_Name", "")
+    await update.message.reply_text(
+        f"স্বাগতম, {name}! ({role})\nনিচের মেনু থেকে বেছে নাও 👇",
+        reply_markup=_menu_keyboard(role),
+    )
+
+
+async def my_patients(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_MY_PATIENTS):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    patients = sheets.get_patients_for_therapist(staff.get("Full_Name", ""))
+    if not patients:
+        await update.message.reply_text("তোমার নামে এখনো কোনো assigned patient নেই।")
+        return
+    lines = ["🧑‍⚕️ তোমার Assigned Patients:\n"]
+    for p in patients:
+        lines.append(
+            f"• {p.get('Patient_ID')} — {p.get('Full_Name')} "
+            f"| {p.get('Diagnosis', 'N/A')} | পরবর্তী ভিজিট: {p.get('Next_Visit', 'N/A')}"
+        )
+    await update.message.reply_text("\n".join(lines))
+
+
+async def reg_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return ConversationHandler.END
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_PATIENT_REG):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return ConversationHandler.END
+    context.user_data["new_patient"] = {}
+    await update.message.reply_text(
+        "নতুন রোগীর পূর্ণ নাম লেখো:", reply_markup=ReplyKeyboardRemove()
+    )
+    return REG_NAME
+
+
+async def reg_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["new_patient"]["Full_Name"] = update.message.text.strip()
+    await update.message.reply_text("ফোন নম্বর লেখো:")
+    return REG_PHONE
+
+
+async def reg_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["new_patient"]["Phone"] = update.message.text.strip()
+    await update.message.reply_text("বয়স লেখো:")
+    return REG_AGE
+
+
+async def reg_age(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["new_patient"]["Age"] = update.message.text.strip()
+    await update.message.reply_text("লিঙ্গ লেখো (Male/Female/Other):")
+    return REG_GENDER
+
+
+async def reg_gender(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["new_patient"]["Gender"] = update.message.text.strip()
+    await update.message.reply_text("ঠিকানা লেখো:")
+    return REG_ADDRESS
+
+
+async def reg_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["new_patient"]["Address"] = update.message.text.strip()
+    await update.message.reply_text("Department লেখো (Physiotherapy/Dental):")
+    return REG_DEPARTMENT
+
+
+async def reg_department(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["new_patient"]["Department"] = update.message.text.strip()
+    await update.message.reply_text("Diagnosis / সমস্যার সংক্ষিপ্ত বিবরণ লেখো:")
+    return REG_DIAGNOSIS
+
+
+async def reg_diagnosis(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["new_patient"]["Diagnosis"] = update.message.text.strip()
+    p = context.user_data["new_patient"]
+    summary = (
+        "নিচের তথ্য ঠিক আছে কিনা চেক করো:\n\n"
+        f"নাম: {p['Full_Name']}\nফোন: {p['Phone']}\nবয়স: {p['Age']}\n"
+        f"লিঙ্গ: {p['Gender']}\nঠিকানা: {p['Address']}\nDepartment: {p['Department']}\n"
+        f"Diagnosis: {p['Diagnosis']}\n\n"
+        "ঠিক থাকলে 'হ্যাঁ' লেখো, ভুল থাকলে 'না' লেখো।"
+    )
+    await update.message.reply_text(summary)
+    return REG_CONFIRM
+
+
+async def reg_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip().lower()
+    staff = context.user_data.get("staff", {})
+    if text in ("হ্যাঁ", "yes", "y"):
+        patient_id = sheets.add_patient(
+            context.user_data["new_patient"],
+            created_by=staff.get("Full_Name", "Unknown"),
+        )
+        await update.message.reply_text(
+            f"✅ রোগী রেজিস্ট্রেশন সম্পন্ন! Patient ID: {patient_id}",
+            reply_markup=_menu_keyboard(staff.get("Role", "")),
+        )
+    else:
+        await update.message.reply_text(
+            "❌ বাতিল করা হয়েছে।",
+            reply_markup=_menu_keyboard(staff.get("Role", "")),
+        )
+    context.user_data.pop("new_patient", None)
+    return ConversationHandler.END
+
+
+async def reg_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff", {})
+    context.user_data.pop("new_patient", None)
+    await update.message.reply_text(
+        "রেজিস্ট্রেশন বাতিল করা হয়েছে।",
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
+    return ConversationHandler.END
+
+
+async def search_patient(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = " ".join(context.args) if context.args else None
+    if not query:
+        await update.message.reply_text("ব্যবহার: /search <নাম বা ফোন নম্বর>")
+        return
+    results = sheets.search_patients(query)
+    if not results:
+        await update.message.reply_text("কোনো রোগী পাওয়া যায়নি।")
+        return
+    lines = [f"🔍 '{query}' এর ফলাফল ({len(results)} জন):\n"]
+    for p in results[:15]:
+        lines.append(f"• {p.get('Patient_ID')} — {p.get('Full_Name')} | {p.get('Phone')}")
+    await update.message.reply_text("\n".join(lines))
+
+
+async def unknown_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
         return
     await update.message.reply_text(
-        f"Shagotom, {info['name']} ({info['role'].title()})!\n\nEkta option bechhe nao:",
-        reply_markup=menu_for_role(info["role"]),
+        "এই ফিচারটা এখনো তৈরি হচ্ছে 🚧",
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
     )
-
-
-async def show_main_menu(query, info):
-    await query.edit_message_text(
-        f"Main Menu ({info['role'].title()})\n\nEkta option bechhe nao:",
-        reply_markup=menu_for_role(info["role"]),
-    )
-
-
-def back_button():
-    return InlineKeyboardMarkup([[InlineKeyboardButton("Ferot", callback_data="main_menu")]])
-
-
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    info = roles.get_staff_info(query.from_user.id)
-    if not info:
-        await query.answer("Tumi ei bot use korte paro na.", show_alert=True)
-        return
-    await query.answer()
-    data = query.data
-    role = info["role"]
-
-    if data == "main_menu":
-        await show_main_menu(query, info)
-        return
-
-    if data == "today_appt" and roles.has_permission(query.from_user.id, "appointments"):
-        appts = sheets.get_today_appointments()
-        if not appts:
-            text = "Ajke kono appointment nei."
-        else:
-            lines = ["Ajker Appointment:\n"]
-            for a in appts:
-                lines.append(f"- {a.get('Time')} - {a.get('Patient')} (Dr. {a.get('Doctor')}) [{a.get('Status')}]")
-            text = "\n".join(lines)
-        await query.edit_message_text(text, reply_markup=back_button())
-
-    elif data == "today_payment" and roles.has_permission(query.from_user.id, "payments"):
-        total, entries = sheets.get_today_payments()
-        text = f"Ajker Mot Payment: {total:.2f} Taka\n\n"
-        for e in entries[-10:]:
-            text += f"- {e.get('Patient')} - {e.get('Amount')} Tk ({e.get('Method')})\n"
-        await query.edit_message_text(text or "Kono entry nei.", reply_markup=back_button())
-
-    elif data == "staff_list" and roles.has_permission(query.from_user.id, "staff"):
-        staff_rows = [f"- {v['name']} - {v['role'].title()}" for v in roles.STAFF.values()]
-        text = "Staff Talika:\n\n" + "\n".join(staff_rows)
-        await query.edit_message_text(text, reply_markup=back_button())
-
-    elif data == "inventory" and roles.has_permission(query.from_user.id, "inventory"):
-        items = sheets.get_inventory()
-        if not items:
-            text = "Inventory-te kichu nei."
-        else:
-            lines = ["Inventory:\n"]
-            for i in items:
-                lines.append(f"- {i.get('Item')}: {i.get('Quantity')} {i.get('Unit')}")
-            text = "\n".join(lines)
-        await query.edit_message_text(text, reply_markup=back_button())
-
-    elif data == "reports" and roles.has_permission(query.from_user.id, "reports"):
-        total_pay, _ = sheets.get_today_payments()
-        appts = sheets.get_today_appointments()
-        text = (
-            "Ajker Report:\n\n"
-            f"- Mot Appointment: {len(appts)}\n"
-            f"- Mot Payment: {total_pay:.2f} Taka\n"
-        )
-        await query.edit_message_text(text, reply_markup=back_button())
-
-    elif data == "my_sessions" and role == "therapist":
-        sessions = sheets.get_sessions_for_therapist_today(info["name"])
-        if not sessions:
-            text = "Ajke tomar kono session nei."
-        else:
-            lines = ["Ajker Session:\n"]
-            for s in sessions:
-                lines.append(f"- {s.get('Time')} - {s.get('Patient')} [{s.get('Status')}]")
-            text = "\n".join(lines)
-        await query.edit_message_text(text, reply_markup=back_button())
-
-    else:
-        await query.answer("Ei option-er onumoti nei.", show_alert=True)
-
-
-async def add_patient_start(update, context):
-    query = update.callback_query
-    await query.answer()
-    await query.edit_message_text("Rogi-r naam likho:")
-    return ADD_PATIENT_NAME
-
-async def add_patient_name(update, context):
-    context.user_data["patient_name"] = update.message.text
-    await update.message.reply_text("Rogi-r phone number likho:")
-    return ADD_PATIENT_PHONE
-
-async def add_patient_phone(update, context):
-    phone = update.message.text
-    name = context.user_data.get("patient_name")
-    sheets.add_patient(name, phone)
-    info = roles.get_staff_info(update.effective_user.id)
-    await update.message.reply_text(f"Rogi joma hoyeche: {name} ({phone})", reply_markup=menu_for_role(info["role"]))
-    return ConversationHandler.END
-
-
-async def add_appt_start(update, context):
-    query = update.callback_query
-    await query.answer()
-    await query.edit_message_text("Rogi-r naam likho:")
-    return ADD_APPT_PATIENT
-
-async def add_appt_patient(update, context):
-    context.user_data["appt_patient"] = update.message.text
-    await update.message.reply_text("Tarikh likho (jemon: 2026-07-15):")
-    return ADD_APPT_DATE
-
-async def add_appt_date(update, context):
-    context.user_data["appt_date"] = update.message.text
-    await update.message.reply_text("Shomoy likho (jemon: 05:30 PM):")
-    return ADD_APPT_TIME
-
-async def add_appt_time(update, context):
-    context.user_data["appt_time"] = update.message.text
-    await update.message.reply_text("Therapist/Doctor-er naam likho:")
-    return ADD_APPT_DOCTOR
-
-async def add_appt_doctor(update, context):
-    doctor = update.message.text
-    sheets.add_appointment(
-        context.user_data.get("appt_patient"),
-        context.user_data.get("appt_date"),
-        context.user_data.get("appt_time"),
-        doctor,
-    )
-    info = roles.get_staff_info(update.effective_user.id)
-    await update.message.reply_text("Appointment joma hoyeche!", reply_markup=menu_for_role(info["role"]))
-    return ConversationHandler.END
-
-
-async def add_payment_start(update, context):
-    query = update.callback_query
-    await query.answer()
-    await query.edit_message_text("Kon rogir payment? Naam likho:")
-    return ADD_PAYMENT_PATIENT
-
-async def add_payment_patient(update, context):
-    context.user_data["pay_patient"] = update.message.text
-    await update.message.reply_text("Koto taka? (shudhu number likho):")
-    return ADD_PAYMENT_AMOUNT
-
-async def add_payment_amount(update, context):
-    text = update.message.text.strip()
-    try:
-        amount = float(text)
-    except ValueError:
-        await update.message.reply_text("Shudhu number likho. Abar chesta koro:")
-        return ADD_PAYMENT_AMOUNT
-    context.user_data["pay_amount"] = amount
-    await update.message.reply_text("Kon method-e payment? (Cash / bKash / Card):")
-    return ADD_PAYMENT_METHOD
-
-async def add_payment_method(update, context):
-    method = update.message.text
-    sheets.add_payment(
-        context.user_data.get("pay_patient"),
-        context.user_data.get("pay_amount"),
-        method,
-    )
-    info = roles.get_staff_info(update.effective_user.id)
-    await update.message.reply_text("Payment joma hoyeche!", reply_markup=menu_for_role(info["role"]))
-    return ConversationHandler.END
-
-
-async def add_note_start(update, context):
-    query = update.callback_query
-    await query.answer()
-    await query.edit_message_text("Kon rogir jonno note? Naam likho:")
-    return ADD_NOTE_PATIENT
-
-async def add_note_patient(update, context):
-    context.user_data["note_patient"] = update.message.text
-    await update.message.reply_text("Treatment note likho:")
-    return ADD_NOTE_TEXT
-
-async def add_note_text(update, context):
-    note = update.message.text
-    info = roles.get_staff_info(update.effective_user.id)
-    sheets.add_therapy_note(info["name"], context.user_data.get("note_patient"), note)
-    await update.message.reply_text("Note joma hoyeche!", reply_markup=menu_for_role(info["role"]))
-    return ConversationHandler.END
-
-
-async def cancel(update, context):
-    info = roles.get_staff_info(update.effective_user.id)
-    await update.message.reply_text("Baatil kora holo.", reply_markup=menu_for_role(info["role"]) if info else None)
-    return ConversationHandler.END
 
 
 def main():
-    if not config.BOT_TOKEN:
-        raise SystemExit("BOT_TOKEN pawa jai ni. .env file check koro.")
-
     app = Application.builder().token(config.BOT_TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
-
-    app.add_handler(ConversationHandler(
-        entry_points=[CallbackQueryHandler(add_patient_start, pattern="^add_patient$")],
+    app.add_handler(CommandHandler("search", search_patient))
+    app.add_handler(
+        MessageHandler(filters.Regex(f"^{roles.MENU_MY_PATIENTS}$"), my_patients)
+    )
+    reg_conv = ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_PATIENT_REG}$"), reg_start)
+        ],
         states={
-            ADD_PATIENT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_patient_name)],
-            ADD_PATIENT_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_patient_phone)],
+            REG_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_name)],
+            REG_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_phone)],
+            REG_AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_age)],
+            REG_GENDER: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_gender)],
+            REG_ADDRESS: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_address)],
+            REG_DEPARTMENT: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_department)],
+            REG_DIAGNOSIS: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_diagnosis)],
+            REG_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_confirm)],
         },
-        fallbacks=[CommandHandler("cancel", cancel)],
-    ))
-
-    app.add_handler(ConversationHandler(
-        entry_points=[CallbackQueryHandler(add_appt_start, pattern="^add_appt$")],
-        states={
-            ADD_APPT_PATIENT: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_appt_patient)],
-            ADD_APPT_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_appt_date)],
-            ADD_APPT_TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_appt_time)],
-            ADD_APPT_DOCTOR: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_appt_doctor)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel)],
-    ))
-
-    app.add_handler(ConversationHandler(
-        entry_points=[CallbackQueryHandler(add_payment_start, pattern="^add_payment$")],
-        states={
-            ADD_PAYMENT_PATIENT: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_payment_patient)],
-            ADD_PAYMENT_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_payment_amount)],
-            ADD_PAYMENT_METHOD: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_payment_method)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel)],
-    ))
-
-    app.add_handler(ConversationHandler(
-        entry_points=[CallbackQueryHandler(add_note_start, pattern="^add_note$")],
-        states={
-            ADD_NOTE_PATIENT: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_note_patient)],
-            ADD_NOTE_TEXT: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_note_text)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel)],
-    ))
-
-    app.add_handler(CallbackQueryHandler(button_handler))
-
-    logger.info("Bot chalu hocche...")
+        fallbacks=[CommandHandler("cancel", reg_cancel)],
+    )
+    app.add_handler(reg_conv)
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_menu))
+    logger.info("Relife Clinic OS Bot চালু হচ্ছে...")
     app.run_polling()
 
 
