@@ -128,3 +128,15 @@ def search_patients(query: str) -> list[dict]:
         or query in str(p.get("Phone", ""))
         or query in str(p.get("Patient_ID", "")).lower()
     ]
+
+
+def find_patient_by_phone(phone: str) -> dict | None:
+    """একই ফোন নম্বরে আগে থেকে Active রোগী আছে কিনা চেক করে।"""
+    phone = phone.strip()
+    for p in get_all_patients():
+        if (
+            str(p.get("Phone", "")).strip() == phone
+            and str(p.get("Status", "")).strip() == "Active"
+        ):
+            return p
+    return None

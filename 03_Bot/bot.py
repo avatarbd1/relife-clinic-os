@@ -26,13 +26,14 @@ logger = logging.getLogger(__name__)
 (
     REG_NAME,
     REG_PHONE,
+    REG_PHONE_DUP,
     REG_AGE,
     REG_GENDER,
     REG_ADDRESS,
     REG_DEPARTMENT,
     REG_DIAGNOSIS,
     REG_CONFIRM,
-) = range(8)
+) = range(9)
 
 
 def _menu_keyboard(role_str: str) -> ReplyKeyboardMarkup:
@@ -108,9 +109,34 @@ async def reg_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def reg_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["new_patient"]["Phone"] = update.message.text.strip()
-    await update.message.reply_text("বয়স লেখো:")
+    phone = update.message.text.strip()
+    context.user_data["new_patient"]["Phone"] = phone
+    existing = sheets.find_patient_by_phone(phone)
+    if existing:
+        dup_keyboard = ReplyKeyboardMarkup(
+            [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
+        )
+        await update.message.reply_text(
+            "⚠️ এই ফোন নম্বরে ইতিমধ্যে রোগী আছে:\n"
+            f"নাম: {existing.get('Full_Name')}\n"
+            f"Patient ID: {existing.get('Patient_ID')}\n\n"
+            "তবুও কি নতুন করে রেজিস্ট্রেশন করবে?",
+            reply_markup=dup_keyboard,
+        )
+        return REG_PHONE_DUP
+    await update.message.reply_text("বয়স লেখো:", reply_markup=ReplyKeyboardRemove())
     return REG_AGE
+
+
+async def reg_phone_dup_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip().lower()
+    if text in ("হ্যাঁ", "yes", "y", "হা", "ha"):
+        await update.message.reply_text("বয়স লেখো:", reply_markup=ReplyKeyboardRemove())
+        return REG_AGE
+    await update.message.reply_text(
+        "ঠিক আছে, আবার ফোন নম্বর লেখো:", reply_markup=ReplyKeyboardRemove()
+    )
+    return REG_PHONE
 
 
 async def reg_age(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -127,13 +153,21 @@ async def reg_gender(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def reg_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["new_patient"]["Address"] = update.message.text.strip()
-    await update.message.reply_text("Department লেখো (Physiotherapy/Dental):")
+    dept_keyboard = ReplyKeyboardMarkup(
+        [["Dental", "Physiotherapy"]], resize_keyboard=True, one_time_keyboard=True
+    )
+    await update.message.reply_text(
+        "Department বেছে নাও:", reply_markup=dept_keyboard
+    )
     return REG_DEPARTMENT
 
 
 async def reg_department(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["new_patient"]["Department"] = update.message.text.strip()
-    await update.message.reply_text("Diagnosis / সমস্যার সংক্ষিপ্ত বিবরণ লেখো:")
+    await update.message.reply_text(
+        "Diagnosis / সমস্যার সংক্ষিপ্ত বিবরণ লেখো:",
+        reply_markup=ReplyKeyboardRemove(),
+    )
     return REG_DIAGNOSIS
 
 
@@ -145,16 +179,20 @@ async def reg_diagnosis(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"নাম: {p['Full_Name']}\nফোন: {p['Phone']}\nবয়স: {p['Age']}\n"
         f"লিঙ্গ: {p['Gender']}\nঠিকানা: {p['Address']}\nDepartment: {p['Department']}\n"
         f"Diagnosis: {p['Diagnosis']}\n\n"
-        "ঠিক থাকলে 'হ্যাঁ' লেখো, ভুল থাকলে 'না' লেখো।"
+        "ঠিক থাকলে নিচের বাটনে ট্যাপ করো।"
     )
-    await update.message.reply_text(summary)
+    confirm_keyboard = ReplyKeyboardMarkup(
+        [["হ্যাঁ", "না"]],
+        resize_keyboard=True, one_time_keyboard=True
+    )
+    await update.message.reply_text(summary, reply_markup=confirm_keyboard)
     return REG_CONFIRM
 
 
 async def reg_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip().lower()
     staff = context.user_data.get("staff", {})
-    if text in ("হ্যাঁ", "yes", "y"):
+    if text in ("হ্যাঁ", "yes", "y", "হা", "ha"):
         patient_id = sheets.add_patient(
             context.user_data["new_patient"],
             created_by=staff.get("Full_Name", "Unknown"),
@@ -221,6 +259,7 @@ def main():
         states={
             REG_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_name)],
             REG_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_phone)],
+            REG_PHONE_DUP: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_phone_dup_confirm)],
             REG_AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_age)],
             REG_GENDER: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_gender)],
             REG_ADDRESS: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_address)],

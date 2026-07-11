@@ -51,6 +51,7 @@ ROLE_MENUS: dict[Role, list[str]] = {
     ],
     Role.MANAGER: [
         MENU_HOME,
+        MENU_PATIENT_REG,
         MENU_APPOINTMENT,
         MENU_REPORTS,
     ],
