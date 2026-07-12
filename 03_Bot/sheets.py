@@ -305,6 +305,53 @@ def attendance_check_out(staff_id: str, date_str: str) -> dict | None:
     return {"time": time_str, "working_hours": working_hours, "overtime": overtime}
 
 
+def get_patient_by_id(patient_id: str) -> dict | None:
+    """একটা নির্দিষ্ট Patient_ID দিয়ে রোগীর সম্পূর্ণ তথ্য বের করে।"""
+    patient_id = patient_id.strip()
+    for p in get_all_patients():
+        if str(p.get("Patient_ID", "")).strip() == patient_id:
+            return p
+    return None
+
+
+def update_patient_payment(patient_id: str, additional_paid: float, discount: float = 0) -> dict | None:
+    """
+    রোগীর 02_Patients শীটে Payment_Status / Total_Bill / Paid_Amount / Due_Amount
+    কলামগুলো (কলাম ২০-২৩) আপডেট করে। রিটার্ন করে নতুন বিল স্ট্যাটাস।
+    """
+    ws = _worksheet(config.SHEET_PATIENTS)
+    cell = ws.find(patient_id.strip())
+    if cell is None:
+        return None
+    row_number = cell.row
+    row_values = ws.row_values(row_number)
+
+    def _num(idx):
+        try:
+            return float(row_values[idx] or 0)
+        except (IndexError, ValueError):
+            return 0.0
+
+    total_bill = _num(20)   # কলাম ২১: Total_Bill
+    paid_amount = _num(21)  # কলাম ২২: Paid_Amount
+
+    new_paid = paid_amount + additional_paid
+    new_due = max(0.0, total_bill - new_paid - discount)
+    status = "Paid" if new_due <= 0 else "Due"
+
+    ws.update_cell(row_number, 20, status)      # Payment_Status
+    ws.update_cell(row_number, 22, new_paid)    # Paid_Amount
+    ws.update_cell(row_number, 23, new_due)     # Due_Amount
+    ws.update_cell(row_number, 29, datetime.now().strftime("%Y-%m-%d %H:%M"))  # updated_at
+
+    return {
+        "total_bill": total_bill,
+        "paid_amount": new_paid,
+        "due_amount": new_due,
+        "status": status,
+    }
+
+
 def update_appointment_status(appointment_id: str, status: str) -> bool:
     ws = _worksheet(config.SHEET_APPOINTMENTS)
     cell = ws.find(appointment_id)
@@ -312,3 +359,98 @@ def update_appointment_status(appointment_id: str, status: str) -> bool:
         return False
     ws.update_cell(cell.row, 8, status)
     return True
+
+
+# ===== Payment & Package Functions =====
+
+def _next_package_id(ws) -> str:
+    ids = ws.col_values(1)[1:]
+    nums = [int(i.replace("PKG", "")) for i in ids if i.startswith("PKG")]
+    n = max(nums) + 1 if nums else 1
+    return f"PKG{n:04d}"
+
+
+def _next_receipt_no(ws) -> str:
+    ids = ws.col_values(1)[1:]
+    nums = [int(i.replace("RC", "")) for i in ids if i.startswith("RC")]
+    n = max(nums) + 1 if nums else 1
+    return f"RC{n:04d}"
+
+
+def add_package(patient_id: str, patient_name: str, total_sessions: int, package_amount: float, paid_amount: float) -> str:
+    ws = _worksheet(config.SHEET_PACKAGES)
+    package_id = _next_package_id(ws)
+    due_amount = package_amount - paid_amount
+    status = "Active"
+    row = [
+        package_id, patient_id, patient_name, total_sessions, 0, total_sessions,
+        package_amount, paid_amount, due_amount,
+        datetime.now().strftime("%Y-%m-%d"), status,
+    ]
+    ws.append_row(row)
+    return package_id
+
+
+def get_active_package_for_patient(patient_id: str) -> dict | None:
+    package_sheet_name = getattr(config, "SHEET_PACKAGES", None)
+    if not package_sheet_name:
+        # প্যাকেজ ফিচার এখনো সেটআপ করা হয়নি (config.py-তে SHEET_PACKAGES নেই) —
+        # সাইলেন্টলি None রিটার্ন করে, যাতে Payment ফ্লো ভেঙে না যায়।
+        return None
+    try:
+        ws = _worksheet(package_sheet_name)
+    except gspread.exceptions.WorksheetNotFound:
+        return None
+    records = ws.get_all_records()
+    for idx, r in enumerate(records, start=2):
+        if str(r.get("Patient_ID", "")).strip() == patient_id.strip() and r.get("Status", "") == "Active":
+            r["_row_number"] = idx
+            return r
+    return None
+
+
+def update_package_payment(row_number: int, additional_paid: float) -> bool:
+    ws = _worksheet(config.SHEET_PACKAGES)
+    row = ws.row_values(row_number)
+    paid_amount = float(row[7] or 0) + additional_paid
+    package_amount = float(row[6] or 0)
+    due_amount = package_amount - paid_amount
+    ws.update_cell(row_number, 8, paid_amount)
+    ws.update_cell(row_number, 9, due_amount)
+    return True
+
+
+def increment_package_session(patient_id: str) -> bool:
+    pkg = get_active_package_for_patient(patient_id)
+    if pkg is None:
+        return False
+    ws = _worksheet(config.SHEET_PACKAGES)
+    used = int(pkg.get("Sessions_Used", 0)) + 1
+    total = int(pkg.get("Total_Sessions", 0))
+    remaining = max(0, total - used)
+    row_number = pkg["_row_number"]
+    ws.update_cell(row_number, 5, used)
+    ws.update_cell(row_number, 6, remaining)
+    if remaining == 0:
+        ws.update_cell(row_number, 11, "Completed")
+    return True
+
+
+def add_payment(data: dict) -> str:
+    ws = _worksheet(config.SHEET_PAYMENTS)
+    receipt_no = _next_receipt_no(ws)
+    row = [
+        receipt_no,
+        datetime.now().strftime("%Y-%m-%d"),
+        data.get("Patient_ID", ""),
+        data.get("Patient_Name", ""),
+        data.get("Department", ""),
+        data.get("Amount", 0),
+        data.get("Discount", 0),
+        data.get("Due", 0),
+        data.get("Payment_Method", ""),
+        data.get("Received_By", ""),
+        data.get("Remarks", ""),
+    ]
+    ws.append_row(row)
+    return receipt_no

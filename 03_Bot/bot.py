@@ -49,6 +49,17 @@ logger = logging.getLogger(__name__)
     APT_CONFIRM,
 ) = range(15)
 
+(
+    PAY_SEARCH,
+    PAY_SELECT,
+    PAY_SESSION,
+    PAY_AMOUNT,
+    PAY_METHOD,
+    PAY_CONFIRM,
+) = range(15, 21)
+
+PAY_METHODS = ["Cash", "bKash", "Nagad", "Card"]
+
 BN_WEEKDAYS = ["সোম", "মঙ্গল", "বুধ", "বৃহঃ", "শুক্র", "শনি", "রবি"]
 
 
@@ -91,6 +102,11 @@ def _time_keyboard() -> InlineKeyboardMarkup:
     if row:
         buttons.append(row)
     return InlineKeyboardMarkup(buttons)
+
+
+def _payment_method_keyboard() -> ReplyKeyboardMarkup:
+    rows = [PAY_METHODS[i : i + 2] for i in range(0, len(PAY_METHODS), 2)]
+    return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
 
 
 async def _require_staff(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -561,6 +577,222 @@ async def apt_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         await query.edit_message_text("❌ আপডেট করা যায়নি।")
 
 
+# ---------- পেমেন্ট / বিল এন্ট্রি ----------
+
+async def pay_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return ConversationHandler.END
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_PAYMENT):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return ConversationHandler.END
+    context.user_data["payment"] = {}
+    await update.message.reply_text(
+        "রোগীর নাম, ফোন নম্বর, অথবা Patient ID লিখো (খুঁজতে):",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    return PAY_SEARCH
+
+
+async def pay_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.message.text.strip()
+    results = sheets.search_patients(query)
+    if not results:
+        await update.message.reply_text(
+            "❌ কোনো রোগী পাওয়া যায়নি। আবার নাম/ফোন/আইডি লেখো, অথবা /cancel দাও।"
+        )
+        return PAY_SEARCH
+
+    results = results[:10]
+    context.user_data["pay_search_results"] = {
+        p.get("Patient_ID", "").strip(): p for p in results
+    }
+    buttons = [
+        [InlineKeyboardButton(
+            f"{p.get('Full_Name')} ({p.get('Patient_ID')})",
+            callback_data=f"paysel_{p.get('Patient_ID')}",
+        )]
+        for p in results
+    ]
+    await update.message.reply_text(
+        "🔍 নিচের তালিকা থেকে রোগী বেছে নাও:",
+        reply_markup=InlineKeyboardMarkup(buttons),
+    )
+    return PAY_SELECT
+
+
+async def pay_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    patient_id = query.data.replace("paysel_", "")
+    results = context.user_data.get("pay_search_results", {})
+    patient = results.get(patient_id)
+    if not patient:
+        await query.edit_message_text(
+            "❌ তালিকার মেয়াদ শেষ। আবার শুরু করতে /cancel দাও, তারপর 💳 পেমেন্ট তথ্য চাপো।"
+        )
+        return ConversationHandler.END
+    context.user_data.setdefault("payment", {})["Patient_ID"] = patient.get("Patient_ID", "")
+    context.user_data["payment"]["Patient_Name"] = patient.get("Full_Name", "")
+    context.user_data["payment"]["Department"] = patient.get("Department", "")
+    context.user_data.pop("pay_search_results", None)
+
+    total_bill = patient.get("Total_Bill", 0) or 0
+    paid_amount = patient.get("Paid_Amount", 0) or 0
+    due_amount = patient.get("Due_Amount", 0) or 0
+    await query.edit_message_text(
+        f"✅ রোগী বাছাই হয়েছে: {patient.get('Full_Name')} ({patient.get('Patient_ID')})\n\n"
+        f"মোট বিল: {total_bill}\nজমা হয়েছে: {paid_amount}\nবাকি: {due_amount}"
+    )
+    await query.message.reply_text("আজ কয়টা সেশন হলো লেখো (না থাকলে 0):")
+    return PAY_SESSION
+
+
+async def pay_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip().upper()
+    results = context.user_data.get("pay_search_results", {})
+    patient = results.get(text)
+    if not patient:
+        await update.message.reply_text(
+            "❌ উপরের তালিকা থেকে একটা বাটনে ট্যাপ করো, অথবা /cancel দাও।"
+        )
+        return PAY_SELECT
+    context.user_data["payment"]["Patient_ID"] = patient.get("Patient_ID", "")
+    context.user_data["payment"]["Patient_Name"] = patient.get("Full_Name", "")
+    context.user_data["payment"]["Department"] = patient.get("Department", "")
+    context.user_data.pop("pay_search_results", None)
+
+    total_bill = patient.get("Total_Bill", 0) or 0
+    paid_amount = patient.get("Paid_Amount", 0) or 0
+    due_amount = patient.get("Due_Amount", 0) or 0
+    await update.message.reply_text(
+        f"রোগী বাছাই হয়েছে: {patient.get('Full_Name')} ({patient.get('Patient_ID')})\n\n"
+        f"মোট বিল: {total_bill}\nজমা হয়েছে: {paid_amount}\nবাকি: {due_amount}\n\n"
+        "আজ কয়টা সেশন হলো লেখো (না থাকলে 0):"
+    )
+    return PAY_SESSION
+
+
+async def pay_session(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    try:
+        sessions = int(text)
+        if sessions < 0:
+            raise ValueError
+    except ValueError:
+        await update.message.reply_text("❌ শুধু সংখ্যা লেখো (উদাহরণ: 1), অথবা 0 লেখো।")
+        return PAY_SESSION
+    context.user_data["payment"]["Sessions"] = sessions
+    await update.message.reply_text("কত টাকা নেওয়া হলো লেখো (শুধু সংখ্যা):")
+    return PAY_AMOUNT
+
+
+async def pay_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip().replace(",", "")
+    try:
+        amount = float(text)
+        if amount < 0:
+            raise ValueError
+    except ValueError:
+        await update.message.reply_text("❌ শুধু সংখ্যা লেখো (উদাহরণ: 200), অথবা 0 লেখো।")
+        return PAY_AMOUNT
+    context.user_data["payment"]["Amount"] = amount
+    await update.message.reply_text(
+        "Payment Method বেছে নাও:", reply_markup=_payment_method_keyboard()
+    )
+    return PAY_METHOD
+
+
+async def pay_method(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    method = update.message.text.strip()
+    if method not in PAY_METHODS:
+        await update.message.reply_text(
+            "❌ তালিকা থেকে একটা Method বেছে নাও:", reply_markup=_payment_method_keyboard()
+        )
+        return PAY_METHOD
+    context.user_data["payment"]["Payment_Method"] = method
+    p = context.user_data["payment"]
+    summary = (
+        "নিচের তথ্য ঠিক আছে কিনা চেক করো:\n\n"
+        f"রোগী: {p['Patient_Name']} ({p['Patient_ID']})\n"
+        f"সেশন: {p['Sessions']}\nটাকা: {p['Amount']}\nMethod: {p['Payment_Method']}\n\n"
+        "ঠিক থাকলে নিচের বাটনে ট্যাপ করো।"
+    )
+    confirm_keyboard = ReplyKeyboardMarkup(
+        [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
+    )
+    await update.message.reply_text(summary, reply_markup=confirm_keyboard)
+    return PAY_CONFIRM
+
+
+async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip().lower()
+    staff = context.user_data.get("staff", {})
+    p = context.user_data.get("payment", {})
+
+    if text not in ("হ্যাঁ", "yes", "y", "হা", "ha"):
+        context.user_data.pop("payment", None)
+        await update.message.reply_text(
+            "❌ বাতিল করা হয়েছে।", reply_markup=_menu_keyboard(staff.get("Role", ""))
+        )
+        return ConversationHandler.END
+
+    patient_id = p.get("Patient_ID", "")
+    amount = p.get("Amount", 0)
+    sessions = p.get("Sessions", 0)
+
+    try:
+        bill_status = sheets.update_patient_payment(patient_id, amount, discount=0)
+
+        receipt_no = sheets.add_payment({
+            "Patient_ID": patient_id,
+            "Patient_Name": p.get("Patient_Name", ""),
+            "Department": p.get("Department", ""),
+            "Amount": amount,
+            "Discount": 0,
+            "Due": bill_status["due_amount"] if bill_status else "",
+            "Payment_Method": p.get("Payment_Method", ""),
+            "Received_By": staff.get("Full_Name", "Unknown"),
+            "Remarks": f"Sessions: {sessions}" if sessions else "",
+        })
+
+        if sessions > 0:
+            for _ in range(sessions):
+                sheets.increment_package_session(patient_id)
+
+        lines = [
+            f"✅ পেমেন্ট সেভ হয়েছে! Receipt No: {receipt_no}",
+            f"রোগী: {p.get('Patient_Name')} ({patient_id})",
+            f"জমা নেওয়া হলো: {amount} ({p.get('Payment_Method')})",
+        ]
+        if bill_status:
+            lines.append(f"মোট জমা: {bill_status['paid_amount']} | বাকি: {bill_status['due_amount']}")
+
+        await update.message.reply_text(
+            "\n".join(lines), reply_markup=_menu_keyboard(staff.get("Role", ""))
+        )
+    except Exception as e:
+        logger.exception("pay_confirm ব্যর্থ হয়েছে")
+        await update.message.reply_text(
+            f"❌ পেমেন্ট সেভ করতে সমস্যা হয়েছে।\nError: {e}\n\n"
+            "স্ক্রিনশট দিয়ে জানাও, ঠিক করে দেওয়া হবে।",
+            reply_markup=_menu_keyboard(staff.get("Role", "")),
+        )
+    context.user_data.pop("payment", None)
+    return ConversationHandler.END
+
+
+async def pay_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff", {})
+    context.user_data.pop("payment", None)
+    context.user_data.pop("pay_search_results", None)
+    await update.effective_message.reply_text(
+        "পেমেন্ট এন্ট্রি বাতিল করা হয়েছে।",
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
+    return ConversationHandler.END
+
+
 async def unknown_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
     if staff is None:
@@ -627,6 +859,25 @@ def main():
         fallbacks=[CommandHandler("cancel", apt_cancel)],
     )
     app.add_handler(apt_conv)
+
+    pay_conv = ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_PAYMENT}$"), pay_start)
+        ],
+        states={
+            PAY_SEARCH: [MessageHandler(filters.TEXT & ~filters.COMMAND, pay_search)],
+            PAY_SELECT: [
+                CallbackQueryHandler(pay_select_callback, pattern="^paysel_"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, pay_select),
+            ],
+            PAY_SESSION: [MessageHandler(filters.TEXT & ~filters.COMMAND, pay_session)],
+            PAY_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, pay_amount)],
+            PAY_METHOD: [MessageHandler(filters.TEXT & ~filters.COMMAND, pay_method)],
+            PAY_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND, pay_confirm)],
+        },
+        fallbacks=[CommandHandler("cancel", pay_cancel)],
+    )
+    app.add_handler(pay_conv)
 
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_HOME}$"), go_home))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_menu))
