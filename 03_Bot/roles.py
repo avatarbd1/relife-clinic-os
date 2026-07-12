@@ -29,7 +29,6 @@ ROLE_MENUS: dict[Role, list[str]] = {
         MENU_APPOINTMENT,
         MENU_ATTENDANCE,
         MENU_TODAY_APPOINTMENTS,
-        MENU_MY_PATIENTS,
         MENU_TREATMENT_NOTE,
         MENU_PAYMENT,
         MENU_REPORTS,
