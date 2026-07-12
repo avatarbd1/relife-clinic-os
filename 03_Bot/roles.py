@@ -1,10 +1,3 @@
-"""
-roles.py
-Role-Based Access Control (RBAC) — অ্যাপ্লিকেশন লেভেলে।
-(মনে রাখতে হবে: ডেটাবেস Google Sheets, তাই DB-level RLS নেই —
- এই ফাইলই একমাত্র জায়গা যেখানে "কে কী দেখতে পারবে" নিয়ন্ত্রিত হয়।)
-"""
-
 from enum import Enum
 
 
@@ -19,18 +12,23 @@ class Role(str, Enum):
 MENU_HOME = "🏠 হোম"
 MENU_PATIENT_REG = "👤 রোগী রেজিস্ট্রেশন"
 MENU_APPOINTMENT = "📅 অ্যাপয়েন্টমেন্ট বুকিং"
-MENU_MY_PATIENTS = "🧑‍⚕️ আমার রোগী / সেশন"
+MENU_MY_PATIENTS = "🧑‍⚕️আমার রোগী / সেশন"
 MENU_TREATMENT_NOTE = "📝 ট্রিটমেন্ট নোট"
 MENU_PAYMENT = "💳 পেমেন্ট তথ্য"
 MENU_REPORTS = "📊 রিপোর্ট ও অ্যানালিটিক্স"
 MENU_SETTINGS = "⚙️ সেটিংস"
+MENU_ATTENDANCE = "🕐 হাজিরা"
+MENU_TODAY_APPOINTMENTS = "📋 আজকের অ্যাপয়েন্টমেন্ট"
 
 # ---- Role অনুযায়ী কোন মেনু দেখা যাবে (diagram-এর legend অনুযায়ী) ----
+
 ROLE_MENUS: dict[Role, list[str]] = {
     Role.OWNER: [
         MENU_HOME,
         MENU_PATIENT_REG,
         MENU_APPOINTMENT,
+        MENU_ATTENDANCE,
+        MENU_TODAY_APPOINTMENTS,
         MENU_MY_PATIENTS,
         MENU_TREATMENT_NOTE,
         MENU_PAYMENT,
@@ -41,11 +39,14 @@ ROLE_MENUS: dict[Role, list[str]] = {
         MENU_HOME,
         MENU_PATIENT_REG,
         MENU_APPOINTMENT,
+        MENU_ATTENDANCE,
+        MENU_TODAY_APPOINTMENTS,
         MENU_PAYMENT,
         MENU_REPORTS,
     ],
     Role.THERAPIST: [
         MENU_HOME,
+        MENU_ATTENDANCE,
         MENU_MY_PATIENTS,
         MENU_TREATMENT_NOTE,
     ],
@@ -53,6 +54,8 @@ ROLE_MENUS: dict[Role, list[str]] = {
         MENU_HOME,
         MENU_PATIENT_REG,
         MENU_APPOINTMENT,
+        MENU_ATTENDANCE,
+        MENU_TODAY_APPOINTMENTS,
         MENU_REPORTS,
     ],
 }

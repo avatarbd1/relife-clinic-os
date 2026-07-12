@@ -119,6 +119,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def go_home(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
+    role = staff.get("Role", "")
+    name = staff.get("Full_Name", "")
+    await update.message.reply_text(
+        f"স্বাগতম, {name}! ({role})\nনিচের মেনু থেকে বেছে নাও 👇",
+        reply_markup=_menu_keyboard(role),
+    )
+
+
 async def my_patients(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
     if staff is None:
@@ -437,6 +449,118 @@ async def search_patient(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(lines))
 
 
+# ---------- হাজিরা (স্টাফ) ----------
+
+async def attendance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_ATTENDANCE):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    staff_id = staff.get("Staff_ID", "") or str(staff.get("Telegram_ID", ""))
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    record = sheets.get_today_attendance(staff_id, date_str)
+
+    buttons = []
+    if not record:
+        buttons.append([InlineKeyboardButton("✅ Check In", callback_data="att_checkin")])
+        status_line = "🟡 এখনো Check In করোনি।"
+    elif not record.get("Break_Out"):
+        buttons.append([InlineKeyboardButton("☕ Break Out", callback_data="att_breakout")])
+        buttons.append([InlineKeyboardButton("🚪 Check Out", callback_data="att_checkout")])
+        status_line = f"🟢 Check In: {record.get('Check_In')}"
+    elif not record.get("Break_In"):
+        buttons.append([InlineKeyboardButton("🔙 Break In", callback_data="att_breakin")])
+        status_line = f"☕ Break Out: {record.get('Break_Out')}"
+    elif not record.get("Check_Out"):
+        buttons.append([InlineKeyboardButton("🚪 Check Out", callback_data="att_checkout")])
+        status_line = f"🔙 Break In: {record.get('Break_In')}"
+    else:
+        await update.message.reply_text(
+            f"✅ আজকের হাজিরা সম্পন্ন।\n"
+            f"Check In: {record.get('Check_In')}\nCheck Out: {record.get('Check_Out')}\n"
+            f"মোট কাজের সময়: {record.get('Working_Hours')} ঘণ্টা"
+        )
+        return
+
+    await update.message.reply_text(status_line, reply_markup=InlineKeyboardMarkup(buttons))
+
+
+async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    staff = context.user_data.get("staff") or sheets.get_staff_by_telegram_id(update.effective_user.id)
+    if staff is None:
+        await query.edit_message_text("❌ স্টাফ তথ্য পাওয়া যায়নি।")
+        return
+    staff_id = staff.get("Staff_ID", "") or str(staff.get("Telegram_ID", ""))
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    action = query.data
+
+    if action == "att_checkin":
+        time_str = sheets.attendance_check_in(staff)
+        await query.edit_message_text(f"✅ Check In হয়েছে: {time_str}")
+    elif action == "att_breakout":
+        time_str = sheets.attendance_break_out(staff_id, date_str)
+        await query.edit_message_text(f"☕ Break শুরু: {time_str}" if time_str else "❌ আজকের রেকর্ড পাওয়া যায়নি।")
+    elif action == "att_breakin":
+        time_str = sheets.attendance_break_in(staff_id, date_str)
+        await query.edit_message_text(f"🔙 Break শেষ: {time_str}" if time_str else "❌ আজকের রেকর্ড পাওয়া যায়নি।")
+    elif action == "att_checkout":
+        result = sheets.attendance_check_out(staff_id, date_str)
+        if result:
+            await query.edit_message_text(
+                f"🚪 Check Out হয়েছে: {result['time']}\n"
+                f"মোট কাজের সময়: {result['working_hours']} ঘণ্টা\n"
+                f"ওভারটাইম: {result['overtime']} ঘণ্টা"
+            )
+        else:
+            await query.edit_message_text("❌ আজকের রেকর্ড পাওয়া যায়নি।")
+
+
+# ---------- আজকের অ্যাপয়েন্টমেন্ট (রোগীর ভিজিট হাজিরা) ----------
+
+async def today_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_TODAY_APPOINTMENTS):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    appts = [
+        a for a in sheets.get_appointments_for_date(date_str)
+        if a.get("Status", "").strip() == "Scheduled"
+    ]
+    if not appts:
+        await update.message.reply_text("আজ কোনো পেন্ডিং অ্যাপয়েন্টমেন্ট নেই।")
+        return
+    for a in appts:
+        text = (
+            f"🕐 {a.get('Time')} — {a.get('Patient_Name')} ({a.get('Patient_ID')})\n"
+            f"Department: {a.get('Department')} | থেরাপিস্ট: {a.get('Therapist')}"
+        )
+        buttons = InlineKeyboardMarkup([[
+            InlineKeyboardButton("✅ উপস্থিত", callback_data=f"aptstatus_{a.get('Appointment_ID')}_Completed"),
+            InlineKeyboardButton("❌ আসেনি", callback_data=f"aptstatus_{a.get('Appointment_ID')}_NoShow"),
+        ]])
+        await update.message.reply_text(text, reply_markup=buttons)
+
+
+async def apt_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    _, appointment_id, status_code = query.data.split("_", 2)
+    status_map = {"Completed": "Completed", "NoShow": "No-show"}
+    status = status_map.get(status_code, status_code)
+    ok = sheets.update_appointment_status(appointment_id, status)
+    if ok:
+        await query.edit_message_text(f"✅ {appointment_id} — স্ট্যাটাস: {status}")
+    else:
+        await query.edit_message_text("❌ আপডেট করা যায়নি।")
+
+
 async def unknown_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
     if staff is None:
@@ -454,6 +578,14 @@ def main():
     app.add_handler(
         MessageHandler(filters.Regex(f"^{roles.MENU_MY_PATIENTS}$"), my_patients)
     )
+    app.add_handler(
+        MessageHandler(filters.Regex(f"^{roles.MENU_ATTENDANCE}$"), attendance_menu)
+    )
+    app.add_handler(CallbackQueryHandler(attendance_callback, pattern="^att_"))
+    app.add_handler(
+        MessageHandler(filters.Regex(f"^{roles.MENU_TODAY_APPOINTMENTS}$"), today_appointments)
+    )
+    app.add_handler(CallbackQueryHandler(apt_status_callback, pattern="^aptstatus_"))
 
     reg_conv = ConversationHandler(
         entry_points=[
@@ -496,6 +628,7 @@ def main():
     )
     app.add_handler(apt_conv)
 
+    app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_HOME}$"), go_home))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_menu))
     logger.info("Relife Clinic OS Bot চালু হচ্ছে...")
     app.run_polling()
