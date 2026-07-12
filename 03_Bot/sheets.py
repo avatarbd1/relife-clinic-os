@@ -454,3 +454,8 @@ def add_payment(data: dict) -> str:
     ]
     ws.append_row(row)
     return receipt_no
+
+
+def get_all_payments() -> list[dict]:
+    ws = _worksheet(config.SHEET_PAYMENTS)
+    return ws.get_all_records()

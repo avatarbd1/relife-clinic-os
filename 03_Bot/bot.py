@@ -766,6 +766,34 @@ async def pay_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
+
+async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_REPORTS):
+        return
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    patients = sheets.get_all_patients()
+    total_patients = len(patients)
+    today_appointments = sheets.get_appointments_for_date(today_str)
+    payments = sheets.get_all_payments()
+    today_payments = [p for p in payments if str(p.get("Date", "")) == today_str]
+    today_collection = sum(float(p.get("Amount", 0) or 0) for p in today_payments)
+    total_collection = sum(float(p.get("Amount", 0) or 0) for p in payments)
+    lines = [
+        "\U0001F4CA রিপোর্ট ও অ্যানালিটিক্স",
+        "",
+        f"\U0001F465 মোট রোগী: {total_patients}",
+        f"\U0001F4CB আজকের অ্যাপয়েন্টমেন্ট: {len(today_appointments)}",
+        f"\U0001F4B0 আজকের আয়: {today_collection:.0f} টাকা",
+        f"\U0001F4B0 সর্বমোট আয়: {total_collection:.0f} টাকা",
+    ]
+    await update.effective_message.reply_text(
+        "\n".join(lines),
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
+
 async def unknown_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
     if staff is None:
@@ -849,6 +877,7 @@ def main():
     )
     app.add_handler(pay_conv)
 
+    app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_REPORTS}$"), reports_menu))
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_HOME}$"), go_home))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_menu))
     logger.info("Relife Clinic OS Bot চালু হচ্ছে...")
