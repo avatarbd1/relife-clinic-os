@@ -8,11 +8,11 @@ class Role(str, Enum):
     MANAGER = "Manager"
 
 
-# ---- মেনু আইটেমসমূহ (diagram অনুযায়ী) ----
+# ---- মেনু আইটেমসমূহ ----
 MENU_HOME = "🏠 হোম"
 MENU_PATIENT_REG = "👤 রোগী রেজিস্ট্রেশন"
 MENU_APPOINTMENT = "📅 অ্যাপয়েন্টমেন্ট বুকিং"
-MENU_MY_PATIENTS = "🧑‍⚕️আমার রোগী / সেশন"
+MENU_MY_PATIENTS = "🧑‍⚕️ আমার রোগী / সেশন"
 MENU_TREATMENT_NOTE = "📝 ট্রিটমেন্ট নোট"
 MENU_PAYMENT = "💳 পেমেন্ট তথ্য"
 MENU_REPORTS = "📊 রিপোর্ট ও অ্যানালিটিক্স"
@@ -21,54 +21,53 @@ MENU_ATTENDANCE = "🕐 হাজিরা"
 MENU_TODAY_APPOINTMENTS = "📋 আজকের অ্যাপয়েন্টমেন্ট"
 MENU_PATIENT_HISTORY = "📜 রোগীর ইতিহাস"
 
-# ---- Role অনুযায়ী কোন মেনু দেখা যাবে (diagram-এর legend অনুযায়ী) ----
+# ---- Role অনুযায়ী মেনু, row আকারে গ্রুপ করা (সম্পর্কিত আইটেম পাশাপাশি) ----
 
-ROLE_MENUS: dict[Role, list[str]] = {
+ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
     Role.OWNER: [
-        MENU_HOME,
-        MENU_PATIENT_HISTORY,
-        MENU_PATIENT_REG,
-        MENU_APPOINTMENT,
-        MENU_ATTENDANCE,
-        MENU_TODAY_APPOINTMENTS,
-        MENU_TREATMENT_NOTE,
-        MENU_PAYMENT,
-        MENU_REPORTS,
-        MENU_SETTINGS,
+        [MENU_HOME],
+        [MENU_PATIENT_REG, MENU_PATIENT_HISTORY],
+        [MENU_APPOINTMENT, MENU_TODAY_APPOINTMENTS],
+        [MENU_ATTENDANCE, MENU_TREATMENT_NOTE],
+        [MENU_PAYMENT, MENU_REPORTS],
+        [MENU_SETTINGS],
     ],
     Role.RECEPTIONIST: [
-        MENU_HOME,
-        MENU_PATIENT_REG,
-        MENU_APPOINTMENT,
-        MENU_ATTENDANCE,
-        MENU_TODAY_APPOINTMENTS,
-        MENU_PAYMENT,
-        MENU_REPORTS,
+        [MENU_HOME],
+        [MENU_PATIENT_REG],
+        [MENU_APPOINTMENT, MENU_TODAY_APPOINTMENTS],
+        [MENU_ATTENDANCE],
+        [MENU_PAYMENT, MENU_REPORTS],
     ],
     Role.THERAPIST: [
-        MENU_HOME,
-        MENU_ATTENDANCE,
-        MENU_MY_PATIENTS,
-        MENU_TREATMENT_NOTE,
+        [MENU_HOME],
+        [MENU_ATTENDANCE],
+        [MENU_MY_PATIENTS],
+        [MENU_TREATMENT_NOTE],
     ],
     Role.MANAGER: [
-        MENU_HOME,
-        MENU_PATIENT_REG,
-        MENU_APPOINTMENT,
-        MENU_ATTENDANCE,
-        MENU_TODAY_APPOINTMENTS,
-        MENU_REPORTS,
+        [MENU_HOME],
+        [MENU_PATIENT_REG],
+        [MENU_APPOINTMENT, MENU_TODAY_APPOINTMENTS],
+        [MENU_ATTENDANCE],
+        [MENU_REPORTS],
     ],
 }
 
 
-def get_menu_for_role(role_str: str) -> list[str]:
-    """Staff শীটের Role কলাম থেকে আসা স্ট্রিং দিয়ে সঠিক মেনু বের করে।"""
+def get_menu_rows_for_role(role_str: str) -> list[list[str]]:
+    """Role অনুযায়ী row-আকারে গ্রুপ করা মেনু ফেরত দেয়।"""
     try:
         role = Role(role_str.strip())
     except ValueError:
         return []
-    return ROLE_MENUS.get(role, [])
+    return ROLE_MENU_ROWS.get(role, [])
+
+
+def get_menu_for_role(role_str: str) -> list[str]:
+    """পুরনো কোড যেখানে flat লিস্ট আশা করে, তাদের জন্য backward-compatible।"""
+    rows = get_menu_rows_for_role(role_str)
+    return [item for row in rows for item in row]
 
 
 def can_access(role_str: str, menu_item: str) -> bool:

@@ -3,6 +3,7 @@ bot.py — Relife Clinic OS Telegram Bot (প্রথম ভার্সন)
 """
 
 import logging
+import re
 from datetime import datetime, timedelta
 from telegram import (
     Update,
@@ -60,10 +61,34 @@ PAY_METHODS = ["Cash", "bKash", "Nagad", "Card"]
 
 BN_WEEKDAYS = ["সোম", "মঙ্গল", "বুধ", "বৃহঃ", "শুক্র", "শনি", "রবি"]
 
+_ALL_MENU_ITEMS = [
+    roles.MENU_HOME,
+    roles.MENU_PATIENT_REG,
+    roles.MENU_APPOINTMENT,
+    roles.MENU_MY_PATIENTS,
+    roles.MENU_TREATMENT_NOTE,
+    roles.MENU_PAYMENT,
+    roles.MENU_REPORTS,
+    roles.MENU_SETTINGS,
+    roles.MENU_ATTENDANCE,
+    roles.MENU_TODAY_APPOINTMENTS,
+    roles.MENU_PATIENT_HISTORY,
+]
+_ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
+
+
+async def _cancel_on_menu_press(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """কনভারসেশনের মাঝখানে অন্য মেনু বাটন চাপলে চলমান কাজ বাতিল করে দেয়,
+    যাতে সেই বাটনের লেখাটা ভুল করে ফোন নম্বর/নাম হিসেবে সেভ না হয়ে যায়।"""
+    context.user_data.clear()
+    await update.message.reply_text(
+        "❌ আগের কাজটি বাতিল করা হলো। এখন আবার সেই বাটনে চাপ দাও।"
+    )
+    return ConversationHandler.END
+
 
 def _menu_keyboard(role_str: str) -> ReplyKeyboardMarkup:
-    items = roles.get_menu_for_role(role_str)
-    rows = [items[i : i + 2] for i in range(0, len(items), 2)]
+    rows = roles.get_menu_rows_for_role(role_str)
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
 
 
@@ -971,7 +996,8 @@ def main():
             REG_NOTE: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_note)],
             REG_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_confirm)],
         },
-        fallbacks=[CommandHandler("cancel", reg_cancel)],
+        fallbacks=[
+            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),CommandHandler("cancel", reg_cancel)],
     )
     app.add_handler(reg_conv)
 
@@ -993,7 +1019,8 @@ def main():
             APT_THERAPIST: [MessageHandler(filters.TEXT & ~filters.COMMAND, apt_therapist)],
             APT_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND, apt_confirm)],
         },
-        fallbacks=[CommandHandler("cancel", apt_cancel)],
+        fallbacks=[
+            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),CommandHandler("cancel", apt_cancel)],
     )
     app.add_handler(apt_conv)
 
@@ -1012,7 +1039,8 @@ def main():
             PAY_METHOD: [MessageHandler(filters.TEXT & ~filters.COMMAND, pay_method)],
             PAY_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND, pay_confirm)],
         },
-        fallbacks=[CommandHandler("cancel", pay_cancel)],
+        fallbacks=[
+            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),CommandHandler("cancel", pay_cancel)],
     )
     app.add_handler(pay_conv)
 
@@ -1025,7 +1053,8 @@ def main():
                 MessageHandler(filters.TEXT & ~filters.COMMAND, hist_search),
             ],
         },
-        fallbacks=[CommandHandler("cancel", hist_cancel)],
+        fallbacks=[
+            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),CommandHandler("cancel", hist_cancel)],
     )
     app.add_handler(hist_conv)
 
