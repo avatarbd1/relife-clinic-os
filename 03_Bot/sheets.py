@@ -454,12 +454,25 @@ def increment_package_session(patient_id: str) -> bool:
     return True
 
 
+def _next_daily_sl(ws, date_str: str) -> int:
+    """সেই তারিখে এখন পর্যন্ত কতগুলো পেমেন্ট এন্ট্রি হয়েছে তা গুনে পরের SL নম্বর দেয়।"""
+    try:
+        records = ws.get_all_records()
+    except Exception:
+        return 1
+    count = sum(1 for r in records if str(r.get("Date", "")) == date_str)
+    return count + 1
+
+
 def add_payment(data: dict) -> str:
     ws = _worksheet(config.SHEET_PAYMENTS)
     receipt_no = _next_receipt_no(ws)
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    sl = _next_daily_sl(ws, date_str)
     row = [
         receipt_no,
-        datetime.now().strftime("%Y-%m-%d"),
+        date_str,
+        sl,
         data.get("Patient_ID", ""),
         data.get("Patient_Name", ""),
         data.get("Department", ""),
