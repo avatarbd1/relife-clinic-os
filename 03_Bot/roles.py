@@ -19,12 +19,14 @@ MENU_REPORTS = "📊 রিপোর্ট ও অ্যানালিটিক
 MENU_SETTINGS = "⚙️ সেটিংস"
 MENU_ATTENDANCE = "🕐 হাজিরা"
 MENU_TODAY_APPOINTMENTS = "📋 আজকের অ্যাপয়েন্টমেন্ট"
+MENU_PATIENT_HISTORY = "📜 রোগীর ইতিহাস"
 
 # ---- Role অনুযায়ী কোন মেনু দেখা যাবে (diagram-এর legend অনুযায়ী) ----
 
 ROLE_MENUS: dict[Role, list[str]] = {
     Role.OWNER: [
         MENU_HOME,
+        MENU_PATIENT_HISTORY,
         MENU_PATIENT_REG,
         MENU_APPOINTMENT,
         MENU_ATTENDANCE,
