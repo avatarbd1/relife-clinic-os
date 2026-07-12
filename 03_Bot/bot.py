@@ -35,11 +35,8 @@ logger = logging.getLogger(__name__)
     REG_NAME,
     REG_PHONE,
     REG_PHONE_DUP,
-    REG_AGE,
-    REG_GENDER,
     REG_ADDRESS,
-    REG_DEPARTMENT,
-    REG_DIAGNOSIS,
+    REG_NOTE,
     REG_CONFIRM,
     APT_SEARCH,
     APT_SELECT,
@@ -47,7 +44,7 @@ logger = logging.getLogger(__name__)
     APT_TIME,
     APT_THERAPIST,
     APT_CONFIRM,
-) = range(15)
+) = range(12)
 
 (
     PAY_SEARCH,
@@ -56,7 +53,7 @@ logger = logging.getLogger(__name__)
     PAY_AMOUNT,
     PAY_METHOD,
     PAY_CONFIRM,
-) = range(15, 21)
+) = range(12, 18)
 
 PAY_METHODS = ["Cash", "bKash", "Nagad", "Card"]
 
@@ -205,16 +202,16 @@ async def reg_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=dup_keyboard,
         )
         return REG_PHONE_DUP
-    await update.message.reply_text("বয়স লেখো:", reply_markup=ReplyKeyboardRemove())
-    return REG_AGE
+    await update.message.reply_text("ঠিকানা লেখো:", reply_markup=ReplyKeyboardRemove())
+    return REG_ADDRESS
 
 
 async def reg_phone_dup_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip().lower()
     staff = context.user_data.get("staff", {})
     if text in ("হ্যাঁ", "yes", "y", "হা", "ha"):
-        await update.message.reply_text("বয়স লেখো:", reply_markup=ReplyKeyboardRemove())
-        return REG_AGE
+        await update.message.reply_text("ঠিকানা লেখো:", reply_markup=ReplyKeyboardRemove())
+        return REG_ADDRESS
     context.user_data.pop("new_patient", None)
     await update.message.reply_text(
         "❌ ডুপ্লিকেট এড়াতে রেজিস্ট্রেশন বাতিল করা হয়েছে।",
@@ -223,46 +220,22 @@ async def reg_phone_dup_confirm(update: Update, context: ContextTypes.DEFAULT_TY
     return ConversationHandler.END
 
 
-async def reg_age(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["new_patient"]["Age"] = update.message.text.strip()
-    await update.message.reply_text("লিঙ্গ লেখো (Male/Female/Other):")
-    return REG_GENDER
-
-
-async def reg_gender(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["new_patient"]["Gender"] = update.message.text.strip()
-    await update.message.reply_text("ঠিকানা লেখো:")
-    return REG_ADDRESS
-
-
 async def reg_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["new_patient"]["Address"] = update.message.text.strip()
-    dept_keyboard = ReplyKeyboardMarkup(
-        [["Dental", "Physiotherapy"]], resize_keyboard=True, one_time_keyboard=True
-    )
     await update.message.reply_text(
-        "Department বেছে নাও:", reply_markup=dept_keyboard
+        "সমস্যা/বয়স/অন্য কিছু থাকলে এক লাইনে লেখো (না থাকলে - দাও):"
     )
-    return REG_DEPARTMENT
+    return REG_NOTE
 
 
-async def reg_department(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["new_patient"]["Department"] = update.message.text.strip()
-    await update.message.reply_text(
-        "Diagnosis / সমস্যার সংক্ষিপ্ত বিবরণ লেখো:",
-        reply_markup=ReplyKeyboardRemove(),
-    )
-    return REG_DIAGNOSIS
-
-
-async def reg_diagnosis(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["new_patient"]["Diagnosis"] = update.message.text.strip()
+async def reg_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    note = update.message.text.strip()
+    context.user_data["new_patient"]["Diagnosis"] = "" if note == "-" else note
     p = context.user_data["new_patient"]
     summary = (
         "নিচের তথ্য ঠিক আছে কিনা চেক করো:\n\n"
-        f"নাম: {p['Full_Name']}\nফোন: {p['Phone']}\nবয়স: {p['Age']}\n"
-        f"লিঙ্গ: {p['Gender']}\nঠিকানা: {p['Address']}\nDepartment: {p['Department']}\n"
-        f"Diagnosis: {p['Diagnosis']}\n\n"
+        f"নাম: {p['Full_Name']}\nফোন: {p['Phone']}\nঠিকানা: {p['Address']}\n"
+        f"নোট: {p['Diagnosis'] or '-'}\n\n"
         "ঠিক থাকলে নিচের বাটনে ট্যাপ করো।"
     )
     confirm_keyboard = ReplyKeyboardMarkup(
@@ -827,11 +800,8 @@ def main():
             REG_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_name)],
             REG_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_phone)],
             REG_PHONE_DUP: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_phone_dup_confirm)],
-            REG_AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_age)],
-            REG_GENDER: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_gender)],
             REG_ADDRESS: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_address)],
-            REG_DEPARTMENT: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_department)],
-            REG_DIAGNOSIS: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_diagnosis)],
+            REG_NOTE: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_note)],
             REG_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_confirm)],
         },
         fallbacks=[CommandHandler("cancel", reg_cancel)],
