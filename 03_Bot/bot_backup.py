@@ -3,19 +3,11 @@ bot.py — Relife Clinic OS Telegram Bot (প্রথম ভার্সন)
 """
 
 import logging
-from datetime import datetime, timedelta
-from telegram import (
-    Update,
-    ReplyKeyboardMarkup,
-    ReplyKeyboardRemove,
-    InlineKeyboardMarkup,
-    InlineKeyboardButton,
-)
+from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (
     Application,
     CommandHandler,
     MessageHandler,
-    CallbackQueryHandler,
     ConversationHandler,
     ContextTypes,
     filters,
@@ -41,15 +33,7 @@ logger = logging.getLogger(__name__)
     REG_DEPARTMENT,
     REG_DIAGNOSIS,
     REG_CONFIRM,
-    APT_SEARCH,
-    APT_SELECT,
-    APT_DATE,
-    APT_TIME,
-    APT_THERAPIST,
-    APT_CONFIRM,
-) = range(15)
-
-BN_WEEKDAYS = ["সোম", "মঙ্গল", "বুধ", "বৃহঃ", "শুক্র", "শনি", "রবি"]
+) = range(9)
 
 
 def _menu_keyboard(role_str: str) -> ReplyKeyboardMarkup:
@@ -58,45 +42,11 @@ def _menu_keyboard(role_str: str) -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
 
 
-def _date_keyboard() -> InlineKeyboardMarkup:
-    today = datetime.now()
-    buttons = []
-    row = []
-    for i in range(7):
-        d = today + timedelta(days=i)
-        label = d.strftime("%d %b") + f" ({BN_WEEKDAYS[d.weekday()]})"
-        row.append(InlineKeyboardButton(label, callback_data=f"aptdate_{d.strftime('%Y-%m-%d')}"))
-        if len(row) == 2:
-            buttons.append(row)
-            row = []
-    if row:
-        buttons.append(row)
-    return InlineKeyboardMarkup(buttons)
-
-
-def _time_keyboard() -> InlineKeyboardMarkup:
-    slots = [
-        "09:00 AM", "10:00 AM", "11:00 AM",
-        "12:00 PM", "02:00 PM", "03:00 PM",
-        "04:00 PM", "05:00 PM", "06:00 PM",
-    ]
-    buttons = []
-    row = []
-    for s in slots:
-        row.append(InlineKeyboardButton(s, callback_data=f"apttime_{s}"))
-        if len(row) == 3:
-            buttons.append(row)
-            row = []
-    if row:
-        buttons.append(row)
-    return InlineKeyboardMarkup(buttons)
-
-
 async def _require_staff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     staff = sheets.get_staff_by_telegram_id(telegram_id)
     if staff is None:
-        await update.effective_message.reply_text(
+        await update.message.reply_text(
             "❌ তোমাকে সিস্টেমে স্টাফ হিসেবে খুঁজে পাওয়া যায়নি।\n"
             f"তোমার Telegram ID: {telegram_id}\n"
             "এই ID-টা ক্লিনিক ম্যানেজারকে দাও, তিনি 08_Staff শীটে যোগ করে দেবেন।"
@@ -137,8 +87,6 @@ async def my_patients(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     await update.message.reply_text("\n".join(lines))
 
-
-# ---------- রোগী রেজিস্ট্রেশন ----------
 
 async def reg_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
@@ -275,152 +223,6 @@ async def reg_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-# ---------- অ্যাপয়েন্টমেন্ট বুকিং ----------
-
-async def apt_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
-    if staff is None:
-        return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_APPOINTMENT):
-        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
-        return ConversationHandler.END
-    context.user_data["new_appointment"] = {}
-    await update.message.reply_text(
-        "রোগীর নাম, ফোন নম্বর, অথবা Patient ID লিখো (খুঁজতে):",
-        reply_markup=ReplyKeyboardRemove(),
-    )
-    return APT_SEARCH
-
-
-async def apt_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.message.text.strip()
-    results = sheets.search_patients(query)
-    if not results:
-        await update.message.reply_text(
-            "❌ কোনো রোগী পাওয়া যায়নি। আবার নাম/ফোন/আইডি লেখো, অথবা /cancel দাও।"
-        )
-        return APT_SEARCH
-
-    results = results[:10]
-    context.user_data["apt_search_results"] = {
-        p.get("Patient_ID", "").strip(): p for p in results
-    }
-    lines = ["🔍 ফলাফল — সঠিক Patient ID লিখো:\n"]
-    for p in results:
-        lines.append(
-            f"• {p.get('Patient_ID')} — {p.get('Full_Name')} | {p.get('Phone')}"
-        )
-    await update.message.reply_text("\n".join(lines))
-    return APT_SELECT
-
-
-async def apt_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip().upper()
-    results = context.user_data.get("apt_search_results", {})
-    patient = results.get(text)
-    if not patient:
-        await update.message.reply_text(
-            "❌ তালিকা থেকে সঠিক Patient ID লেখো (উদাহরণ: PT0001), অথবা /cancel দাও।"
-        )
-        return APT_SELECT
-    context.user_data["new_appointment"]["Patient_ID"] = patient.get("Patient_ID", "")
-    context.user_data["new_appointment"]["Patient_Name"] = patient.get("Full_Name", "")
-    context.user_data["new_appointment"]["Department"] = patient.get("Department", "")
-    context.user_data.pop("apt_search_results", None)
-    await update.message.reply_text(
-        f"রোগী বাছাই হয়েছে: {patient.get('Full_Name')} ({patient.get('Patient_ID')})\n\n"
-        "তারিখ বেছে নাও (অথবা টাইপ করো, উদাহরণ: 2026-07-15):",
-        reply_markup=_date_keyboard(),
-    )
-    return APT_DATE
-
-
-async def apt_date_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    date_str = query.data.replace("aptdate_", "")
-    context.user_data.setdefault("new_appointment", {})["Date"] = date_str
-    await query.edit_message_text(f"✅ তারিখ নির্বাচন করা হয়েছে: {date_str}")
-    await query.message.reply_text(
-        "সময় বেছে নাও (অথবা টাইপ করো):", reply_markup=_time_keyboard()
-    )
-    return APT_TIME
-
-
-async def apt_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["new_appointment"]["Date"] = update.message.text.strip()
-    await update.message.reply_text(
-        "সময় বেছে নাও (অথবা টাইপ করো):", reply_markup=_time_keyboard()
-    )
-    return APT_TIME
-
-
-async def apt_time_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    time_str = query.data.replace("apttime_", "")
-    context.user_data.setdefault("new_appointment", {})["Time"] = time_str
-    await query.edit_message_text(f"✅ সময় নির্বাচন করা হয়েছে: {time_str}")
-    await query.message.reply_text("থেরাপিস্ট / ডাক্তারের নাম লেখো:")
-    return APT_THERAPIST
-
-
-async def apt_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["new_appointment"]["Time"] = update.message.text.strip()
-    await update.message.reply_text("থেরাপিস্ট / ডাক্তারের নাম লেখো:")
-    return APT_THERAPIST
-
-
-async def apt_therapist(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["new_appointment"]["Therapist"] = update.message.text.strip()
-    a = context.user_data["new_appointment"]
-    summary = (
-        "নিচের তথ্য ঠিক আছে কিনা চেক করো:\n\n"
-        f"রোগী: {a['Patient_Name']} ({a['Patient_ID']})\n"
-        f"Department: {a['Department']}\n"
-        f"তারিখ: {a['Date']}\nসময়: {a['Time']}\n"
-        f"থেরাপিস্ট: {a['Therapist']}\n\n"
-        "ঠিক থাকলে নিচের বাটনে ট্যাপ করো।"
-    )
-    confirm_keyboard = ReplyKeyboardMarkup(
-        [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
-    )
-    await update.message.reply_text(summary, reply_markup=confirm_keyboard)
-    return APT_CONFIRM
-
-
-async def apt_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip().lower()
-    staff = context.user_data.get("staff", {})
-    if text in ("হ্যাঁ", "yes", "y", "হা", "ha"):
-        appointment_id = sheets.add_appointment(
-            context.user_data["new_appointment"],
-            created_by=staff.get("Full_Name", "Unknown"),
-        )
-        await update.message.reply_text(
-            f"✅ অ্যাপয়েন্টমেন্ট বুক হয়েছে! Appointment ID: {appointment_id}",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
-        )
-    else:
-        await update.message.reply_text(
-            "❌ বাতিল করা হয়েছে।",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
-        )
-    context.user_data.pop("new_appointment", None)
-    return ConversationHandler.END
-
-
-async def apt_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff", {})
-    context.user_data.pop("new_appointment", None)
-    context.user_data.pop("apt_search_results", None)
-    await update.effective_message.reply_text(
-        "অ্যাপয়েন্টমেন্ট বুকিং বাতিল করা হয়েছে।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
-    )
-    return ConversationHandler.END
-
-
 async def search_patient(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = " ".join(context.args) if context.args else None
     if not query:
@@ -453,7 +255,6 @@ def main():
     app.add_handler(
         MessageHandler(filters.Regex(f"^{roles.MENU_MY_PATIENTS}$"), my_patients)
     )
-
     reg_conv = ConversationHandler(
         entry_points=[
             MessageHandler(filters.Regex(f"^{roles.MENU_PATIENT_REG}$"), reg_start)
@@ -472,29 +273,6 @@ def main():
         fallbacks=[CommandHandler("cancel", reg_cancel)],
     )
     app.add_handler(reg_conv)
-
-    apt_conv = ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_APPOINTMENT}$"), apt_start)
-        ],
-        states={
-            APT_SEARCH: [MessageHandler(filters.TEXT & ~filters.COMMAND, apt_search)],
-            APT_SELECT: [MessageHandler(filters.TEXT & ~filters.COMMAND, apt_select)],
-            APT_DATE: [
-                CallbackQueryHandler(apt_date_callback, pattern="^aptdate_"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, apt_date),
-            ],
-            APT_TIME: [
-                CallbackQueryHandler(apt_time_callback, pattern="^apttime_"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, apt_time),
-            ],
-            APT_THERAPIST: [MessageHandler(filters.TEXT & ~filters.COMMAND, apt_therapist)],
-            APT_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND, apt_confirm)],
-        },
-        fallbacks=[CommandHandler("cancel", apt_cancel)],
-    )
-    app.add_handler(apt_conv)
-
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_menu))
     logger.info("Relife Clinic OS Bot চালু হচ্ছে...")
     app.run_polling()

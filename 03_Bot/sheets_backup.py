@@ -101,7 +101,7 @@ def add_patient(data: dict, created_by: str) -> str:
         now.strftime("%Y-%m-%d %H:%M"),
         now.strftime("%Y-%m-%d %H:%M"),
     ]
-    ws.append_row(row, value_input_option="RAW")
+    ws.append_row(row, value_input_option="USER_ENTERED")
     return patient_id
 
 
@@ -140,53 +140,3 @@ def find_patient_by_phone(phone: str) -> dict | None:
         ):
             return p
     return None
-
-
-def _next_appointment_id(ws) -> str:
-    ids = ws.col_values(1)[1:]
-    numbers = []
-    for v in ids:
-        if v.startswith("AP"):
-            try:
-                numbers.append(int(v[2:]))
-            except ValueError:
-                pass
-    next_num = (max(numbers) + 1) if numbers else 1
-    return f"AP{next_num:04d}"
-
-
-def add_appointment(data: dict, created_by: str) -> str:
-    ws = _worksheet(config.SHEET_APPOINTMENTS)
-    appointment_id = _next_appointment_id(ws)
-    row = [
-        appointment_id,
-        data.get("Date", ""),
-        data.get("Time", ""),
-        data.get("Patient_ID", ""),
-        data.get("Patient_Name", ""),
-        data.get("Department", ""),
-        data.get("Therapist", ""),
-        "Scheduled",
-        data.get("Remarks", ""),
-    ]
-    ws.append_row(row, value_input_option="RAW")
-    return appointment_id
-
-
-def get_all_appointments() -> list[dict]:
-    ws = _worksheet(config.SHEET_APPOINTMENTS)
-    return ws.get_all_records()
-
-
-def get_appointments_for_date(date_str: str) -> list[dict]:
-    all_appts = get_all_appointments()
-    return [a for a in all_appts if str(a.get("Date", "")).strip() == date_str.strip()]
-
-
-def get_appointments_for_therapist(therapist_name: str) -> list[dict]:
-    all_appts = get_all_appointments()
-    return [
-        a for a in all_appts
-        if a.get("Therapist", "").strip() == therapist_name.strip()
-        and a.get("Status", "").strip() == "Scheduled"
-    ]
