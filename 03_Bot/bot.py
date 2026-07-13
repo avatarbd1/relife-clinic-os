@@ -1,3 +1,4 @@
+import os
 # GLOBAL-EVENTLOOP-PATCH-PY314
 import asyncio as _asyncio_p314
 import threading
