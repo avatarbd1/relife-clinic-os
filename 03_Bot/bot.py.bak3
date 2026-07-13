@@ -1,7 +1,5 @@
 # GLOBAL-EVENTLOOP-PATCH-PY314
 import asyncio as _asyncio_p314
-import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
 _orig_gel = _asyncio_p314.get_event_loop
 def _patched_gel():
     try:
@@ -1190,26 +1188,6 @@ async def _restart_via_start(update, context):
     return ConversationHandler.END
 
 
-def _start_health_server():
-    """Render/cloud hosting-er jonno choto HTTP health-check server (UptimeRobot ping korbe)."""
-    port = int(os.environ.get("PORT", 10000))
-
-    class _HealthHandler(BaseHTTPRequestHandler):
-        def do_GET(self):
-            self.send_response(200)
-            self.send_header("Content-type", "text/plain")
-            self.end_headers()
-            self.wfile.write(b"Bot is running")
-
-        def log_message(self, format, *args):
-            pass  # health-check log noise বন্ধ রাখা
-
-    server = HTTPServer(("0.0.0.0", port), _HealthHandler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    print(f"Health server chalu hoyeche port {port}-e")
-
-
 def main():
     app = Application.builder().token(config.BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -1331,8 +1309,6 @@ def main():
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_HOME}$"), go_home))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), unknown_menu))
     logger.info("Relife Clinic OS Bot চালু হচ্ছে...")
-    _start_health_server()
-
     app.run_polling()
 
 

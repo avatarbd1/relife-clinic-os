@@ -1,0 +1,11 @@
+.env
+credentials.json
+__pycache__/
+*.pyc
+bot.log
+*.bak
+*.bak2
+bot.py.bak.*
+bot_backup.py
+sheets_backup.py
+sheets.py.bak

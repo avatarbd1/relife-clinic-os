@@ -29,6 +29,12 @@ if not GOOGLE_SHEET_ID:
 GOOGLE_CREDENTIALS_PATH = os.getenv(
     "GOOGLE_CREDENTIALS_PATH", "credentials.json"
 )
+
+# Render/cloud hosting-e file upload kora jay na, tai credentials.json-er
+# পুরো content GOOGLE_CREDENTIALS_JSON env var hisebe dile eta file banie nebe.
+_creds_json_env = os.getenv("GOOGLE_CREDENTIALS_JSON")
+if _creds_json_env and not Path(GOOGLE_CREDENTIALS_PATH).exists():
+    Path(GOOGLE_CREDENTIALS_PATH).write_text(_creds_json_env, encoding="utf-8")
 if not Path(GOOGLE_CREDENTIALS_PATH).exists():
     raise RuntimeError(
         f"Google service account credential ফাইল পাওয়া যায়নি: "
