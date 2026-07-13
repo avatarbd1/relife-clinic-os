@@ -1,3 +1,19 @@
+# GLOBAL-EVENTLOOP-PATCH-PY314
+import asyncio as _asyncio_p314
+_orig_gel = _asyncio_p314.get_event_loop
+def _patched_gel():
+    try:
+        return _asyncio_p314.get_running_loop()
+    except RuntimeError:
+        pass
+    try:
+        return _orig_gel()
+    except RuntimeError:
+        _loop = _asyncio_p314.new_event_loop()
+        _asyncio_p314.set_event_loop(_loop)
+        return _loop
+_asyncio_p314.get_event_loop = _patched_gel
+
 """
 bot.py — Relife Clinic OS Telegram Bot (প্রথম ভার্সন)
 """
@@ -56,6 +72,19 @@ logger = logging.getLogger(__name__)
     PAY_METHOD,
     PAY_CONFIRM,
 ) = range(13, 19)
+
+(
+    TREAT_SEARCH,
+    TREAT_SELECT,
+    TREAT_DIAGNOSIS,
+    TREAT_GIVEN,
+    TREAT_EXERCISE,
+    TREAT_ELECTRO,
+    TREAT_MANUAL,
+    TREAT_SESSION,
+    TREAT_NEXTVISIT,
+    TREAT_CONFIRM,
+) = range(19, 29)
 
 PAY_METHODS = ["Cash", "bKash", "Nagad", "Card"]
 
@@ -807,6 +836,178 @@ async def pay_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
+# ---------- ট্রিটমেন্ট নোট (Physio SOAP-স্টাইল) ----------
+
+async def treat_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """ট্রিটমেন্ট নোট এন্ট্রি শুরু — রোগী খোঁজা দিয়ে শুরু হয়।"""
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return ConversationHandler.END
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_TREATMENT_NOTE):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return ConversationHandler.END
+    context.user_data["treatment"] = {}
+    await update.message.reply_text(
+        "রোগীর নাম, ফোন নম্বর, অথবা Patient ID লিখো (খুঁজতে):",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    return TREAT_SEARCH
+
+
+async def treat_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.message.text.strip()
+    results = sheets.search_patients(query)
+    if not results:
+        await update.message.reply_text(
+            "❌ কোনো রোগী পাওয়া যায়নি। আবার নাম/ফোন/আইডি লেখো, অথবা /cancel দাও।"
+        )
+        return TREAT_SEARCH
+
+    results = results[:10]
+    context.user_data["treat_search_results"] = {
+        p.get("Patient_ID", "").strip(): p for p in results
+    }
+    buttons = [
+        [InlineKeyboardButton(
+            f"{p.get('Full_Name')} ({p.get('Patient_ID')})",
+            callback_data=f"treatsel_{p.get('Patient_ID')}",
+        )]
+        for p in results
+    ]
+    await update.message.reply_text(
+        "🔍 নিচের তালিকা থেকে রোগী বেছে নাও:",
+        reply_markup=InlineKeyboardMarkup(buttons),
+    )
+    return TREAT_SELECT
+
+
+async def treat_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    patient_id = query.data.replace("treatsel_", "")
+    results = context.user_data.get("treat_search_results", {})
+    patient = results.get(patient_id)
+    if not patient:
+        await query.edit_message_text(
+            "❌ তালিকার মেয়াদ শেষ। আবার শুরু করতে /cancel দাও, তারপর 📝 ট্রিটমেন্ট নোট চাপো।"
+        )
+        return ConversationHandler.END
+    context.user_data.setdefault("treatment", {})["Patient_ID"] = patient.get("Patient_ID", "")
+    context.user_data["treatment"]["Patient_Name"] = patient.get("Full_Name", "")
+    context.user_data.pop("treat_search_results", None)
+    await query.edit_message_text(
+        f"✅ রোগী বাছাই হয়েছে: {patient.get('Full_Name')} ({patient.get('Patient_ID')})"
+    )
+    await query.message.reply_text("আজকের সমস্যা/পর্যবেক্ষণ (Diagnosis) লেখো:")
+    return TREAT_DIAGNOSIS
+
+
+async def treat_diagnosis(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["treatment"]["Diagnosis"] = update.message.text.strip()
+    await update.message.reply_text("আজ কী ট্রিটমেন্ট দেওয়া হলো লেখো:")
+    return TREAT_GIVEN
+
+
+async def treat_given(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["treatment"]["Treatment_Given"] = update.message.text.strip()
+    await update.message.reply_text("এক্সারসাইজ প্ল্যান লেখো (না থাকলে - দাও):")
+    return TREAT_EXERCISE
+
+
+async def treat_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    context.user_data["treatment"]["Exercise"] = "" if text == "-" else text
+    await update.message.reply_text("ইলেক্ট্রোথেরাপি মোডালিটি লেখো (না থাকলে - দাও):")
+    return TREAT_ELECTRO
+
+
+async def treat_electro(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    context.user_data["treatment"]["Electrotherapy"] = "" if text == "-" else text
+    await update.message.reply_text("ম্যানুয়াল থেরাপি টেকনিক লেখো (না থাকলে - দাও):")
+    return TREAT_MANUAL
+
+
+async def treat_manual(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    context.user_data["treatment"]["Manual_Therapy"] = "" if text == "-" else text
+    await update.message.reply_text("সেশন নম্বর লেখো (যেমন: 5):")
+    return TREAT_SESSION
+
+
+async def treat_session(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["treatment"]["Session_No"] = update.message.text.strip()
+    await update.message.reply_text(
+        "পরবর্তী ভিজিটের তারিখ লেখো (YYYY-MM-DD, না থাকলে - দাও):"
+    )
+    return TREAT_NEXTVISIT
+
+
+async def treat_nextvisit(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    context.user_data["treatment"]["Next_Visit"] = "" if text == "-" else text
+    t = context.user_data["treatment"]
+    summary = (
+        "নিচের তথ্য ঠিক আছে কিনা চেক করো:\n\n"
+        f"রোগী: {t['Patient_Name']} ({t['Patient_ID']})\n"
+        f"সমস্যা: {t['Diagnosis']}\n"
+        f"ট্রিটমেন্ট: {t['Treatment_Given']}\n"
+        f"এক্সারসাইজ: {t['Exercise'] or '-'}\n"
+        f"ইলেক্ট্রোথেরাপি: {t['Electrotherapy'] or '-'}\n"
+        f"ম্যানুয়াল থেরাপি: {t['Manual_Therapy'] or '-'}\n"
+        f"সেশন নম্বর: {t['Session_No']}\n"
+        f"পরবর্তী ভিজিট: {t['Next_Visit'] or '-'}\n\n"
+        "ঠিক থাকলে নিচের বাটনে ট্যাপ করো।"
+    )
+    confirm_keyboard = ReplyKeyboardMarkup(
+        [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
+    )
+    await update.message.reply_text(summary, reply_markup=confirm_keyboard)
+    return TREAT_CONFIRM
+
+
+async def treat_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip().lower()
+    staff = context.user_data.get("staff", {})
+    t = context.user_data.get("treatment", {})
+
+    if text not in ("হ্যাঁ", "yes", "y", "হা", "ha"):
+        context.user_data.pop("treatment", None)
+        await update.message.reply_text(
+            "❌ বাতিল করা হয়েছে।", reply_markup=_menu_keyboard(staff.get("Role", ""))
+        )
+        return ConversationHandler.END
+
+    try:
+        treatment_id = sheets.add_treatment_note(t, created_by=staff.get("Full_Name", "Unknown"))
+        next_visit = t.get("Next_Visit", "")
+        if next_visit:
+            sheets.update_next_visit(t.get("Patient_ID", ""), next_visit)
+        await update.message.reply_text(
+            f"✅ ট্রিটমেন্ট নোট সেভ হয়েছে! Treatment ID: {treatment_id}",
+            reply_markup=_menu_keyboard(staff.get("Role", "")),
+        )
+    except Exception as e:
+        logger.exception("treat_confirm ব্যর্থ হয়েছে")
+        await update.message.reply_text(
+            f"❌ নোট সেভ করতে সমস্যা হয়েছে।\nError: {e}\n\n"
+            "স্ক্রিনশট দিয়ে জানাও, ঠিক করে দেওয়া হবে।",
+            reply_markup=_menu_keyboard(staff.get("Role", "")),
+        )
+    context.user_data.pop("treatment", None)
+    return ConversationHandler.END
+
+
+async def treat_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff", {})
+    context.user_data.pop("treatment", None)
+    context.user_data.pop("treat_search_results", None)
+    await update.effective_message.reply_text(
+        "ট্রিটমেন্ট নোট এন্ট্রি বাতিল করা হয়েছে।",
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
+    return ConversationHandler.END
+
 
 async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
@@ -877,7 +1078,6 @@ async def hist_select_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     name = patient.get("Full_Name") or patient.get("Name") or "Unknown"
     lines = [f"📜 {name} ({patient_id})-এর ইতিহাস", ""]
 
-    # প্রোফাইল
     lines.append("👤 প্রোফাইল:")
     lines.append(f"  ফোন: {patient.get('Phone', 'N/A')}")
     lines.append(f"  ঠিকানা: {patient.get('Address', 'N/A')}")
@@ -889,7 +1089,6 @@ async def hist_select_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         lines.append(f"  থেরাপিস্ট: {therapist}")
     lines.append("")
 
-    # সেশন/প্যাকেজ
     package = sheets.get_active_package_for_patient(patient_id)
     if package:
         total = package.get("Total_Sessions", "N/A")
@@ -897,7 +1096,6 @@ async def hist_select_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         lines.append(f"🗓️ সেশন: {done} সম্পন্ন / {total} মোট")
         lines.append("")
 
-    # পেমেন্ট হিস্টরি
     payments = sheets.get_payments_for_patient(patient_id)
     if payments:
         lines.append("💳 পেমেন্ট হিস্টরি:")
@@ -918,7 +1116,6 @@ async def hist_select_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         lines.append("💳 কোনো পেমেন্ট রেকর্ড নেই।")
     lines.append("")
 
-    # অ্যাপয়েন্টমেন্ট হিস্টরি
     appointments = sheets.get_appointments_for_patient(patient_id)
     if appointments:
         lines.append("📅 অ্যাপয়েন্টমেন্ট হিস্টরি:")
@@ -930,7 +1127,6 @@ async def hist_select_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         lines.append("📅 কোনো অ্যাপয়েন্টমেন্ট রেকর্ড নেই।")
     lines.append("")
 
-    # ট্রিটমেন্ট নোট
     treatment_notes = sheets.get_treatment_notes_for_patient(patient_id)
     if treatment_notes:
         lines.append("📝 ট্রিটমেন্ট নোট:")
@@ -956,6 +1152,7 @@ async def hist_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=_menu_keyboard(staff.get("Role", "")),
     )
     return ConversationHandler.END
+
 
 async def unknown_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
@@ -1043,6 +1240,29 @@ def main():
             MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),CommandHandler("cancel", pay_cancel)],
     )
     app.add_handler(pay_conv)
+
+    treat_conv = ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_TREATMENT_NOTE}$"), treat_start)
+        ],
+        states={
+            TREAT_SEARCH: [MessageHandler(filters.TEXT & ~filters.COMMAND, treat_search)],
+            TREAT_SELECT: [CallbackQueryHandler(treat_select_callback, pattern="^treatsel_")],
+            TREAT_DIAGNOSIS: [MessageHandler(filters.TEXT & ~filters.COMMAND, treat_diagnosis)],
+            TREAT_GIVEN: [MessageHandler(filters.TEXT & ~filters.COMMAND, treat_given)],
+            TREAT_EXERCISE: [MessageHandler(filters.TEXT & ~filters.COMMAND, treat_exercise)],
+            TREAT_ELECTRO: [MessageHandler(filters.TEXT & ~filters.COMMAND, treat_electro)],
+            TREAT_MANUAL: [MessageHandler(filters.TEXT & ~filters.COMMAND, treat_manual)],
+            TREAT_SESSION: [MessageHandler(filters.TEXT & ~filters.COMMAND, treat_session)],
+            TREAT_NEXTVISIT: [MessageHandler(filters.TEXT & ~filters.COMMAND, treat_nextvisit)],
+            TREAT_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND, treat_confirm)],
+        },
+        fallbacks=[
+            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
+            CommandHandler("cancel", treat_cancel),
+        ],
+    )
+    app.add_handler(treat_conv)
 
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_REPORTS}$"), reports_menu))
     hist_conv = ConversationHandler(

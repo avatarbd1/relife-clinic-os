@@ -3,3 +3,5 @@ credentials.json
 __pycache__/
 *.pyc
 *.log
+03_Bot/*.bak
+03_Bot/*.bak.*

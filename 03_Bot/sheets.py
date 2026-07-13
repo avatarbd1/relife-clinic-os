@@ -511,3 +511,66 @@ def get_treatment_notes_for_patient(patient_id: str) -> list[dict]:
     ws = _worksheet(config.SHEET_TREATMENTS)
     all_notes = ws.get_all_records()
     return [n for n in all_notes if str(n.get("Patient_ID", "")).strip() == str(patient_id).strip()]
+
+
+# ===== Treatment Note & Next Visit Functions =====
+
+def _next_treatment_id(ws) -> str:
+    """05_Treatments শীটে পরবর্তী Treatment_ID (TRxxxx ফরম্যাটে) বের করে।"""
+    ids = ws.col_values(1)[1:]
+    numbers = []
+    for v in ids:
+        if v.startswith("TR"):
+            try:
+                numbers.append(int(v[2:]))
+            except ValueError:
+                pass
+    next_num = (max(numbers) + 1) if numbers else 1
+    return f"TR{next_num:04d}"
+
+
+def add_treatment_note(data: dict, created_by: str) -> str:
+    """
+    05_Treatments শীটে নতুন ট্রিটমেন্ট নোট যোগ করে (SOAP-স্টাইল)।
+    Diagnosis = Subjective, Treatment_Given = Objective/Assessment,
+    Exercise / Electrotherapy / Manual_Therapy = চিকিৎসা পরিকল্পনা (Plan)।
+    """
+    ws = _worksheet(config.SHEET_TREATMENTS)
+    treatment_id = _next_treatment_id(ws)
+    row = [
+        treatment_id,
+        datetime.now().strftime("%Y-%m-%d"),
+        data.get("Patient_ID", ""),
+        data.get("Patient_Name", ""),
+        data.get("Diagnosis", ""),
+        data.get("Treatment_Given", ""),
+        data.get("Exercise", ""),
+        data.get("Electrotherapy", ""),
+        data.get("Manual_Therapy", ""),
+        data.get("Session_No", ""),
+        created_by,
+        data.get("Remarks", ""),
+    ]
+    ws.append_row(row, value_input_option="RAW")
+    return treatment_id
+
+
+def update_next_visit(patient_id: str, next_visit_date: str) -> bool:
+    """02_Patients শীটে Next_Visit কলাম (কলাম ১৯) আপডেট করে।"""
+    ws = _worksheet(config.SHEET_PATIENTS)
+    cell = ws.find(patient_id.strip())
+    if cell is None:
+        return False
+    ws.update_cell(cell.row, 19, next_visit_date)
+    return True
+
+
+def get_last_treatment_note_for_patient(patient_id: str) -> dict | None:
+    """
+    রোগীর সবচেয়ে সাম্প্রতিক ট্রিটমেন্ট নোট ফেরত দেয় (থাকলে), না থাকলে None।
+    "গতকালের মতোই" রিপিট-এন্ট্রি ফিচারের জন্য ব্যবহৃত হয়।
+    """
+    notes = get_treatment_notes_for_patient(patient_id)
+    if not notes:
+        return None
+    return notes[-1]
