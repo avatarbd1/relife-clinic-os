@@ -90,6 +90,7 @@ logger = logging.getLogger(__name__)
 ) = range(19, 29)
 
 PAY_METHODS = ["Cash", "bKash", "Nagad", "Card"]
+THERAPIST_NAMES = ["Nipa", "Saiful"]
 
 BN_WEEKDAYS = ["সোম", "মঙ্গল", "বুধ", "বৃহঃ", "শুক্র", "শনি", "রবি"]
 
@@ -157,6 +158,14 @@ def _time_keyboard() -> InlineKeyboardMarkup:
             row = []
     if row:
         buttons.append(row)
+    return InlineKeyboardMarkup(buttons)
+
+
+def _therapist_keyboard() -> InlineKeyboardMarkup:
+    buttons = [
+        [InlineKeyboardButton(name, callback_data=f"aptther_{name}")]
+        for name in THERAPIST_NAMES
+    ]
     return InlineKeyboardMarkup(buttons)
 
 
@@ -448,13 +457,19 @@ async def apt_time_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     time_str = query.data.replace("apttime_", "")
     context.user_data.setdefault("new_appointment", {})["Time"] = time_str
     await query.edit_message_text(f"✅ সময় নির্বাচন করা হয়েছে: {time_str}")
-    await query.message.reply_text("থেরাপিস্ট / ডাক্তারের নাম লেখো:")
+    await query.message.reply_text(
+        "থেরাপিস্ট বেছে নাও (অথবা টাইপ করো):",
+        reply_markup=_therapist_keyboard(),
+    )
     return APT_THERAPIST
 
 
 async def apt_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["new_appointment"]["Time"] = update.message.text.strip()
-    await update.message.reply_text("থেরাপিস্ট / ডাক্তারের নাম লেখো:")
+    await update.message.reply_text(
+        "থেরাপিস্ট বেছে নাও (অথবা টাইপ করো):",
+        reply_markup=_therapist_keyboard(),
+    )
     return APT_THERAPIST
 
 
@@ -473,6 +488,28 @@ async def apt_therapist(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
     )
     await update.message.reply_text(summary, reply_markup=confirm_keyboard)
+    return APT_CONFIRM
+
+
+async def apt_therapist_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    therapist_name = query.data.replace("aptther_", "")
+    context.user_data["new_appointment"]["Therapist"] = therapist_name
+    a = context.user_data["new_appointment"]
+    summary = (
+        "নিচের তথ্য ঠিক আছে কিনা চেক করো:\n\n"
+        f"রোগী: {a['Patient_Name']} ({a['Patient_ID']})\n"
+        f"Department: {a['Department']}\n"
+        f"তারিখ: {a['Date']}\nসময়: {a['Time']}\n"
+        f"থেরাপিস্ট: {a['Therapist']}\n\n"
+        "ঠিক থাকলে নিচের বাটনে ট্যাপ করো।"
+    )
+    confirm_keyboard = ReplyKeyboardMarkup(
+        [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
+    )
+    await query.edit_message_text(f"✅ থেরাপিস্ট নির্বাচন করা হয়েছে: {therapist_name}")
+    await query.message.reply_text(summary, reply_markup=confirm_keyboard)
     return APT_CONFIRM
 
 
@@ -1535,7 +1572,10 @@ def main():
                 CallbackQueryHandler(apt_time_callback, pattern="^apttime_"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_time),
             ],
-            APT_THERAPIST: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_therapist)],
+            APT_THERAPIST: [
+                CallbackQueryHandler(apt_therapist_callback, pattern="^aptther_"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_therapist),
+            ],
             APT_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_confirm)],
         },
         fallbacks=[

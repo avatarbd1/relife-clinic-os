@@ -21,6 +21,7 @@ MENU_ATTENDANCE = "🕐 হাজিরা"
 MENU_TODAY_APPOINTMENTS = "📋 আজকের অ্যাপয়েন্টমেন্ট"
 MENU_PATIENT_HISTORY = "📜 রোগীর ইতিহাস"
 MENU_PATIENT_LIST = "📋 রোগীর তালিকা"
+MENU_PATIENT_LIST = "📋 রোগীর তালিকা"
 
 # ---- Role অনুযায়ী মেনু, row আকারে গ্রুপ করা (সম্পর্কিত আইটেম পাশাপাশি) ----
 
@@ -28,6 +29,7 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
     Role.OWNER: [
         [MENU_HOME],
         [MENU_PATIENT_REG, MENU_PATIENT_HISTORY],
+        [MENU_PATIENT_LIST],
         [MENU_PATIENT_LIST],
         [MENU_APPOINTMENT, MENU_TODAY_APPOINTMENTS],
         [MENU_ATTENDANCE, MENU_TREATMENT_NOTE],
@@ -37,6 +39,7 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
     Role.RECEPTIONIST: [
         [MENU_HOME],
         [MENU_PATIENT_REG],
+        [MENU_PATIENT_LIST],
         [MENU_PATIENT_LIST],
         [MENU_APPOINTMENT, MENU_TODAY_APPOINTMENTS],
         [MENU_ATTENDANCE],
@@ -51,6 +54,7 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
     Role.MANAGER: [
         [MENU_HOME],
         [MENU_PATIENT_REG],
+        [MENU_PATIENT_LIST],
         [MENU_PATIENT_LIST],
         [MENU_APPOINTMENT, MENU_TODAY_APPOINTMENTS],
         [MENU_ATTENDANCE],
