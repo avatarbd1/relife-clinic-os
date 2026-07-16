@@ -72,9 +72,10 @@ logger = logging.getLogger(__name__)
     PAY_SELECT,
     PAY_SESSION,
     PAY_AMOUNT,
+    PAY_DISCOUNT,
     PAY_METHOD,
     PAY_CONFIRM,
-) = range(13, 19)
+) = range(13, 20)
 
 (
     TREAT_SEARCH,
@@ -87,7 +88,22 @@ logger = logging.getLogger(__name__)
     TREAT_UNUSED5,
     TREAT_UNUSED6,
     TREAT_UNUSED7,
-) = range(19, 29)
+) = range(20, 30)
+
+(
+    TPLAN_SEARCH,
+    TPLAN_SELECT,
+    TPLAN_DIAGNOSIS,
+    TPLAN_TOTAL,
+    TPLAN_EXERCISE,
+    TPLAN_ELECTRO,
+    TPLAN_MANUAL,
+    TPLAN_CONFIRM,
+) = range(30, 38)
+
+(
+    CUSTOM_DATE,
+) = range(38, 39)
 
 PAY_METHODS = ["Cash", "bKash", "Nagad", "Card"]
 THERAPIST_NAMES = ["Nipa", "Saiful"]
@@ -109,20 +125,13 @@ _ALL_MENU_ITEMS = [
     roles.MENU_PATIENT_HISTORY,
     roles.MENU_TREATMENT_HISTORY,
     roles.MENU_PATIENT_LIST,
-    roles.MENU_DAILY_REGISTER,
+    roles.MENU_REPORT_TODAY,
+    roles.MENU_REPORT_YESTERDAY,
+    roles.MENU_REPORT_CUSTOM,
+    roles.MENU_REPORT_UPCOMING,
+    roles.MENU_REPORT_DUE,
 ]
 _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
-
-(
-    TPLAN_SEARCH,
-    TPLAN_SELECT,
-    TPLAN_DIAGNOSIS,
-    TPLAN_TOTAL,
-    TPLAN_EXERCISE,
-    TPLAN_ELECTRO,
-    TPLAN_MANUAL,
-    TPLAN_CONFIRM,
-) = range(29, 37)
 
 MACHINE_LIST = [
     "Hot Pack", "Cold Pack",
@@ -823,7 +832,7 @@ async def apt_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     if ok:
         await query.edit_message_text(f"✅ {appointment_id} — স্ট্যাটাস: {status}")
     else:
-        await query.edit_message_text("❌ আপডেট করা যায়নি।")
+        await query.edit_message_text("❌ আপডেট করা যায়নি။")
 
 
 # ---------- পেমেন্ট / বিল এন্ট্রি ----------
@@ -884,20 +893,26 @@ async def pay_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     patient = results.get(patient_id)
     if not patient:
         await query.edit_message_text(
-            "❌ তালিকার মেয়াদ শেষ। আবার শুরু করতে /cancel দাও, তারপর 📋 আজকের রেজিস্টার থেকে ➕ নতুন এন্ট্রি চাপো।"
+            "❌ তালিকার মেয়াদ শেষ। আবার শুরু করতে /cancel দাও, তারপর 💳 পেমেন্ট তথ্য চাপো।"
         )
         return ConversationHandler.END
     context.user_data.setdefault("payment", {})["Patient_ID"] = patient.get("Patient_ID", "")
     context.user_data["payment"]["Patient_Name"] = patient.get("Full_Name", "")
     context.user_data["payment"]["Department"] = patient.get("Department", "")
-    context.user_data["payment"]["Sessions"] = 1
     context.user_data.pop("pay_search_results", None)
 
+    total_bill = patient.get("Total_Bill", 0) or 0
+    paid_amount = patient.get("Paid_Amount", 0) or 0
+    due_amount = patient.get("Due_Amount", 0) or 0
     await query.edit_message_text(
-        _register_amount_prompt_text(patient.get("Full_Name", ""), patient.get("Patient_ID", ""), 1),
-        reply_markup=_register_amount_keyboard(1),
+        f"✅ রোগী বাছাই হয়েছে: {patient.get('Full_Name')} ({patient.get('Patient_ID')})\n\n"
+        f"মোট বিল: {total_bill}\nজমা হয়েছে: {paid_amount}\nবাকি: {due_amount}"
     )
-    return PAY_AMOUNT
+    await query.message.reply_text(
+        "আজ কয়টা সেশন হলো লেখো (না থাকলে 0):",
+        reply_markup=_number_keyboard([str(n) for n in range(0, 6)]),
+    )
+    return PAY_SESSION
 
 
 async def pay_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -912,14 +927,17 @@ async def pay_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["payment"]["Patient_ID"] = patient.get("Patient_ID", "")
     context.user_data["payment"]["Patient_Name"] = patient.get("Full_Name", "")
     context.user_data["payment"]["Department"] = patient.get("Department", "")
-    context.user_data["payment"]["Sessions"] = 1
     context.user_data.pop("pay_search_results", None)
 
+    total_bill = patient.get("Total_Bill", 0) or 0
+    paid_amount = patient.get("Paid_Amount", 0) or 0
+    due_amount = patient.get("Due_Amount", 0) or 0
     await update.message.reply_text(
-        _register_amount_prompt_text(patient.get("Full_Name", ""), patient.get("Patient_ID", ""), 1),
-        reply_markup=_register_amount_keyboard(1),
+        f"রোগী বাছাই হয়েছে: {patient.get('Full_Name')} ({patient.get('Patient_ID')})\n\n"
+        f"মোট বিল: {total_bill}\nজমা হয়েছে: {paid_amount}\nবাকি: {due_amount}\n\n"
+        "আজ কয়টা সেশন হলো লেখো (না থাকলে 0):"
     )
-    return PAY_AMOUNT
+    return PAY_SESSION
 
 
 async def pay_session(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -946,6 +964,20 @@ async def pay_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ শুধু সংখ্যা লেখো (উদাহরণ: 200), অথবা 0 লেখো।")
         return PAY_AMOUNT
     context.user_data["payment"]["Amount"] = amount
+    await update.message.reply_text("ডিসকাউন্ট দিতে চাইলে লিখুন (০ হলে 0 লিখুন):")
+    return PAY_DISCOUNT
+
+
+async def pay_discount(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip().replace(",", "")
+    try:
+        discount = float(text)
+        if discount < 0:
+            raise ValueError
+    except ValueError:
+        await update.message.reply_text("❌ শুধু সংখ্যা লেখো (উদাহরণ: 50), অথবা 0 লেখো।")
+        return PAY_DISCOUNT
+    context.user_data["payment"]["Discount"] = discount
     await update.message.reply_text(
         "Payment Method বেছে নাও:", reply_markup=_payment_method_keyboard()
     )
@@ -964,7 +996,7 @@ async def pay_method(update: Update, context: ContextTypes.DEFAULT_TYPE):
     summary = (
         "নিচের তথ্য ঠিক আছে কিনা চেক করো:\n\n"
         f"রোগী: {p['Patient_Name']} ({p['Patient_ID']})\n"
-        f"সেশন: {p['Sessions']}\nটাকা: {p['Amount']}\nMethod: {p['Payment_Method']}\n\n"
+        f"সেশন: {p['Sessions']}\nটাকা: {p['Amount']}\nডিসকাউন্ট: {p['Discount']}\nMethod: {p['Payment_Method']}\n\n"
         "ঠিক থাকলে নিচের বাটনে ট্যাপ করো।"
     )
     confirm_keyboard = ReplyKeyboardMarkup(
@@ -988,17 +1020,18 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     patient_id = p.get("Patient_ID", "")
     amount = p.get("Amount", 0)
+    discount = p.get("Discount", 0)
     sessions = p.get("Sessions", 0)
 
     try:
-        bill_status = sheets.update_patient_payment(patient_id, amount, discount=0)
+        bill_status = sheets.update_patient_payment(patient_id, amount, discount)
 
         receipt_no = sheets.add_payment({
             "Patient_ID": patient_id,
             "Patient_Name": p.get("Patient_Name", ""),
             "Department": p.get("Department", ""),
             "Amount": amount,
-            "Discount": 0,
+            "Discount": discount,
             "Due": bill_status["due_amount"] if bill_status else "",
             "Payment_Method": p.get("Payment_Method", ""),
             "Received_By": staff.get("Full_Name", "Unknown"),
@@ -1013,6 +1046,7 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"✅ পেমেন্ট সেভ হয়েছে! Receipt No: {receipt_no}",
             f"রোগী: {p.get('Patient_Name')} ({patient_id})",
             f"জমা নেওয়া হলো: {amount} ({p.get('Payment_Method')})",
+            f"ডিসকাউন্ট: {discount}",
         ]
         if bill_status:
             lines.append(f"মোট জমা: {bill_status['paid_amount']} | বাকি: {bill_status['due_amount']}")
@@ -1020,8 +1054,6 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "\n".join(lines), reply_markup=_menu_keyboard(staff.get("Role", ""))
         )
-        reg_text, reg_kb = _register_view_text_and_keyboard()
-        await update.message.reply_text(reg_text, reply_markup=reg_kb)
     except Exception as e:
         logger.exception("pay_confirm ব্যর্থ হয়েছে")
         await update.message.reply_text(
@@ -1451,103 +1483,180 @@ async def tplan_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-def _register_amount_keyboard(sessions: int) -> InlineKeyboardMarkup:
-    sess_label = "🔁 ২ সেশন হয়েছে" if sessions == 1 else "🔁 ১ সেশনে ফেরত যাও"
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton(sess_label, callback_data="regsesstoggle")],
-        [
-            InlineKeyboardButton("৳400", callback_data="regamt_400"),
-            InlineKeyboardButton("✏️ অন্য পরিমাণ", callback_data="regamt_custom"),
-        ],
-    ])
+# ============ রিপোর্ট ফাংশনসমূহ ============
 
-
-def _register_amount_prompt_text(patient_name: str, patient_id: str, sessions: int) -> str:
-    return (
-        f"রোগী: {patient_name} ({patient_id})\n"
-        f"সেশন: {sessions}  (ডিফল্ট ১, আজ ২টা সেশন হলে উপরের বাটনে চাপো)\n\n"
-        "কত টাকা নেওয়া হলো?"
-    )
-
-
-def _register_view_text_and_keyboard():
-    reg = sheets.get_daily_register()
-    lines = [f"📋 আজকের রেজিস্টার ({reg['date']})", ""]
-    if not reg["rows"]:
-        lines.append("আজ এখনো কোনো এন্ট্রি হয়নি।")
-    else:
-        for r in reg["rows"]:
-            lines.append(
-                f"{r['Sl']}. {r['Patient_Name']} | সেশন {r['Sessions']} | "
-                f"বিল {r['Bill']:.0f} | পেইড {r['Paid']:.0f} | বাকি {r['Due']:.0f} | {r['Status']}"
-            )
-        lines.append("")
-        lines.append(f"👥 মোট রোগী: {reg['total_patients']} | 🩺 সেশন: {reg['total_sessions']}")
-        lines.append(
-            f"💵 বিল: {reg['total_bill']:.0f} | ✅ পেইড: {reg['total_paid']:.0f} | ⏳ বাকি: {reg['total_due']:.0f}"
-        )
-    keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("➕ নতুন এন্ট্রি", callback_data="regnew")]])
-    return "\n".join(lines), keyboard
-
-
-async def register_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def report_today(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
     if staff is None:
         return
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_DAILY_REGISTER):
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_REPORT_TODAY):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
-    text, keyboard = _register_view_text_and_keyboard()
-    await update.message.reply_text(text, reply_markup=keyboard)
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    await _send_daily_report(update, context, date_str)
 
 
-async def reg_new_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+async def report_yesterday(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_REPORT_YESTERDAY):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    date_str = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    await _send_daily_report(update, context, date_str)
+
+
+async def report_custom_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
-    context.user_data["payment"] = {}
-    await query.message.reply_text("রোগীর নাম, ফোন নম্বর, অথবা Patient ID লিখো (খুঁজতে):")
-    recent_kb = _recent_patient_buttons("paysel_")
-    if recent_kb:
-        await query.message.reply_text(
-            "👥 অথবা সাম্প্রতিক রোগীদের মধ্য থেকে সরাসরি বেছে নাও:",
-            reply_markup=recent_kb,
-        )
-    return PAY_SEARCH
-
-
-async def reg_session_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    p = context.user_data.get("payment", {})
-    sessions = 2 if p.get("Sessions", 1) == 1 else 1
-    context.user_data.setdefault("payment", {})["Sessions"] = sessions
-    await query.edit_message_text(
-        _register_amount_prompt_text(p.get("Patient_Name", ""), p.get("Patient_ID", ""), sessions),
-        reply_markup=_register_amount_keyboard(sessions),
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_REPORT_CUSTOM):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return ConversationHandler.END
+    await update.message.reply_text(
+        "📅 যে তারিখের রিপোর্ট চান সেটা লিখুন (YYYY-MM-DD ফরম্যাটে):\n"
+        "উদাহরণ: 2026-07-15",
+        reply_markup=ReplyKeyboardRemove()
     )
-    return PAY_AMOUNT
+    return CUSTOM_DATE
 
 
-async def reg_amount_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    choice = query.data.replace("regamt_", "")
-    if choice == "custom":
-        await query.edit_message_text("কত টাকা নেওয়া হলো লেখো (শুধু সংখ্যা):")
-        return PAY_AMOUNT
+async def report_custom_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    date_str = update.message.text.strip()
     try:
-        amount = float(choice)
+        datetime.strptime(date_str, "%Y-%m-%d")
     except ValueError:
-        amount = 0.0
-    context.user_data.setdefault("payment", {})["Amount"] = amount
-    await query.edit_message_text(f"টাকা: {amount:.0f}")
-    await query.message.reply_text(
-        "Payment Method বেছে নাও:", reply_markup=_payment_method_keyboard()
+        await update.message.reply_text(
+            "❌ ভুল ফরম্যাট। সঠিক ফরম্যাট: YYYY-MM-DD\n"
+            "উদাহরণ: 2026-07-15"
+        )
+        return CUSTOM_DATE
+    await _send_daily_report(update, context, date_str)
+    return ConversationHandler.END
+
+
+async def _send_daily_report(update: Update, context: ContextTypes.DEFAULT_TYPE, date_str: str):
+    staff = context.user_data.get("staff", {})
+    appointments = sheets.get_appointments_for_date(date_str)
+    total_bookings = len(appointments)
+    completed = [a for a in appointments if a.get("Status") == "Completed"]
+    no_show = [a for a in appointments if a.get("Status") == "No-show"]
+    scheduled = [a for a in appointments if a.get("Status") == "Scheduled"]
+    payments = sheets.get_all_payments()
+    today_payments = [p for p in payments if str(p.get("Date", "")) == date_str]
+    total_collection = sum(float(p.get("Amount", 0) or 0) for p in today_payments)
+    cash_total = sum(float(p.get("Amount", 0) or 0) for p in today_payments if p.get("Payment_Method") == "Cash")
+    bkash_total = sum(float(p.get("Amount", 0) or 0) for p in today_payments if p.get("Payment_Method") == "bKash")
+    nagad_total = sum(float(p.get("Amount", 0) or 0) for p in today_payments if p.get("Payment_Method") == "Nagad")
+    card_total = sum(float(p.get("Amount", 0) or 0) for p in today_payments if p.get("Payment_Method") == "Card")
+    completed_visits = [a for a in appointments if a.get("Status") == "Completed"]
+    date_display = datetime.strptime(date_str, "%Y-%m-%d").strftime("%d %B, %Y")
+    lines = [
+        f"📊 ডেইলি রিপোর্ট",
+        f"📅 {date_display}",
+        "─" * 30,
+        "",
+        "📋 বুকিং সারাংশ:",
+        f"  মোট বুকিং: {total_bookings}",
+        f"  ✅ Completed: {len(completed)}",
+        f"  ⏳ Scheduled: {len(scheduled)}",
+        f"  ❌ No-show: {len(no_show)}",
+        "",
+        "👥 কমপ্লিটেড ভিজিট:",
+    ]
+    if completed_visits:
+        for visit in completed_visits[:10]:
+            patient_name = visit.get("Patient_Name", "N/A")
+            time = visit.get("Time", "N/A")
+            therapist = visit.get("Therapist", "N/A")
+            lines.append(f"  • {time} - {patient_name} ({therapist})")
+        if len(completed_visits) > 10:
+            lines.append(f"  ... এবং {len(completed_visits) - 10} জন বেশি")
+    else:
+        lines.append("  কোনো কমপ্লিটেড ভিজিট নেই")
+    lines.extend([
+        "",
+        "💰 কালেকশন সারাংশ:",
+        f"  মোট: {total_collection:.0f} টাকা",
+        f"  💵 Cash: {cash_total:.0f} টাকা",
+        f"  📱 bKash: {bkash_total:.0f} টাকা",
+        f"  📱 Nagad: {nagad_total:.0f} টাকা",
+        f"  💳 Card: {card_total:.0f} টাকা",
+    ])
+    full_report = "\n".join(lines)
+    if len(full_report) > 4000:
+        full_report = full_report[:3990] + "\n...(আরও আছে)"
+    await update.message.reply_text(
+        full_report,
+        reply_markup=_menu_keyboard(staff.get("Role", ""))
     )
-    return PAY_METHOD
+
+
+async def report_upcoming(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_REPORT_UPCOMING):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    today = datetime.now()
+    lines = ["📆 আগামী ৭ দিনের বুকিং তালিকা", "─" * 30, ""]
+    for i in range(1, 8):
+        date_str = (today + timedelta(days=i)).strftime("%Y-%m-%d")
+        date_display = (today + timedelta(days=i)).strftime("%d %B, %Y")
+        appts = sheets.get_appointments_for_date(date_str)
+        scheduled = [a for a in appts if a.get("Status") == "Scheduled"]
+        lines.append(f"📅 {date_display}:")
+        if scheduled:
+            for a in scheduled:
+                patient_name = a.get("Patient_Name", "N/A")
+                time = a.get("Time", "N/A")
+                therapist = a.get("Therapist", "N/A")
+                lines.append(f"  • {time} - {patient_name} ({therapist})")
+        else:
+            lines.append("  কোনো বুকিং নেই")
+        lines.append("")
+    full_report = "\n".join(lines)
+    if len(full_report) > 4000:
+        full_report = full_report[:3990] + "\n...(আরও আছে)"
+    await update.message.reply_text(full_report, reply_markup=_menu_keyboard(staff.get("Role", "")))
+
+
+async def report_due(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_REPORT_DUE):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    patients = sheets.get_all_patients()
+    due_patients = [p for p in patients if float(p.get("Due_Amount", 0) or 0) > 0 and p.get("Status") == "Active"]
+    if not due_patients:
+        await update.message.reply_text("💰 কোনো বকেয়া রোগী নেই।", reply_markup=_menu_keyboard(staff.get("Role", "")))
+        return
+    due_patients.sort(key=lambda x: float(x.get("Due_Amount", 0) or 0), reverse=True)
+    total_due = sum(float(p.get("Due_Amount", 0) or 0) for p in due_patients)
+    lines = [
+        "💰 বকেয়া তালিকা",
+        "─" * 30,
+        f"মোট বকেয়া রোগী: {len(due_patients)} জন",
+        f"মোট বকেয়া টাকা: {total_due:.0f} টাকা",
+        "",
+        "রোগীর তালিকা:"
+    ]
+    for p in due_patients[:20]:
+        name = p.get("Full_Name", "N/A")
+        pid = p.get("Patient_ID", "N/A")
+        due = float(p.get("Due_Amount", 0) or 0)
+        phone = p.get("Phone", "N/A")
+        lines.append(f"  • {name} ({pid}) - {due:.0f} টাকা - {phone}")
+    if len(due_patients) > 20:
+        lines.append(f"  ... এবং {len(due_patients) - 20} জন বেশি")
+    full_report = "\n".join(lines)
+    if len(full_report) > 4000:
+        full_report = full_report[:3990] + "\n...(আরও আছে)"
+    await update.message.reply_text(full_report, reply_markup=_menu_keyboard(staff.get("Role", "")))
 
 
 async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1564,13 +1673,18 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     today_payments = [p for p in payments if str(p.get("Date", "")) == today_str]
     today_collection = sum(float(p.get("Amount", 0) or 0) for p in today_payments)
     total_collection = sum(float(p.get("Amount", 0) or 0) for p in payments)
+    due_patients = [p for p in patients if float(p.get("Due_Amount", 0) or 0) > 0 and p.get("Status") == "Active"]
+    total_due = sum(float(p.get("Due_Amount", 0) or 0) for p in due_patients)
     lines = [
-        "\U0001F4CA রিপোর্ট ও অ্যানালিটিক্স",
+        "📊 রিপোর্ট ও অ্যানালিটিক্স",
         "",
-        f"\U0001F465 মোট রোগী: {total_patients}",
-        f"\U0001F4CB আজকের অ্যাপয়েন্টমেন্ট: {len(today_appointments)}",
-        f"\U0001F4B0 আজকের আয়: {today_collection:.0f} টাকা",
-        f"\U0001F4B0 সর্বমোট আয়: {total_collection:.0f} টাকা",
+        f"📅 মোট রোগী: {total_patients}",
+        f"📋 আজকের অ্যাপয়েন্টমেন্ট: {len(today_appointments)}",
+        f"💰 আজকের আয়: {today_collection:.0f} টাকা",
+        f"💰 মোট আয়: {total_collection:.0f} টাকা",
+        f"💰 বকেয়া: {total_due:.0f} টাকা ({len(due_patients)} জন)",
+        "",
+        "নিচের সাব-মেনু থেকে বেছে নাও:"
     ]
     await update.effective_message.reply_text(
         "\n".join(lines),
@@ -1946,13 +2060,19 @@ async def plist_action_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Patient_ID": patient.get("Patient_ID", ""),
         "Patient_Name": patient.get("Full_Name", ""),
         "Department": patient.get("Department", ""),
-        "Sessions": 1,
     }
+    total_bill = patient.get("Total_Bill", 0) or 0
+    paid_amount = patient.get("Paid_Amount", 0) or 0
+    due_amount = patient.get("Due_Amount", 0) or 0
     await query.edit_message_text(
-        _register_amount_prompt_text(patient.get("Full_Name", ""), patient.get("Patient_ID", ""), 1),
-        reply_markup=_register_amount_keyboard(1),
+        f"✅ রোগী বাছাই হয়েছে: {patient.get('Full_Name')} ({patient.get('Patient_ID')})\n\n"
+        f"মোট বিল: {total_bill}\nজমা হয়েছে: {paid_amount}\nবাকি: {due_amount}"
     )
-    return PAY_AMOUNT
+    await query.message.reply_text(
+        "আজ কয়টা সেশন হলো লেখো (না থাকলে 0):",
+        reply_markup=_number_keyboard([str(n) for n in range(0, 6)]),
+    )
+    return PAY_SESSION
 
 
 async def plist_action_apt(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2089,9 +2209,6 @@ def main():
         MessageHandler(filters.Regex(f"^{roles.MENU_TODAY_APPOINTMENTS}$"), today_appointments)
     )
     app.add_handler(CallbackQueryHandler(apt_status_callback, pattern="^aptstatus_"))
-    app.add_handler(
-        MessageHandler(filters.Regex(f"^{roles.MENU_DAILY_REGISTER}$"), register_menu)
-    )
 
     app.add_handler(
         MessageHandler(filters.Regex(f"^{roles.MENU_PATIENT_LIST}$"), patient_list_start)
@@ -2129,7 +2246,8 @@ def main():
             APT_SEARCH: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_search)],
             APT_SELECT: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_select)],
             APT_DATE: [
-                CallbackQueryHandler(apt_date_callback, pattern="^aptdate_"),
+                CallbackQueryHandler(apt_date_toggle_callback, pattern="^aptdatetoggle_"),
+                CallbackQueryHandler(apt_date_done_callback, pattern="^aptdatedone$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_date),
             ],
             APT_TIME: [
@@ -2152,7 +2270,6 @@ def main():
         entry_points=[
             MessageHandler(filters.Regex(f"^{roles.MENU_PAYMENT}$"), pay_start),
             CallbackQueryHandler(plist_action_pay, pattern="^plistact_pay_"),
-            CallbackQueryHandler(reg_new_start, pattern="^regnew$"),
         ],
         states={
             PAY_SEARCH: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_search)],
@@ -2161,11 +2278,8 @@ def main():
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_select),
             ],
             PAY_SESSION: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_session)],
-            PAY_AMOUNT: [
-                CallbackQueryHandler(reg_amount_callback, pattern="^regamt_"),
-                CallbackQueryHandler(reg_session_toggle, pattern="^regsesstoggle$"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_amount),
-            ],
+            PAY_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_amount)],
+            PAY_DISCOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_discount)],
             PAY_METHOD: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_method)],
             PAY_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_confirm)],
         },
@@ -2219,6 +2333,18 @@ def main():
     app.add_handler(tplan_conv)
 
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_REPORTS}$"), reports_menu))
+    app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_REPORT_TODAY}$"), report_today))
+    app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_REPORT_YESTERDAY}$"), report_yesterday))
+    app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_REPORT_UPCOMING}$"), report_upcoming))
+    app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_REPORT_DUE}$"), report_due))
+
+    report_custom_conv = ConversationHandler(
+        entry_points=[MessageHandler(filters.Regex(f"^{roles.MENU_REPORT_CUSTOM}$"), report_custom_start)],
+        states={CUSTOM_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), report_custom_date)]},
+        fallbacks=[CommandHandler("cancel", _restart_via_start)],
+    )
+    app.add_handler(report_custom_conv)
+
     hist_conv = ConversationHandler(
         entry_points=[MessageHandler(filters.Regex(f"^{roles.MENU_PATIENT_HISTORY}$"), hist_start)],
         states={

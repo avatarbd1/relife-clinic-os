@@ -14,14 +14,20 @@ MENU_PATIENT_REG = "👤 রোগী রেজিস্ট্রেশন"
 MENU_APPOINTMENT = "📅 অ্যাপয়েন্টমেন্ট বুকিং"
 MENU_MY_PATIENTS = "🧑‍⚕️ আমার রোগী / সেশন"
 MENU_TREATMENT_NOTE = "📝 ট্রিটমেন্ট নোট"
+MENU_TREATMENT_PLAN = "🩺 ট্রিটমেন্ট প্ল্যান"
 MENU_PAYMENT = "💳 পেমেন্ট তথ্য"
 MENU_REPORTS = "📊 রিপোর্ট ও অ্যানালিটিক্স"
 MENU_SETTINGS = "⚙️ সেটিংস"
 MENU_ATTENDANCE = "🕐 হাজিরা"
 MENU_TODAY_APPOINTMENTS = "📋 আজকের অ্যাপয়েন্টমেন্ট"
 MENU_PATIENT_HISTORY = "📜 রোগীর ইতিহাস"
+MENU_TREATMENT_HISTORY = "📅 ট্রিটমেন্ট হিস্টরি"
 MENU_PATIENT_LIST = "📋 রোগীর তালিকা"
-MENU_TODAY_REGISTER = "📋 আজকের রেজিস্টার"
+MENU_REPORT_TODAY = "📅 আজকের রিপোর্ট"
+MENU_REPORT_YESTERDAY = "📅 গতকালের রিপোর্ট"
+MENU_REPORT_CUSTOM = "📅 কাস্টম তারিখ রিপোর্ট"
+MENU_REPORT_UPCOMING = "📆 আগামী ৭ দিনের বুকিং"
+MENU_REPORT_DUE = "💰 বকেয়া তালিকা"
 
 # ---- Role অনুযায়ী মেনু, row আকারে গ্রুপ করা (সম্পর্কিত আইটেম পাশাপাশি) ----
 
@@ -32,8 +38,11 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_PATIENT_LIST],
         [MENU_APPOINTMENT, MENU_TODAY_APPOINTMENTS],
         [MENU_ATTENDANCE, MENU_TREATMENT_NOTE],
+        [MENU_TREATMENT_PLAN, MENU_TREATMENT_HISTORY],
         [MENU_PAYMENT, MENU_REPORTS],
-        [MENU_TODAY_REGISTER],
+        [MENU_REPORT_TODAY, MENU_REPORT_YESTERDAY],
+        [MENU_REPORT_CUSTOM],
+        [MENU_REPORT_UPCOMING, MENU_REPORT_DUE],
         [MENU_SETTINGS],
     ],
     Role.RECEPTIONIST: [
@@ -43,13 +52,16 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_APPOINTMENT, MENU_TODAY_APPOINTMENTS],
         [MENU_ATTENDANCE],
         [MENU_PAYMENT, MENU_REPORTS],
-        [MENU_TODAY_REGISTER],
+        [MENU_REPORT_TODAY, MENU_REPORT_YESTERDAY],
+        [MENU_REPORT_CUSTOM],
+        [MENU_REPORT_UPCOMING, MENU_REPORT_DUE],
     ],
     Role.THERAPIST: [
         [MENU_HOME],
         [MENU_ATTENDANCE],
         [MENU_MY_PATIENTS],
         [MENU_TREATMENT_NOTE],
+        [MENU_TREATMENT_PLAN, MENU_TREATMENT_HISTORY],
     ],
     Role.MANAGER: [
         [MENU_HOME],
@@ -58,7 +70,9 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_APPOINTMENT, MENU_TODAY_APPOINTMENTS],
         [MENU_ATTENDANCE],
         [MENU_REPORTS],
-        [MENU_TODAY_REGISTER],
+        [MENU_REPORT_TODAY, MENU_REPORT_YESTERDAY],
+        [MENU_REPORT_CUSTOM],
+        [MENU_REPORT_UPCOMING, MENU_REPORT_DUE],
     ],
 }
 
@@ -89,30 +103,3 @@ def is_therapist_owner_of_patient(therapist_name: str, patient_row: dict) -> boo
     02_Patients শীটের 'Therapist' কলামের সাথে মিলিয়ে চেক করা হয়।
     """
     return patient_row.get("Therapist", "").strip() == therapist_name.strip()
-
-
-# ---- 👥 রোগী তালিকা / আজকের অ্যাপয়েন্টমেন্ট থেকে চেইন-অ্যাকশন ----
-# রোগী বাছাই করার পর কোন কোন কাজ (বাটন) দেখানো হবে, role অনুযায়ী।
-
-PATIENT_ACTION_LABELS: dict[str, str] = {
-    "hist": "📜 ইতিহাস দেখো",
-    "apt": "📅 অ্যাপয়েন্টমেন্ট দাও",
-    "pay": "💳 পেমেন্ট নাও",
-    "treat": "📝 ট্রিটমেন্ট নোট লেখো",
-}
-
-ROLE_PATIENT_ACTIONS: dict[Role, list[str]] = {
-    Role.OWNER: ["hist", "apt", "pay", "treat"],
-    Role.RECEPTIONIST: ["hist", "apt", "pay"],
-    Role.THERAPIST: ["hist", "treat"],
-    Role.MANAGER: ["hist", "apt", "pay"],
-}
-
-
-def get_patient_actions(role_str: str) -> list[str]:
-    """Role অনুযায়ী রোগী-অ্যাকশন কোডের লিস্ট ফেরত দেয় (hist/apt/pay/treat)।"""
-    try:
-        role = Role(role_str.strip())
-    except ValueError:
-        return []
-    return ROLE_PATIENT_ACTIONS.get(role, [])

@@ -3,7 +3,11 @@ bot.py — Relife Clinic OS Telegram Bot (প্রথম ভার্সন)
 """
 
 import logging
+import os
 import re
+import threading
+import asyncio
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime, timedelta
 from telegram import (
     Update,
@@ -54,8 +58,9 @@ logger = logging.getLogger(__name__)
     PAY_SESSION,
     PAY_AMOUNT,
     PAY_METHOD,
+    PAY_TIME,
     PAY_CONFIRM,
-) = range(13, 19)
+) = range(13, 20)
 
 (
     TREAT_SEARCH,
@@ -68,7 +73,7 @@ logger = logging.getLogger(__name__)
     TREAT_SESSION,
     TREAT_NEXTVISIT,
     TREAT_CONFIRM,
-) = range(19, 29)
+) = range(20, 30)
 
 PAY_METHODS = ["Cash", "bKash", "Nagad", "Card"]
 
@@ -87,6 +92,7 @@ _ALL_MENU_ITEMS = [
     roles.MENU_TODAY_APPOINTMENTS,
     roles.MENU_PATIENT_HISTORY,
     roles.MENU_PATIENT_LIST,
+    roles.MENU_TODAY_REGISTER,
 ]
 _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 
@@ -154,6 +160,28 @@ def _skip_keyboard() -> ReplyKeyboardMarkup:
 def _number_keyboard(nums, per_row: int = 5) -> ReplyKeyboardMarkup:
     rows = [nums[i : i + per_row] for i in range(0, len(nums), per_row)]
     return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
+
+
+SESSION_TYPES = ["1", "1+1", "2", "2+1", "-"]
+
+
+def _session_type_keyboard() -> ReplyKeyboardMarkup:
+    rows = [SESSION_TYPES[i : i + 3] for i in range(0, len(SESSION_TYPES), 3)]
+    return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
+
+
+def _session_count(session_type: str) -> int:
+    """'1+1' স্টাইলের সেশন টেক্সট থেকে মোট সংখ্যা বের করে (প্যাকেজ সেশন গুনতে ব্যবহৃত)।
+    উদাহরণ: '1+1' -> 2, '2' -> 2, '-' -> 0."""
+    nums = re.findall(r"\d+", session_type or "")
+    return sum(int(n) for n in nums)
+
+
+def _time_keyboard_quick() -> ReplyKeyboardMarkup:
+    now_str = datetime.now().strftime("%I:%M %p")
+    return ReplyKeyboardMarkup(
+        [[f"এখন ({now_str})"]], resize_keyboard=True, one_time_keyboard=True
+    )
 
 
 def _recent_patient_keyboard(limit: int = 10) -> InlineKeyboardMarkup:
@@ -769,6 +797,42 @@ async def apt_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             await _send_patient_action_menu(update, context, patient_id)
 
 
+# ---------- 📋 আজকের রেজিস্টার (খাতার মতো SL-নাম-সেশন-সময়-বিল) ----------
+
+async def today_register(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_TODAY_REGISTER):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    rows = sheets.get_payments_for_date(date_str)
+    if not rows:
+        await update.message.reply_text("আজ এখনো কোনো এন্ট্রি হয়নি।")
+        return
+
+    lines = [f"📋 আজকের রেজিস্টার — {date_str}", ""]
+    lines.append("SL  নাম               সেশন   সময়            বিল")
+    total = 0.0
+    for r in rows:
+        sl = str(r.get("SL", ""))
+        name = str(r.get("Patient_Name", ""))[:16].ljust(16)
+        session = str(r.get("Session_Type", "-") or "-")[:5].ljust(5)
+        time_ = str(r.get("Time", "-") or "-")[:13].ljust(13)
+        amount = float(r.get("Amount", 0) or 0)
+        total += amount
+        lines.append(f"{sl:<3} {name} {session} {time_} {amount:.0f}৳")
+    lines.append("")
+    lines.append(f"মোট বিল: {total:.0f}৳  |  মোট রোগী: {len(rows)}")
+
+    await update.message.reply_text(
+        "```\n" + "\n".join(lines) + "\n```",
+        parse_mode="Markdown",
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
+
+
 # ---------- পেমেন্ট / বিল এন্ট্রি ----------
 
 async def pay_start_from_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -800,8 +864,8 @@ async def pay_start_from_list(update: Update, context: ContextTypes.DEFAULT_TYPE
         f"মোট বিল: {total_bill}\nজমা হয়েছে: {paid_amount}\nবাকি: {due_amount}"
     )
     await query.message.reply_text(
-        "আজ কয়টা সেশন হলো লেখো (না থাকলে 0):",
-        reply_markup=_number_keyboard([str(n) for n in range(0, 6)]),
+        "আজ সেশন কী হলো বেছে নাও (1 / 1+1 / 2 ...):",
+        reply_markup=_session_type_keyboard(),
     )
     return PAY_SESSION
 
@@ -872,8 +936,8 @@ async def pay_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         f"মোট বিল: {total_bill}\nজমা হয়েছে: {paid_amount}\nবাকি: {due_amount}"
     )
     await query.message.reply_text(
-        "আজ কয়টা সেশন হলো লেখো (না থাকলে 0):",
-        reply_markup=_number_keyboard([str(n) for n in range(0, 6)]),
+        "আজ সেশন কী হলো বেছে নাও (1 / 1+1 / 2 ...):",
+        reply_markup=_session_type_keyboard(),
     )
     return PAY_SESSION
 
@@ -898,22 +962,18 @@ async def pay_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"রোগী বাছাই হয়েছে: {patient.get('Full_Name')} ({patient.get('Patient_ID')})\n\n"
         f"মোট বিল: {total_bill}\nজমা হয়েছে: {paid_amount}\nবাকি: {due_amount}\n\n"
-        "আজ কয়টা সেশন হলো লেখো (না থাকলে 0):"
+        "আজ সেশন কী হলো বেছে নাও (1 / 1+1 / 2 ...):"
     )
     return PAY_SESSION
 
 
 async def pay_session(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip()
-    try:
-        sessions = int(text)
-        if sessions < 0:
-            raise ValueError
-    except ValueError:
-        await update.message.reply_text("❌ শুধু সংখ্যা লেখো (উদাহরণ: 1), অথবা 0 লেখো।")
-        return PAY_SESSION
-    context.user_data["payment"]["Sessions"] = sessions
-    await update.message.reply_text("কত টাকা নেওয়া হলো লেখো (শুধু সংখ্যা):")
+    session_type = update.message.text.strip()
+    context.user_data["payment"]["Session_Type"] = session_type
+    context.user_data["payment"]["Sessions"] = _session_count(session_type)
+    await update.message.reply_text(
+        "কত টাকা নেওয়া হলো লেখো (শুধু সংখ্যা):", reply_markup=ReplyKeyboardRemove()
+    )
     return PAY_AMOUNT
 
 
@@ -941,11 +1001,24 @@ async def pay_method(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return PAY_METHOD
     context.user_data["payment"]["Payment_Method"] = method
+    await update.message.reply_text(
+        "সময় লেখো (উদাহরণ: 6:30-7:30), অথবা নিচের বাটনে ট্যাপ করো:",
+        reply_markup=_time_keyboard_quick(),
+    )
+    return PAY_TIME
+
+
+async def pay_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    if text.startswith("এখন"):
+        text = datetime.now().strftime("%I:%M %p")
+    context.user_data["payment"]["Time"] = text
     p = context.user_data["payment"]
     summary = (
         "নিচের তথ্য ঠিক আছে কিনা চেক করো:\n\n"
         f"রোগী: {p['Patient_Name']} ({p['Patient_ID']})\n"
-        f"সেশন: {p['Sessions']}\nটাকা: {p['Amount']}\nMethod: {p['Payment_Method']}\n\n"
+        f"সেশন: {p.get('Session_Type', '-')}\nসময়: {p['Time']}\n"
+        f"টাকা: {p['Amount']}\nMethod: {p['Payment_Method']}\n\n"
         "ঠিক থাকলে নিচের বাটনে ট্যাপ করো।"
     )
     confirm_keyboard = ReplyKeyboardMarkup(
@@ -985,6 +1058,8 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Payment_Method": p.get("Payment_Method", ""),
             "Received_By": staff.get("Full_Name", "Unknown"),
             "Remarks": f"Sessions: {sessions}" if sessions else "",
+            "Time": p.get("Time", ""),
+            "Session_Type": p.get("Session_Type", ""),
         })
 
         if sessions > 0:
@@ -1473,6 +1548,9 @@ def main():
         MessageHandler(filters.Regex(f"^{roles.MENU_TODAY_APPOINTMENTS}$"), today_appointments)
     )
     app.add_handler(CallbackQueryHandler(apt_status_callback, pattern="^aptstatus_"))
+    app.add_handler(
+        MessageHandler(filters.Regex(f"^{roles.MENU_TODAY_REGISTER}$"), today_register)
+    )
 
     reg_conv = ConversationHandler(
         entry_points=[
@@ -1532,6 +1610,7 @@ def main():
             PAY_SESSION: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_session)],
             PAY_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_amount)],
             PAY_METHOD: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_method)],
+            PAY_TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_time)],
             PAY_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_confirm)],
         },
         fallbacks=[
@@ -1583,6 +1662,11 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), unknown_menu))
     logger.info("Relife Clinic OS Bot চালু হচ্ছে...")
     _start_health_server()
+
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
 
     app.run_polling()
 
