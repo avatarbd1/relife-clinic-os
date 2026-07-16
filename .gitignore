@@ -5,3 +5,4 @@ __pycache__/
 *.log
 03_Bot/*.bak
 03_Bot/*.bak.*
+03_Bot/*_backup_*.py
