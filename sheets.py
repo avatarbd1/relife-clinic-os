@@ -8,6 +8,13 @@ Google Sheets-কে ডেটাবেস হিসেবে ব্যবহা
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
+from zoneinfo import ZoneInfo
+
+BD_TZ = ZoneInfo("Asia/Dhaka")
+
+
+def now_bd():
+    return datetime.now(BD_TZ).replace(tzinfo=None)
 
 import config
 
@@ -243,7 +250,7 @@ def _update_attendance_cell(row_number: int, col_index: int, value):
 
 def attendance_check_in(staff: dict) -> str:
     ws = _worksheet(config.SHEET_ATTENDANCE)
-    now = datetime.now()
+    now = now_bd()
     date_str = now.strftime("%Y-%m-%d")
     time_str = now.strftime("%H:%M")
     attendance_id = _next_attendance_id(ws)
@@ -275,7 +282,7 @@ def attendance_break_out(staff_id: str, date_str: str) -> str | None:
     record = get_today_attendance(staff_id, date_str)
     if not record:
         return None
-    time_str = datetime.now().strftime("%H:%M")
+    time_str = now_bd().strftime("%H:%M")
     _update_attendance_cell(record["_row_number"], 7, time_str)
     return time_str
 
@@ -284,7 +291,7 @@ def attendance_break_in(staff_id: str, date_str: str) -> str | None:
     record = get_today_attendance(staff_id, date_str)
     if not record:
         return None
-    time_str = datetime.now().strftime("%H:%M")
+    time_str = now_bd().strftime("%H:%M")
     _update_attendance_cell(record["_row_number"], 8, time_str)
     return time_str
 
@@ -293,7 +300,7 @@ def attendance_check_out(staff_id: str, date_str: str) -> dict | None:
     record = get_today_attendance(staff_id, date_str)
     if not record:
         return None
-    now = datetime.now()
+    now = now_bd()
     time_str = now.strftime("%H:%M")
 
     try:
