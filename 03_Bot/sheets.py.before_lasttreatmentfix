@@ -412,6 +412,8 @@ def add_package(patient_id: str, patient_name: str, total_sessions: int, package
 def get_active_package_for_patient(patient_id: str) -> dict | None:
     package_sheet_name = getattr(config, "SHEET_PACKAGES", None)
     if not package_sheet_name:
+        # প্যাকেজ ফিচার এখনো সেটআপ করা হয়নি (config.py-তে SHEET_PACKAGES নেই) —
+        # সাইলেন্টলি None রিটার্ন করে, যাতে Payment ফ্লো ভেঙে না যায়।
         return None
     try:
         ws = _worksheet(package_sheet_name)
@@ -452,25 +454,12 @@ def increment_package_session(patient_id: str) -> bool:
     return True
 
 
-def _next_daily_sl(ws, date_str: str) -> int:
-    """সেই তারিখে এখন পর্যন্ত কতগুলো পেমেন্ট এন্ট্রি হয়েছে তা গুনে পরের SL নম্বর দেয়।"""
-    try:
-        records = ws.get_all_records()
-    except Exception:
-        return 1
-    count = sum(1 for r in records if str(r.get("Date", "")) == date_str)
-    return count + 1
-
-
 def add_payment(data: dict) -> str:
     ws = _worksheet(config.SHEET_PAYMENTS)
     receipt_no = _next_receipt_no(ws)
-    date_str = datetime.now().strftime("%Y-%m-%d")
-    sl = _next_daily_sl(ws, date_str)
     row = [
         receipt_no,
-        date_str,
-        sl,
+        datetime.now().strftime("%Y-%m-%d"),
         data.get("Patient_ID", ""),
         data.get("Patient_Name", ""),
         data.get("Department", ""),
@@ -495,6 +484,11 @@ def get_payments_for_patient(patient_id: str) -> list[dict]:
     return [p for p in all_payments if str(p.get("Patient_ID", "")).strip() == str(patient_id).strip()]
 
 
+def get_payments_for_patient(patient_id: str) -> list[dict]:
+    all_payments = get_all_payments()
+    return [p for p in all_payments if str(p.get("Patient_ID", "")).strip() == str(patient_id).strip()]
+
+
 def get_appointments_for_patient(patient_id: str) -> list[dict]:
     all_apts = get_all_appointments()
     return [a for a in all_apts if str(a.get("Patient_ID", "")).strip() == str(patient_id).strip()]
@@ -504,156 +498,3 @@ def get_treatment_notes_for_patient(patient_id: str) -> list[dict]:
     ws = _worksheet(config.SHEET_TREATMENTS)
     all_notes = ws.get_all_records()
     return [n for n in all_notes if str(n.get("Patient_ID", "")).strip() == str(patient_id).strip()]
-
-
-# ===== Treatment Note & Next Visit Functions =====
-
-def _next_treatment_id(ws) -> str:
-    """05_Treatments শীটে পরবর্তী Treatment_ID (TRxxxx ফরম্যাটে) বের করে।"""
-    ids = ws.col_values(1)[1:]
-    numbers = []
-    for v in ids:
-        if v.startswith("TR"):
-            try:
-                numbers.append(int(v[2:]))
-            except ValueError:
-                pass
-    next_num = (max(numbers) + 1) if numbers else 1
-    return f"TR{next_num:04d}"
-
-
-def add_treatment_note(data: dict, created_by: str) -> str:
-    """
-    05_Treatments শীটে নতুন ট্রিটমেন্ট নোট যোগ করে (SOAP-স্টাইল)।
-    Diagnosis = Subjective, Treatment_Given = Objective/Assessment,
-    Exercise / Electrotherapy / Manual_Therapy = চিকিৎসা পরিকল্পনা (Plan)।
-    """
-    ws = _worksheet(config.SHEET_TREATMENTS)
-    treatment_id = _next_treatment_id(ws)
-    row = [
-        treatment_id,
-        datetime.now().strftime("%Y-%m-%d"),
-        data.get("Patient_ID", ""),
-        data.get("Patient_Name", ""),
-        data.get("Diagnosis", ""),
-        data.get("Treatment_Given", ""),
-        data.get("Exercise", ""),
-        data.get("Electrotherapy", ""),
-        data.get("Manual_Therapy", ""),
-        data.get("Session_No", ""),
-        created_by,
-        data.get("Remarks", ""),
-        data.get("Plan_ID", ""),
-    ]
-    ws.append_row(row, value_input_option="RAW")
-    return treatment_id
-
-
-def update_next_visit(patient_id: str, next_visit_date: str) -> bool:
-    """02_Patients শীটে Next_Visit কলাম (কলাম ১৯) আপডেট করে।"""
-    ws = _worksheet(config.SHEET_PATIENTS)
-    cell = ws.find(patient_id.strip())
-    if cell is None:
-        return False
-    ws.update_cell(cell.row, 19, next_visit_date)
-    return True
-
-
-def get_last_treatment_note_for_patient(patient_id: str) -> dict | None:
-    """
-    রোগীর সবচেয়ে সাম্প্রতিক ট্রিটমেন্ট নোট ফেরত দেয় (থাকলে), না থাকলে None।
-    "গতকালের মতোই" রিপিট-এন্ট্রি ফিচারের জন্য ব্যবহৃত হয়।
-    """
-    notes = get_treatment_notes_for_patient(patient_id)
-    if not notes:
-        return None
-    return notes[-1]
-
-
-# ===== Treatment Plan Functions (মাল্টি-সেশন প্ল্যান, কোর্সের জন্য একবার লেখা হয়) =====
-
-def _next_plan_id(ws) -> str:
-    """12_Treatment_Plans শীটে পরবর্তী Plan_ID (PLxxxx ফরম্যাটে) বের করে।"""
-    ids = ws.col_values(1)[1:]
-    numbers = []
-    for v in ids:
-        if v.startswith("PL"):
-            try:
-                numbers.append(int(v[2:]))
-            except ValueError:
-                pass
-    next_num = (max(numbers) + 1) if numbers else 1
-    return f"PL{next_num:04d}"
-
-
-def add_treatment_plan(data: dict, created_by: str) -> str:
-    """
-    12_Treatment_Plans শীটে নতুন ট্রিটমেন্ট প্ল্যান যোগ করে — পুরো চিকিৎসা-কোর্সের জন্য
-    একবার লেখা হয় (দৈনিক নোট নয়)। Sessions_Done সবসময় 0 দিয়ে শুরু হয়, Status="Active"।
-    """
-    ws = _worksheet(config.SHEET_TREATMENT_PLANS)
-    plan_id = _next_plan_id(ws)
-    row = [
-        plan_id,
-        data.get("Patient_ID", ""),
-        data.get("Patient_Name", ""),
-        data.get("Diagnosis", ""),
-        data.get("Total_Sessions", ""),
-        0,
-        data.get("Exercise_Plan", ""),
-        data.get("Electrotherapy_Plan", ""),
-        data.get("Manual_Therapy_Plan", ""),
-        created_by,
-        datetime.now().strftime("%Y-%m-%d"),
-        "Active",
-    ]
-    ws.append_row(row, value_input_option="RAW")
-    return plan_id
-
-
-def get_active_plan_for_patient(patient_id: str) -> dict | None:
-    """রোগীর বর্তমান Active ট্রিটমেন্ট প্ল্যান ফেরত দেয় (থাকলে), না থাকলে None।"""
-    ws = _worksheet(config.SHEET_TREATMENT_PLANS)
-    records = ws.get_all_records()
-    for idx, r in enumerate(records, start=2):
-        if (
-            str(r.get("Patient_ID", "")).strip() == patient_id.strip()
-            and str(r.get("Status", "")).strip() == "Active"
-        ):
-            r["_row_number"] = idx
-            return r
-    return None
-
-
-def get_last_plan_for_patient(patient_id: str) -> dict | None:
-    """
-    রোগীর সবচেয়ে সাম্প্রতিক প্ল্যান ফেরত দেয় (Active/Completed যেকোনো স্ট্যাটাস), না থাকলে None।
-    নতুন প্ল্যান বানানোর সময় আগের প্ল্যানের মান ডিফল্ট হিসেবে (- দিলে) ব্যবহার করতে কাজে লাগে।
-    """
-    ws = _worksheet(config.SHEET_TREATMENT_PLANS)
-    records = ws.get_all_records()
-    patient_plans = [
-        r for r in records
-        if str(r.get("Patient_ID", "")).strip() == patient_id.strip()
-    ]
-    if not patient_plans:
-        return None
-    return patient_plans[-1]
-
-
-def increment_plan_session(patient_id: str) -> bool:
-    """
-    রোগীর Active প্ল্যানের Sessions_Done ১ বাড়ায়। Total_Sessions-এ পৌঁছালে
-    Status="Completed" করে দেয় (increment_package_session-এর প্যাটার্ন অনুসরণ করে)।
-    """
-    plan = get_active_plan_for_patient(patient_id)
-    if plan is None:
-        return False
-    ws = _worksheet(config.SHEET_TREATMENT_PLANS)
-    done = int(plan.get("Sessions_Done", 0) or 0) + 1
-    total = int(plan.get("Total_Sessions", 0) or 0)
-    row_number = plan["_row_number"]
-    ws.update_cell(row_number, 6, done)   # Sessions_Done কলাম F
-    if total and done >= total:
-        ws.update_cell(row_number, 12, "Completed")  # Status কলাম L
-    return True

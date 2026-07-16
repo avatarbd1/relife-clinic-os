@@ -1,22 +1,3 @@
-import os
-# GLOBAL-EVENTLOOP-PATCH-PY314
-import asyncio as _asyncio_p314
-import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
-_orig_gel = _asyncio_p314.get_event_loop
-def _patched_gel():
-    try:
-        return _asyncio_p314.get_running_loop()
-    except RuntimeError:
-        pass
-    try:
-        return _orig_gel()
-    except RuntimeError:
-        _loop = _asyncio_p314.new_event_loop()
-        _asyncio_p314.set_event_loop(_loop)
-        return _loop
-_asyncio_p314.get_event_loop = _patched_gel
-
 """
 bot.py — Relife Clinic OS Telegram Bot (প্রথম ভার্সন)
 """
@@ -90,7 +71,6 @@ logger = logging.getLogger(__name__)
 ) = range(19, 29)
 
 PAY_METHODS = ["Cash", "bKash", "Nagad", "Card"]
-THERAPIST_NAMES = ["Nipa", "Saiful"]
 
 BN_WEEKDAYS = ["সোম", "মঙ্গল", "বুধ", "বৃহঃ", "শুক্র", "শনি", "রবি"]
 
@@ -109,43 +89,6 @@ _ALL_MENU_ITEMS = [
     roles.MENU_PATIENT_LIST,
 ]
 _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
-
-(
-    TPLAN_SEARCH,
-    TPLAN_SELECT,
-    TPLAN_DIAGNOSIS,
-    TPLAN_GIVEN,
-    TPLAN_EXERCISE,
-    TPLAN_ELECTRO,
-    TPLAN_MANUAL,
-    TPLAN_MACHINES,
-) = range(29, 37)
-
-MACHINE_LIST = [
-    "Hot Pack", "Cold Pack",
-    "TENS", "IFT",
-    "Ultrasound", "SWD (Short Wave)",
-    "Shockwave Therapy", "Laser Therapy",
-    "Traction (Cervical)", "Traction (Lumbar)",
-    "Exercise Therapy", "Manual Therapy",
-    "ISTM (Myofascial Release)", "Dry Needling",
-    "Wax Bath", "Cupping",
-]
-
-
-def _machine_keyboard(selected: set) -> InlineKeyboardMarkup:
-    buttons = []
-    for i in range(0, len(MACHINE_LIST), 2):
-        row = []
-        for j in (i, i + 1):
-            if j < len(MACHINE_LIST):
-                prefix = "✅ " if j in selected else "⬜ "
-                row.append(InlineKeyboardButton(prefix + MACHINE_LIST[j], callback_data=f"tpm_{j}"))
-        buttons.append(row)
-    buttons.append([InlineKeyboardButton("✅ সম্পন্ন — সেভ করো", callback_data="tpdone_save")])
-    buttons.append([InlineKeyboardButton("❌ বাতিল", callback_data="tpcancel_")])
-    return InlineKeyboardMarkup(buttons)
-
 
 
 async def _cancel_on_menu_press(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -198,14 +141,6 @@ def _time_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
-def _therapist_keyboard() -> InlineKeyboardMarkup:
-    buttons = [
-        [InlineKeyboardButton(name, callback_data=f"aptther_{name}")]
-        for name in THERAPIST_NAMES
-    ]
-    return InlineKeyboardMarkup(buttons)
-
-
 def _payment_method_keyboard() -> ReplyKeyboardMarkup:
     rows = [PAY_METHODS[i : i + 2] for i in range(0, len(PAY_METHODS), 2)]
     return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
@@ -219,6 +154,68 @@ def _skip_keyboard() -> ReplyKeyboardMarkup:
 def _number_keyboard(nums, per_row: int = 5) -> ReplyKeyboardMarkup:
     rows = [nums[i : i + per_row] for i in range(0, len(nums), per_row)]
     return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
+
+
+def _recent_patient_keyboard(limit: int = 10) -> InlineKeyboardMarkup:
+    """সবচেয়ে নতুন রেজিস্ট্রেশন করা রোগীদের বাটন আকারে দেখায়।"""
+    patients = sheets.get_recent_patients(limit)
+    buttons = [
+        [InlineKeyboardButton(
+            f"{p.get('Full_Name')} ({p.get('Patient_ID')})",
+            callback_data=f"plsel_{p.get('Patient_ID')}",
+        )]
+        for p in patients
+    ]
+    return InlineKeyboardMarkup(buttons)
+
+
+def _patient_action_keyboard(role_str: str, patient_id: str, done: set | None = None) -> InlineKeyboardMarkup:
+    """রোল অনুযায়ী কোন কোন অ্যাকশন এই স্টাফ করতে পারবে, তার বাটন বানায়।
+    ইতিমধ্যে যেগুলো করা হয়ে গেছে (done) সেগুলো বাদ দিয়ে দেখায়।"""
+    done = done or set()
+    buttons = []
+    for code in roles.get_patient_actions(role_str):
+        if code in done:
+            continue
+        label = roles.PATIENT_ACTION_LABELS.get(code, code)
+        buttons.append([InlineKeyboardButton(label, callback_data=f"plact_{code}_{patient_id}")])
+    buttons.append([InlineKeyboardButton("✅ শেষ", callback_data=f"pldone_{patient_id}")])
+    return InlineKeyboardMarkup(buttons)
+
+
+async def _send_patient_action_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, patient_id: str):
+    """রোগী বাছাই / উপস্থিত মার্ক করার পর, অথবা একটা কাজ (পেমেন্ট/অ্যাপয়েন্টমেন্ট/ট্রিটমেন্ট) শেষ হওয়ার পর
+    বাকি প্রযোজ্য অ্যাকশন বাটন দেখায় — যাতে একই ভিজিটে একাধিক কাজ চেইন করে করা যায়।"""
+    staff = context.user_data.get("staff", {})
+    role = staff.get("Role", "")
+    patient = sheets.get_patient_by_id(patient_id)
+    name = patient.get("Full_Name", patient_id) if patient else patient_id
+    done = context.user_data.get("pl_done", set())
+    remaining = [c for c in roles.get_patient_actions(role) if c not in done]
+    text = (
+        f"👤 {name} ({patient_id})\n\nআর কী করতে চাও?"
+        if remaining
+        else f"👤 {name} ({patient_id}) — তোমার সব কাজ শেষ। ✅"
+    )
+    await update.effective_message.reply_text(
+        text, reply_markup=_patient_action_keyboard(role, patient_id, done)
+    )
+
+
+async def _finish_patient_action(update: Update, context: ContextTypes.DEFAULT_TYPE, action_code: str | None):
+    """পেমেন্ট/অ্যাপয়েন্টমেন্ট/ট্রিটমেন্ট কনভারসেশন শেষ হওয়ার পর ডাকা হয়।
+    'রোগী তালিকা' বা 'উপস্থিত' চেইন থেকে শুরু হলে বাকি অ্যাকশন বাটন দেখায়,
+    না হলে সাধারণ রিপ্লাই-কীবোর্ড মেনু দেখায়।"""
+    staff = context.user_data.get("staff", {})
+    patient_id = context.user_data.get("pl_patient_id")
+    if patient_id:
+        if action_code:
+            context.user_data.setdefault("pl_done", set()).add(action_code)
+        await _send_patient_action_menu(update, context, patient_id)
+    else:
+        await update.effective_message.reply_text(
+            "নিচের মেনু থেকে বেছে নাও 👇", reply_markup=_menu_keyboard(staff.get("Role", ""))
+        )
 
 
 async def _require_staff(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -244,6 +241,53 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"স্বাগতম, {name}! ({role})\nনিচের মেনু থেকে বেছে নাও 👇",
         reply_markup=_menu_keyboard(role),
+    )
+
+
+# ---------- 👥 রোগী তালিকা (কুইক অ্যাকশন হাব) ----------
+
+async def patient_list_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
+    patients = sheets.get_recent_patients(10)
+    if not patients:
+        await update.message.reply_text("এখনো কোনো রোগী রেজিস্ট্রেশন করা হয়নি।")
+        return
+    await update.message.reply_text(
+        "👥 সাম্প্রতিক রোগীরা — নাম চাপো:",
+        reply_markup=_recent_patient_keyboard(10),
+    )
+
+
+async def patient_list_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    patient_id = query.data.replace("plsel_", "", 1)
+    staff = context.user_data.get("staff") or {}
+    patient = sheets.get_patient_by_id(patient_id)
+    if not patient:
+        await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
+        return
+    context.user_data["pl_patient_id"] = patient_id
+    context.user_data["pl_done"] = set()
+    role = staff.get("Role", "")
+    await query.edit_message_text(
+        f"✅ {patient.get('Full_Name')} ({patient_id})\n\nকী করতে চাও?",
+        reply_markup=_patient_action_keyboard(role, patient_id, set()),
+    )
+
+
+async def patient_list_done_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """'✅ শেষ' চাপলে চলমান রোগী-অ্যাকশন চেইন শেষ করে সাধারণ মেনুতে ফিরে যায়।"""
+    query = update.callback_query
+    await query.answer()
+    staff = context.user_data.get("staff", {})
+    context.user_data.pop("pl_patient_id", None)
+    context.user_data.pop("pl_done", None)
+    await query.edit_message_text("✅ শেষ হয়েছে।")
+    await query.message.reply_text(
+        "নিচের মেনু থেকে বেছে নাও 👇", reply_markup=_menu_keyboard(staff.get("Role", ""))
     )
 
 
@@ -410,6 +454,36 @@ async def reg_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ---------- অ্যাপয়েন্টমেন্ট বুকিং ----------
 
+async def apt_start_from_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """'👥 রোগী তালিকা' বা 'আজকের অ্যাপয়েন্টমেন্ট' থেকে সরাসরি — রোগী আগে থেকেই বাছাই করা,
+    তাই সার্চ ধাপ বাদ দিয়ে সরাসরি তারিখ জিজ্ঞাসা করে।"""
+    query = update.callback_query
+    await query.answer()
+    patient_id = query.data.replace("plact_apt_", "", 1)
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return ConversationHandler.END
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_APPOINTMENT):
+        await query.edit_message_text("⛔ এই কাজে তোমার অনুমতি নেই।")
+        return ConversationHandler.END
+    patient = sheets.get_patient_by_id(patient_id)
+    if not patient:
+        await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
+        return ConversationHandler.END
+    context.user_data["new_appointment"] = {
+        "Patient_ID": patient.get("Patient_ID", ""),
+        "Patient_Name": patient.get("Full_Name", ""),
+        "Department": patient.get("Department", ""),
+    }
+    context.user_data["pl_patient_id"] = patient_id
+    await query.edit_message_text(
+        f"📅 রোগী: {patient.get('Full_Name')} ({patient_id})\n\n"
+        "তারিখ বেছে নাও (অথবা টাইপ করো, উদাহরণ: 2026-07-15):"
+    )
+    await query.message.reply_text("তারিখ বেছে নাও 👇", reply_markup=_date_keyboard())
+    return APT_DATE
+
+
 async def apt_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
     if staff is None:
@@ -494,19 +568,13 @@ async def apt_time_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     time_str = query.data.replace("apttime_", "")
     context.user_data.setdefault("new_appointment", {})["Time"] = time_str
     await query.edit_message_text(f"✅ সময় নির্বাচন করা হয়েছে: {time_str}")
-    await query.message.reply_text(
-        "থেরাপিস্ট বেছে নাও (অথবা টাইপ করো):",
-        reply_markup=_therapist_keyboard(),
-    )
+    await query.message.reply_text("থেরাপিস্ট / ডাক্তারের নাম লেখো:")
     return APT_THERAPIST
 
 
 async def apt_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["new_appointment"]["Time"] = update.message.text.strip()
-    await update.message.reply_text(
-        "থেরাপিস্ট বেছে নাও (অথবা টাইপ করো):",
-        reply_markup=_therapist_keyboard(),
-    )
+    await update.message.reply_text("থেরাপিস্ট / ডাক্তারের নাম লেখো:")
     return APT_THERAPIST
 
 
@@ -516,7 +584,7 @@ async def apt_therapist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     summary = (
         "নিচের তথ্য ঠিক আছে কিনা চেক করো:\n\n"
         f"রোগী: {a['Patient_Name']} ({a['Patient_ID']})\n"
-        f"Department: {a['Department']}\n"
+        f"Department: {a.get('Department') or 'N/A (রোগীর প্রোফাইলে নেই)'}\n"
         f"তারিখ: {a['Date']}\nসময়: {a['Time']}\n"
         f"থেরাপিস্ট: {a['Therapist']}\n\n"
         "ঠিক থাকলে নিচের বাটনে ট্যাপ করো।"
@@ -528,31 +596,11 @@ async def apt_therapist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return APT_CONFIRM
 
 
-async def apt_therapist_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    therapist_name = query.data.replace("aptther_", "")
-    context.user_data["new_appointment"]["Therapist"] = therapist_name
-    a = context.user_data["new_appointment"]
-    summary = (
-        "নিচের তথ্য ঠিক আছে কিনা চেক করো:\n\n"
-        f"রোগী: {a['Patient_Name']} ({a['Patient_ID']})\n"
-        f"Department: {a['Department']}\n"
-        f"তারিখ: {a['Date']}\nসময়: {a['Time']}\n"
-        f"থেরাপিস্ট: {a['Therapist']}\n\n"
-        "ঠিক থাকলে নিচের বাটনে ট্যাপ করো।"
-    )
-    confirm_keyboard = ReplyKeyboardMarkup(
-        [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
-    )
-    await query.edit_message_text(f"✅ থেরাপিস্ট নির্বাচন করা হয়েছে: {therapist_name}")
-    await query.message.reply_text(summary, reply_markup=confirm_keyboard)
-    return APT_CONFIRM
-
-
 async def apt_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip().lower()
     staff = context.user_data.get("staff", {})
+    _chain = bool(context.user_data.get("pl_patient_id"))
+    kb = ReplyKeyboardRemove() if _chain else _menu_keyboard(staff.get("Role", ""))
     if text in ("হ্যাঁ", "yes", "y", "হা", "ha"):
         appointment_id = sheets.add_appointment(
             context.user_data["new_appointment"],
@@ -560,14 +608,12 @@ async def apt_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await update.message.reply_text(
             f"✅ অ্যাপয়েন্টমেন্ট বুক হয়েছে! Appointment ID: {appointment_id}",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
+            reply_markup=kb,
         )
     else:
-        await update.message.reply_text(
-            "❌ বাতিল করা হয়েছে।",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
-        )
+        await update.message.reply_text("❌ বাতিল করা হয়েছে।", reply_markup=kb)
     context.user_data.pop("new_appointment", None)
+    await _finish_patient_action(update, context, "apt")
     return ConversationHandler.END
 
 
@@ -575,10 +621,15 @@ async def apt_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff", {})
     context.user_data.pop("new_appointment", None)
     context.user_data.pop("apt_search_results", None)
-    await update.effective_message.reply_text(
-        "অ্যাপয়েন্টমেন্ট বুকিং বাতিল করা হয়েছে।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
-    )
+    _chain = bool(context.user_data.get("pl_patient_id"))
+    if _chain:
+        await update.effective_message.reply_text("❌ বাতিল করা হয়েছে।")
+        await _finish_patient_action(update, context, None)
+    else:
+        await update.effective_message.reply_text(
+            "অ্যাপয়েন্টমেন্ট বুকিং বাতিল করা হয়েছে।",
+            reply_markup=_menu_keyboard(staff.get("Role", "")),
+        )
     return ConversationHandler.END
 
 
@@ -687,7 +738,7 @@ async def today_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE)
     for a in appts:
         text = (
             f"🕐 {a.get('Time')} — {a.get('Patient_Name')} ({a.get('Patient_ID')})\n"
-            f"Department: {a.get('Department')} | থেরাপিস্ট: {a.get('Therapist')}"
+            f"Department: {a.get('Department') or 'N/A'} | থেরাপিস্ট: {a.get('Therapist')}"
         )
         buttons = InlineKeyboardMarkup([[
             InlineKeyboardButton("✅ উপস্থিত", callback_data=f"aptstatus_{a.get('Appointment_ID')}_Completed"),
@@ -703,13 +754,57 @@ async def apt_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     status_map = {"Completed": "Completed", "NoShow": "No-show"}
     status = status_map.get(status_code, status_code)
     ok = sheets.update_appointment_status(appointment_id, status)
-    if ok:
-        await query.edit_message_text(f"✅ {appointment_id} — স্ট্যাটাস: {status}")
-    else:
+    if not ok:
         await query.edit_message_text("❌ আপডেট করা যায়নি।")
+        return
+    await query.edit_message_text(f"✅ {appointment_id} — স্ট্যাটাস: {status}")
+
+    # রোগী উপস্থিত হলে, একই ভিজিটে যা যা করা লাগে তার বাটন সাথে সাথে দেখিয়ে দাও
+    if status_code == "Completed":
+        appt = sheets.get_appointment_by_id(appointment_id)
+        patient_id = (appt or {}).get("Patient_ID", "").strip()
+        if patient_id:
+            context.user_data["pl_patient_id"] = patient_id
+            context.user_data["pl_done"] = set()
+            await _send_patient_action_menu(update, context, patient_id)
 
 
 # ---------- পেমেন্ট / বিল এন্ট্রি ----------
+
+async def pay_start_from_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """'👥 রোগী তালিকা' বা 'আজকের অ্যাপয়েন্টমেন্ট' থেকে সরাসরি — সার্চ ছাড়াই পেমেন্ট শুরু।"""
+    query = update.callback_query
+    await query.answer()
+    patient_id = query.data.replace("plact_pay_", "", 1)
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return ConversationHandler.END
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_PAYMENT):
+        await query.edit_message_text("⛔ এই কাজে তোমার অনুমতি নেই।")
+        return ConversationHandler.END
+    patient = sheets.get_patient_by_id(patient_id)
+    if not patient:
+        await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
+        return ConversationHandler.END
+    context.user_data["payment"] = {
+        "Patient_ID": patient.get("Patient_ID", ""),
+        "Patient_Name": patient.get("Full_Name", ""),
+        "Department": patient.get("Department", ""),
+    }
+    context.user_data["pl_patient_id"] = patient_id
+    total_bill = patient.get("Total_Bill", 0) or 0
+    paid_amount = patient.get("Paid_Amount", 0) or 0
+    due_amount = patient.get("Due_Amount", 0) or 0
+    await query.edit_message_text(
+        f"💳 রোগী: {patient.get('Full_Name')} ({patient_id})\n\n"
+        f"মোট বিল: {total_bill}\nজমা হয়েছে: {paid_amount}\nবাকি: {due_amount}"
+    )
+    await query.message.reply_text(
+        "আজ কয়টা সেশন হলো লেখো (না থাকলে 0):",
+        reply_markup=_number_keyboard([str(n) for n in range(0, 6)]),
+    )
+    return PAY_SESSION
+
 
 async def pay_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
@@ -864,12 +959,13 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip().lower()
     staff = context.user_data.get("staff", {})
     p = context.user_data.get("payment", {})
+    _chain = bool(context.user_data.get("pl_patient_id"))
+    kb = ReplyKeyboardRemove() if _chain else _menu_keyboard(staff.get("Role", ""))
 
     if text not in ("হ্যাঁ", "yes", "y", "হা", "ha"):
         context.user_data.pop("payment", None)
-        await update.message.reply_text(
-            "❌ বাতিল করা হয়েছে।", reply_markup=_menu_keyboard(staff.get("Role", ""))
-        )
+        await update.message.reply_text("❌ বাতিল করা হয়েছে।", reply_markup=kb)
+        await _finish_patient_action(update, context, None)
         return ConversationHandler.END
 
     patient_id = p.get("Patient_ID", "")
@@ -903,17 +999,16 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if bill_status:
             lines.append(f"মোট জমা: {bill_status['paid_amount']} | বাকি: {bill_status['due_amount']}")
 
-        await update.message.reply_text(
-            "\n".join(lines), reply_markup=_menu_keyboard(staff.get("Role", ""))
-        )
+        await update.message.reply_text("\n".join(lines), reply_markup=kb)
     except Exception as e:
         logger.exception("pay_confirm ব্যর্থ হয়েছে")
         await update.message.reply_text(
             f"❌ পেমেন্ট সেভ করতে সমস্যা হয়েছে।\nError: {e}\n\n"
             "স্ক্রিনশট দিয়ে জানাও, ঠিক করে দেওয়া হবে।",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
+            reply_markup=kb,
         )
     context.user_data.pop("payment", None)
+    await _finish_patient_action(update, context, "pay")
     return ConversationHandler.END
 
 
@@ -921,14 +1016,44 @@ async def pay_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff", {})
     context.user_data.pop("payment", None)
     context.user_data.pop("pay_search_results", None)
-    await update.effective_message.reply_text(
-        "পেমেন্ট এন্ট্রি বাতিল করা হয়েছে।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
-    )
+    _chain = bool(context.user_data.get("pl_patient_id"))
+    if _chain:
+        await update.effective_message.reply_text("❌ বাতিল করা হয়েছে।")
+        await _finish_patient_action(update, context, None)
+    else:
+        await update.effective_message.reply_text(
+            "পেমেন্ট এন্ট্রি বাতিল করা হয়েছে।",
+            reply_markup=_menu_keyboard(staff.get("Role", "")),
+        )
     return ConversationHandler.END
 
 
 # ---------- ট্রিটমেন্ট নোট (Physio SOAP-স্টাইল) ----------
+
+async def treat_start_from_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """'👥 রোগী তালিকা' বা 'আজকের অ্যাপয়েন্টমেন্ট' থেকে সরাসরি — সার্চ ছাড়াই ট্রিটমেন্ট নোট শুরু।"""
+    query = update.callback_query
+    await query.answer()
+    patient_id = query.data.replace("plact_treat_", "", 1)
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return ConversationHandler.END
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_TREATMENT_NOTE):
+        await query.edit_message_text("⛔ এই কাজে তোমার অনুমতি নেই।")
+        return ConversationHandler.END
+    patient = sheets.get_patient_by_id(patient_id)
+    if not patient:
+        await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
+        return ConversationHandler.END
+    context.user_data["treatment"] = {
+        "Patient_ID": patient.get("Patient_ID", ""),
+        "Patient_Name": patient.get("Full_Name", ""),
+    }
+    context.user_data["pl_patient_id"] = patient_id
+    await query.edit_message_text(f"📝 রোগী: {patient.get('Full_Name')} ({patient_id})")
+    await query.message.reply_text("আজকের সমস্যা/পর্যবেক্ষণ (Diagnosis) লেখো:")
+    return TREAT_DIAGNOSIS
+
 
 async def treat_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ট্রিটমেন্ট নোট এন্ট্রি শুরু — রোগী খোঁজা দিয়ে শুরু হয়।"""
@@ -1065,12 +1190,13 @@ async def treat_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip().lower()
     staff = context.user_data.get("staff", {})
     t = context.user_data.get("treatment", {})
+    _chain = bool(context.user_data.get("pl_patient_id"))
+    kb = ReplyKeyboardRemove() if _chain else _menu_keyboard(staff.get("Role", ""))
 
     if text not in ("হ্যাঁ", "yes", "y", "হা", "ha"):
         context.user_data.pop("treatment", None)
-        await update.message.reply_text(
-            "❌ বাতিল করা হয়েছে।", reply_markup=_menu_keyboard(staff.get("Role", ""))
-        )
+        await update.message.reply_text("❌ বাতিল করা হয়েছে।", reply_markup=kb)
+        await _finish_patient_action(update, context, None)
         return ConversationHandler.END
 
     try:
@@ -1080,16 +1206,17 @@ async def treat_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             sheets.update_next_visit(t.get("Patient_ID", ""), next_visit)
         await update.message.reply_text(
             f"✅ ট্রিটমেন্ট নোট সেভ হয়েছে! Treatment ID: {treatment_id}",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
+            reply_markup=kb,
         )
     except Exception as e:
         logger.exception("treat_confirm ব্যর্থ হয়েছে")
         await update.message.reply_text(
             f"❌ নোট সেভ করতে সমস্যা হয়েছে।\nError: {e}\n\n"
             "স্ক্রিনশট দিয়ে জানাও, ঠিক করে দেওয়া হবে।",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
+            reply_markup=kb,
         )
     context.user_data.pop("treatment", None)
+    await _finish_patient_action(update, context, "treat")
     return ConversationHandler.END
 
 
@@ -1097,199 +1224,15 @@ async def treat_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff", {})
     context.user_data.pop("treatment", None)
     context.user_data.pop("treat_search_results", None)
-    await update.effective_message.reply_text(
-        "ট্রিটমেন্ট নোট এন্ট্রি বাতিল করা হয়েছে।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
-    )
-    return ConversationHandler.END
-
-
-# ---------- ট্রিটমেন্ট প্ল্যান (দ্রুত, বাটন-চালিত) ----------
-
-async def tplan_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
-    if staff is None:
-        return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_TREATMENT_PLAN):
-        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
-        return ConversationHandler.END
-    context.user_data["tplan"] = {}
-    context.user_data["tplan_selected"] = set()
-    await update.message.reply_text(
-        "রোগীর নাম, ফোন নম্বর, অথবা Patient ID লিখো (খুঁজতে):",
-        reply_markup=ReplyKeyboardRemove(),
-    )
-    return TPLAN_SEARCH
-
-
-async def tplan_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.message.text.strip()
-    results = sheets.search_patients(query)
-    if not results:
-        await update.message.reply_text(
-            "❌ কোনো রোগী পাওয়া যায়নি। আবার নাম/ফোন/আইডি লেখো, অথবা /cancel দাও।"
-        )
-        return TPLAN_SEARCH
-    results = results[:10]
-    context.user_data["tplan_search_results"] = {
-        p.get("Patient_ID", "").strip(): p for p in results
-    }
-    buttons = [
-        [InlineKeyboardButton(
-            f"{p.get('Full_Name')} ({p.get('Patient_ID')})",
-            callback_data=f"tplansel_{p.get('Patient_ID')}",
-        )]
-        for p in results
-    ]
-    await update.message.reply_text(
-        "🔍 নিচের তালিকা থেকে রোগী বেছে নাও:",
-        reply_markup=InlineKeyboardMarkup(buttons),
-    )
-    return TPLAN_SELECT
-
-
-async def tplan_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    patient_id = query.data.replace("tplansel_", "")
-    results = context.user_data.get("tplan_search_results", {})
-    patient = results.get(patient_id)
-    if not patient:
-        await query.edit_message_text(
-            "❌ তালিকার মেয়াদ শেষ। আবার শুরু করতে /cancel দাও, তারপর 🩺 ট্রিটমেন্ট প্ল্যান চাপো।"
-        )
-        return ConversationHandler.END
-    context.user_data.pop("tplan_search_results", None)
-    context.user_data["tplan"] = {
-        "Patient_ID": patient.get("Patient_ID", ""),
-        "Patient_Name": patient.get("Full_Name", ""),
-    }
-
-    last = sheets.get_last_treatment_note_for_patient(patient_id)
-    if last:
-        t = context.user_data["tplan"]
-        t["Diagnosis"] = last.get("Diagnosis", "")
-        t["Treatment_Given"] = last.get("Treatment_Given", "")
-        t["Exercise"] = last.get("Exercise", "")
-        t["Electrotherapy"] = last.get("Electrotherapy", "")
-        t["Manual_Therapy"] = last.get("Manual_Therapy", "")
-        prev_machines = [m.strip() for m in str(last.get("Machines", "")).split(",") if m.strip()]
-        selected = {idx for idx, name in enumerate(MACHINE_LIST) if name in prev_machines}
-        context.user_data["tplan_selected"] = selected
-        await query.edit_message_text(
-            f"✅ {patient.get('Full_Name')} ({patient_id}) — আগের ভিজিট থেকে অটো-ক্যারি-ওভার হয়েছে।"
-        )
-        await query.message.reply_text(
-            "আজকের মেশিন/মোডালিটি বেছে নাও, তারপর সম্পন্ন চাপো:",
-            reply_markup=_machine_keyboard(selected),
-        )
-        return TPLAN_MACHINES
-
-    context.user_data["tplan_selected"] = set()
-    await query.edit_message_text(
-        f"📝 নতুন রোগী: {patient.get('Full_Name')} ({patient_id}) — প্রথম অ্যাসেসমেন্ট"
-    )
-    await query.message.reply_text("আজকের সমস্যা/পর্যবেক্ষণ (Diagnosis) লেখো:")
-    return TPLAN_DIAGNOSIS
-
-
-async def tplan_diagnosis(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["tplan"]["Diagnosis"] = update.message.text.strip()
-    await update.message.reply_text("কী ট্রিটমেন্ট প্ল্যান করা হচ্ছে লেখো:")
-    return TPLAN_GIVEN
-
-
-async def tplan_given(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["tplan"]["Treatment_Given"] = update.message.text.strip()
-    await update.message.reply_text("এক্সারসাইজ প্ল্যান লেখো (না থাকলে - দাও):", reply_markup=_skip_keyboard())
-    return TPLAN_EXERCISE
-
-
-async def tplan_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip()
-    context.user_data["tplan"]["Exercise"] = "" if text == "-" else text
-    await update.message.reply_text("ইলেক্ট্রোথেরাপি নোট লেখো (না থাকলে - দাও):", reply_markup=_skip_keyboard())
-    return TPLAN_ELECTRO
-
-
-async def tplan_electro(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip()
-    context.user_data["tplan"]["Electrotherapy"] = "" if text == "-" else text
-    await update.message.reply_text("ম্যানুয়াল থেরাপি নোট লেখো (না থাকলে - দাও):", reply_markup=_skip_keyboard())
-    return TPLAN_MANUAL
-
-
-async def tplan_manual(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip()
-    context.user_data["tplan"]["Manual_Therapy"] = "" if text == "-" else text
-    selected = context.user_data.get("tplan_selected", set())
-    await update.message.reply_text(
-        "আজকের মেশিন/মোডালিটি বেছে নাও, তারপর সম্পন্ন চাপো:",
-        reply_markup=_machine_keyboard(selected),
-    )
-    return TPLAN_MACHINES
-
-
-async def tplan_machine_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    idx = int(query.data.replace("tpm_", ""))
-    selected = context.user_data.get("tplan_selected", set())
-    if idx in selected:
-        selected.discard(idx)
+    _chain = bool(context.user_data.get("pl_patient_id"))
+    if _chain:
+        await update.effective_message.reply_text("❌ বাতিল করা হয়েছে।")
+        await _finish_patient_action(update, context, None)
     else:
-        selected.add(idx)
-    context.user_data["tplan_selected"] = selected
-    await query.edit_message_reply_markup(reply_markup=_machine_keyboard(selected))
-    return TPLAN_MACHINES
-
-
-async def tplan_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    staff = context.user_data.get("staff", {})
-    t = context.user_data.get("tplan", {})
-    selected = context.user_data.get("tplan_selected", set())
-    t["Machines"] = ", ".join(MACHINE_LIST[i] for i in sorted(selected))
-    try:
-        treatment_id = sheets.add_treatment_note(t, created_by=staff.get("Full_Name", "Unknown"))
-        await query.edit_message_text(
-            f"✅ ট্রিটমেন্ট প্ল্যান সেভ হয়েছে! ID: {treatment_id}\n"
-            f"মেশিন: {t['Machines'] or '(কিছু বাছাই করা হয়নি)'}"
+        await update.effective_message.reply_text(
+            "ট্রিটমেন্ট নোট এন্ট্রি বাতিল করা হয়েছে।",
+            reply_markup=_menu_keyboard(staff.get("Role", "")),
         )
-    except Exception as e:
-        logger.exception("tplan_done ব্যর্থ হয়েছে")
-        await query.edit_message_text(f"❌ সেভ করতে সমস্যা হয়েছে।\nError: {e}")
-    context.user_data.pop("tplan", None)
-    context.user_data.pop("tplan_selected", None)
-    await query.message.reply_text(
-        "নিচের মেনু থেকে বেছে নাও 👇", reply_markup=_menu_keyboard(staff.get("Role", ""))
-    )
-    return ConversationHandler.END
-
-
-async def tplan_cancel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    staff = context.user_data.get("staff", {})
-    context.user_data.pop("tplan", None)
-    context.user_data.pop("tplan_selected", None)
-    await query.edit_message_text("❌ বাতিল করা হয়েছে।")
-    await query.message.reply_text(
-        "নিচের মেনু থেকে বেছে নাও 👇", reply_markup=_menu_keyboard(staff.get("Role", ""))
-    )
-    return ConversationHandler.END
-
-
-async def tplan_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff", {})
-    context.user_data.pop("tplan", None)
-    context.user_data.pop("tplan_selected", None)
-    context.user_data.pop("tplan_search_results", None)
-    await update.effective_message.reply_text(
-        "ট্রিটমেন্ট প্ল্যান বাতিল করা হয়েছে।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
-    )
     return ConversationHandler.END
 
 
@@ -1321,90 +1264,6 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# ---------- ট্রিটমেন্ট হিস্ট্রি (তারিখ-ভিত্তিক ভিউয়ার) ----------
-
-async def thist_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
-    if staff is None:
-        return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_TREATMENT_HISTORY):
-        return ConversationHandler.END
-    await update.effective_message.reply_text("রোগীর নাম, ফোন নম্বর, অথবা Patient ID লেখো (খুঁজতে):")
-    return "THIST_SEARCH"
-
-
-async def thist_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query_text = update.message.text.strip()
-    results = sheets.search_patients(query_text)
-    if not results:
-        await update.message.reply_text("কোনো রোগী পাওয়া যায়নি। আবার চেষ্টা করো, অথবা /cancel দাও।")
-        return "THIST_SEARCH"
-    buttons = []
-    for p in results[:10]:
-        pid = p.get("Patient_ID", "")
-        name = p.get("Full_Name") or p.get("Name") or "Unknown"
-        buttons.append([InlineKeyboardButton(f"{name} ({pid})", callback_data=f"thpsel_{pid}")])
-    await update.message.reply_text(
-        "কোন রোগীর ট্রিটমেন্ট হিস্টরি দেখতে চাও?",
-        reply_markup=InlineKeyboardMarkup(buttons),
-    )
-    return "THIST_SEARCH"
-
-
-async def thist_patient_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    patient_id = query.data.replace("thpsel_", "", 1)
-    notes = sheets.get_treatment_notes_for_patient(patient_id)
-    if not notes:
-        await query.edit_message_text("এই রোগীর কোনো ট্রিটমেন্ট নোট পাওয়া যায়নি।")
-        return ConversationHandler.END
-    context.user_data["thist_notes"] = {
-        str(n.get("Treatment_ID", "")).strip(): n for n in notes
-    }
-    notes_sorted = sorted(notes, key=lambda n: str(n.get("Date", "")), reverse=True)
-    buttons = []
-    for n in notes_sorted[:15]:
-        tid = str(n.get("Treatment_ID", "")).strip()
-        date_str = n.get("Date", "")
-        buttons.append([InlineKeyboardButton(f"🗓 {date_str}", callback_data=f"thdate_{tid}")])
-    await query.edit_message_text(
-        "কোন তারিখের ট্রিটমেন্ট প্ল্যান দেখতে চাও?",
-        reply_markup=InlineKeyboardMarkup(buttons),
-    )
-    return "THIST_DATE"
-
-
-async def thist_date_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    tid = query.data.replace("thdate_", "", 1)
-    notes_map = context.user_data.get("thist_notes", {})
-    n = notes_map.get(tid)
-    if not n:
-        await query.edit_message_text("নোট পাওয়া যায়নি।")
-        return ConversationHandler.END
-    lines = [
-        f"📝 {n.get('Patient_Name', '')} ({n.get('Patient_ID', '')}) — {n.get('Date', '')}",
-        "",
-        f"Diagnosis: {n.get('Diagnosis', '') or '-'}",
-        f"Treatment Given: {n.get('Treatment_Given', '') or '-'}",
-        f"Exercise: {n.get('Exercise', '') or '-'}",
-        f"Electrotherapy: {n.get('Electrotherapy', '') or '-'}",
-        f"Manual Therapy: {n.get('Manual_Therapy', '') or '-'}",
-        f"Machines: {n.get('Machines', '') or '-'}",
-    ]
-    await query.edit_message_text("\n".join(lines))
-    context.user_data.pop("thist_notes", None)
-    return ConversationHandler.END
-
-
-async def thist_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data.pop("thist_notes", None)
-    await update.effective_message.reply_text("বাতিল করা হয়েছে।")
-    return ConversationHandler.END
-
-
 async def hist_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
     if staff is None:
@@ -1433,15 +1292,12 @@ async def hist_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return "HIST_SEARCH"
 
 
-async def hist_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    patient_id = query.data.replace("histsel_", "", 1)
-
+def _build_patient_history_text(patient_id: str) -> str | None:
+    """একটা রোগীর প্রোফাইল/পেমেন্ট/অ্যাপয়েন্টমেন্ট/ট্রিটমেন্ট ইতিহাস টেক্সট আকারে বানায়।
+    hist_select_callback এবং 'রোগী তালিকা' → 📜 ইতিহাস দুই জায়গাতেই ব্যবহার হয়।"""
     patient = sheets.get_patient_by_id(patient_id)
     if patient is None:
-        await query.edit_message_text("রোগী পাওয়া যায়নি।")
-        return ConversationHandler.END
+        return None
 
     name = patient.get("Full_Name") or patient.get("Name") or "Unknown"
     lines = [f"📜 {name} ({patient_id})-এর ইতিহাস", ""]
@@ -1508,9 +1364,41 @@ async def hist_select_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     full_text = "\n".join(lines)
     if len(full_text) > 4000:
         full_text = full_text[:3990] + "\n...(আরও আছে)"
+    return full_text
 
+
+async def hist_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    patient_id = query.data.replace("histsel_", "", 1)
+    full_text = _build_patient_history_text(patient_id)
+    if full_text is None:
+        await query.edit_message_text("রোগী পাওয়া যায়নি।")
+        return ConversationHandler.END
     await query.edit_message_text(full_text)
     return ConversationHandler.END
+
+
+async def patient_list_hist_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """'👥 রোগী তালিকা' বা 'আজকের অ্যাপয়েন্টমেন্ট' চেইন থেকে সরাসরি ইতিহাস দেখায়,
+    তারপর বাকি প্রযোজ্য অ্যাকশন বাটন দেখায়।"""
+    query = update.callback_query
+    await query.answer()
+    patient_id = query.data.replace("plact_hist_", "", 1)
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_PATIENT_HISTORY):
+        await query.edit_message_text("⛔ এই কাজে তোমার অনুমতি নেই।")
+        return
+    full_text = _build_patient_history_text(patient_id)
+    if full_text is None:
+        await query.edit_message_text("রোগী পাওয়া যায়নি।")
+        return
+    await query.edit_message_text(full_text)
+    context.user_data["pl_patient_id"] = patient_id
+    context.user_data.setdefault("pl_done", set()).add("hist")
+    await _send_patient_action_menu(update, context, patient_id)
 
 
 async def hist_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1564,265 +1452,6 @@ def _start_health_server():
     print(f"Health server chalu hoyeche port {port}-e")
 
 
-def _patient_card_text(patient: dict) -> str:
-    name = patient.get("Full_Name", "")
-    pid = patient.get("Patient_ID", "")
-    phone = patient.get("Phone", "")
-    dept = patient.get("Department", "")
-    therapist = patient.get("Therapist", "")
-    total_bill = patient.get("Total_Bill", 0) or 0
-    paid = patient.get("Paid_Amount", 0) or 0
-    due = patient.get("Due_Amount", 0) or 0
-    return (
-        f"👤 {name} ({pid})\n"
-        f"📞 {phone}\n"
-        f"🏥 বিভাগ: {dept}\n"
-        f"🧑‍⚕️ থেরাপিস্ট: {therapist or '—'}\n\n"
-        f"💰 মোট বিল: {total_bill}\n"
-        f"✅ জমা হয়েছে: {paid}\n"
-        f"⏳ বাকি: {due}"
-    )
-
-
-def _patient_card_keyboard(patient_id: str) -> InlineKeyboardMarkup:
-    buttons = [
-        [
-            InlineKeyboardButton("💰 পেমেন্ট নিন", callback_data=f"plistact_pay_{patient_id}"),
-            InlineKeyboardButton("📅 অ্যাপয়েন্টমেন্ট", callback_data=f"plistact_apt_{patient_id}"),
-        ],
-        [
-            InlineKeyboardButton("📝 ট্রিটমেন্ট নোট", callback_data=f"plistact_treat_{patient_id}"),
-            InlineKeyboardButton("📜 সম্পূর্ণ ইতিহাস", callback_data=f"plistact_hist_{patient_id}"),
-        ],
-        [InlineKeyboardButton("🔙 তালিকায় ফিরুন", callback_data="plistact_back")],
-    ]
-    return InlineKeyboardMarkup(buttons)
-
-
-async def patient_list_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
-    if staff is None:
-        return
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_PATIENT_LIST):
-        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
-        return
-    patients = [
-        p for p in sheets.get_all_patients()
-        if str(p.get("Status", "")).strip() == "Active"
-    ]
-    patients.sort(key=lambda p: p.get("Full_Name", ""))
-    if not patients:
-        await update.message.reply_text("কোনো সক্রিয় রোগী পাওয়া যায়নি।")
-        return
-    context.user_data["plist_patients"] = {
-        p.get("Patient_ID", "").strip(): p for p in patients
-    }
-    await _send_patient_list_page(update.message, context, page=0)
-
-
-async def _send_patient_list_page(message, context: ContextTypes.DEFAULT_TYPE, page: int, edit: bool = False):
-    patients = list(context.user_data.get("plist_patients", {}).values())
-    per_page = 8
-    start = page * per_page
-    chunk = patients[start:start + per_page]
-    buttons = [
-        [InlineKeyboardButton(
-            f"{p.get('Full_Name')} ({p.get('Patient_ID')})",
-            callback_data=f"plistsel_{p.get('Patient_ID')}_{page}",
-        )]
-        for p in chunk
-    ]
-    nav = []
-    if page > 0:
-        nav.append(InlineKeyboardButton("⬅️ আগের", callback_data=f"plistpage_{page - 1}"))
-    if start + per_page < len(patients):
-        nav.append(InlineKeyboardButton("পরের ➡️", callback_data=f"plistpage_{page + 1}"))
-    if nav:
-        buttons.append(nav)
-    text = f"📋 রোগীর তালিকা (পাতা {page + 1}) — নাম চাপো:"
-    markup = InlineKeyboardMarkup(buttons)
-    if edit:
-        await message.edit_text(text, reply_markup=markup)
-    else:
-        await message.reply_text(text, reply_markup=markup)
-
-
-async def patient_list_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    page = int(query.data.replace("plistpage_", ""))
-    await _send_patient_list_page(query.message, context, page=page, edit=True)
-
-
-async def patient_list_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    _, patient_id, page = query.data.split("_", 2)
-    patients = context.user_data.get("plist_patients", {})
-    patient = patients.get(patient_id)
-    if not patient:
-        await query.edit_message_text("❌ তালিকার মেয়াদ শেষ। আবার 📋 রোগীর তালিকা চাপো।")
-        return
-    context.user_data["plist_last_page"] = int(page)
-    await query.edit_message_text(
-        _patient_card_text(patient),
-        reply_markup=_patient_card_keyboard(patient_id),
-    )
-
-
-async def patient_list_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    page = context.user_data.get("plist_last_page", 0)
-    await _send_patient_list_page(query.message, context, page=page, edit=True)
-
-
-async def plist_action_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    patient_id = query.data.replace("plistact_pay_", "")
-    patient = sheets.get_patient_by_id(patient_id)
-    if not patient:
-        await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
-        return ConversationHandler.END
-    context.user_data["payment"] = {
-        "Patient_ID": patient.get("Patient_ID", ""),
-        "Patient_Name": patient.get("Full_Name", ""),
-        "Department": patient.get("Department", ""),
-    }
-    total_bill = patient.get("Total_Bill", 0) or 0
-    paid_amount = patient.get("Paid_Amount", 0) or 0
-    due_amount = patient.get("Due_Amount", 0) or 0
-    await query.edit_message_text(
-        f"✅ রোগী বাছাই হয়েছে: {patient.get('Full_Name')} ({patient.get('Patient_ID')})\n\n"
-        f"মোট বিল: {total_bill}\nজমা হয়েছে: {paid_amount}\nবাকি: {due_amount}"
-    )
-    await query.message.reply_text(
-        "আজ কয়টা সেশন হলো লেখো (না থাকলে 0):",
-        reply_markup=_number_keyboard([str(n) for n in range(0, 6)]),
-    )
-    return PAY_SESSION
-
-
-async def plist_action_apt(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    patient_id = query.data.replace("plistact_apt_", "")
-    patient = sheets.get_patient_by_id(patient_id)
-    if not patient:
-        await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
-        return ConversationHandler.END
-    context.user_data["new_appointment"] = {
-        "Patient_ID": patient.get("Patient_ID", ""),
-        "Patient_Name": patient.get("Full_Name", ""),
-        "Department": patient.get("Department", ""),
-    }
-    await query.edit_message_text(
-        f"✅ রোগী বাছাই হয়েছে: {patient.get('Full_Name')} ({patient.get('Patient_ID')})"
-    )
-    await query.message.reply_text(
-        "তারিখ বেছে নাও (অথবা টাইপ করো, উদাহরণ: 2026-07-15):",
-        reply_markup=_date_keyboard(),
-    )
-    return APT_DATE
-
-
-async def plist_action_treat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    patient_id = query.data.replace("plistact_treat_", "")
-    patient = sheets.get_patient_by_id(patient_id)
-    if not patient:
-        await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
-        return ConversationHandler.END
-    context.user_data["treatment"] = {
-        "Patient_ID": patient.get("Patient_ID", ""),
-        "Patient_Name": patient.get("Full_Name", ""),
-    }
-    await query.edit_message_text(
-        f"✅ রোগী বাছাই হয়েছে: {patient.get('Full_Name')} ({patient.get('Patient_ID')})"
-    )
-    await query.message.reply_text("আজকের সমস্যা/পর্যবেক্ষণ (Diagnosis) লেখো:")
-    return TREAT_DIAGNOSIS
-
-
-async def plist_action_hist(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    patient_id = query.data.replace("plistact_hist_", "")
-    patient = sheets.get_patient_by_id(patient_id)
-    if patient is None:
-        await query.edit_message_text("রোগী পাওয়া যায়নি।")
-        return
-
-    name = patient.get("Full_Name") or patient.get("Name") or "Unknown"
-    lines = [f"📜 {name} ({patient_id})-এর ইতিহাস", ""]
-    lines.append("👤 প্রোফাইল:")
-    lines.append(f"  ফোন: {patient.get('Phone', 'N/A')}")
-    lines.append(f"  ঠিকানা: {patient.get('Address', 'N/A')}")
-    note = patient.get("Note") or patient.get("Notes") or patient.get("Problem", "")
-    if note:
-        lines.append(f"  নোট: {note}")
-    therapist = patient.get("Therapist", "")
-    if therapist:
-        lines.append(f"  থেরাপিস্ট: {therapist}")
-    lines.append("")
-
-    package = sheets.get_active_package_for_patient(patient_id)
-    if package:
-        total = package.get("Total_Sessions", "N/A")
-        done = package.get("Sessions_Completed", "N/A")
-        lines.append(f"🗓️ সেশন: {done} সম্পন্ন / {total} মোট")
-        lines.append("")
-
-    payments = sheets.get_payments_for_patient(patient_id)
-    if payments:
-        lines.append("💳 পেমেন্ট হিস্টরি:")
-        total_paid = 0.0
-        last_due = 0.0
-        for p in payments:
-            date_str = p.get("Date", "")
-            amount = float(p.get("Amount", 0) or 0)
-            due = float(p.get("Due", 0) or 0)
-            method = p.get("Payment_Method", "")
-            total_paid += amount
-            last_due = due
-            lines.append(f"  • {date_str}: {amount:.0f} টাকা ({method})")
-        lines.append("")
-        lines.append(f"💰 সর্বমোট জমা: {total_paid:.0f} টাকা")
-        lines.append(f"⏳ সর্বশেষ বাকি: {last_due:.0f} টাকা")
-    else:
-        lines.append("💳 কোনো পেমেন্ট রেকর্ড নেই।")
-    lines.append("")
-
-    appointments = sheets.get_appointments_for_patient(patient_id)
-    if appointments:
-        lines.append("📅 অ্যাপয়েন্টমেন্ট হিস্টরি:")
-        for a in appointments[-10:]:
-            date_str = a.get("Date", "")
-            status = a.get("Status", "")
-            lines.append(f"  • {date_str}: {status}")
-    else:
-        lines.append("📅 কোনো অ্যাপয়েন্টমেন্ট রেকর্ড নেই।")
-    lines.append("")
-
-    treatment_notes = sheets.get_treatment_notes_for_patient(patient_id)
-    if treatment_notes:
-        lines.append("📝 ট্রিটমেন্ট নোট:")
-        for t in treatment_notes[-5:]:
-            date_str = t.get("Date", "")
-            note_text = t.get("Note", "") or t.get("Notes", "")
-            lines.append(f"  • {date_str}: {note_text}")
-    else:
-        lines.append("📝 কোনো ট্রিটমেন্ট নোট নেই।")
-
-    full_text = "\n".join(lines)
-    if len(full_text) > 4000:
-        full_text = full_text[:3990] + "\n...(আরও আছে)"
-
-    await query.edit_message_text(full_text)
-
-
 def main():
     app = Application.builder().token(config.BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -1835,17 +1464,15 @@ def main():
     )
     app.add_handler(CallbackQueryHandler(attendance_callback, pattern="^att_"))
     app.add_handler(
+        MessageHandler(filters.Regex(f"^{roles.MENU_PATIENT_LIST}$"), patient_list_start)
+    )
+    app.add_handler(CallbackQueryHandler(patient_list_select_callback, pattern="^plsel_"))
+    app.add_handler(CallbackQueryHandler(patient_list_done_callback, pattern="^pldone_"))
+    app.add_handler(CallbackQueryHandler(patient_list_hist_callback, pattern="^plact_hist_"))
+    app.add_handler(
         MessageHandler(filters.Regex(f"^{roles.MENU_TODAY_APPOINTMENTS}$"), today_appointments)
     )
     app.add_handler(CallbackQueryHandler(apt_status_callback, pattern="^aptstatus_"))
-
-    app.add_handler(
-        MessageHandler(filters.Regex(f"^{roles.MENU_PATIENT_LIST}$"), patient_list_start)
-    )
-    app.add_handler(CallbackQueryHandler(patient_list_page_callback, pattern="^plistpage_"))
-    app.add_handler(CallbackQueryHandler(patient_list_select_callback, pattern="^plistsel_"))
-    app.add_handler(CallbackQueryHandler(patient_list_back_callback, pattern="^plistact_back$"))
-    app.add_handler(CallbackQueryHandler(plist_action_hist, pattern="^plistact_hist_"))
 
     reg_conv = ConversationHandler(
         entry_points=[
@@ -1869,7 +1496,7 @@ def main():
     apt_conv = ConversationHandler(
         entry_points=[
             MessageHandler(filters.Regex(f"^{roles.MENU_APPOINTMENT}$"), apt_start),
-            CallbackQueryHandler(plist_action_apt, pattern="^plistact_apt_"),
+            CallbackQueryHandler(apt_start_from_list, pattern="^plact_apt_"),
         ],
         states={
             APT_SEARCH: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_search)],
@@ -1882,10 +1509,7 @@ def main():
                 CallbackQueryHandler(apt_time_callback, pattern="^apttime_"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_time),
             ],
-            APT_THERAPIST: [
-                CallbackQueryHandler(apt_therapist_callback, pattern="^aptther_"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_therapist),
-            ],
+            APT_THERAPIST: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_therapist)],
             APT_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_confirm)],
         },
         fallbacks=[
@@ -1897,7 +1521,7 @@ def main():
     pay_conv = ConversationHandler(
         entry_points=[
             MessageHandler(filters.Regex(f"^{roles.MENU_PAYMENT}$"), pay_start),
-            CallbackQueryHandler(plist_action_pay, pattern="^plistact_pay_"),
+            CallbackQueryHandler(pay_start_from_list, pattern="^plact_pay_"),
         ],
         states={
             PAY_SEARCH: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_search)],
@@ -1919,7 +1543,7 @@ def main():
     treat_conv = ConversationHandler(
         entry_points=[
             MessageHandler(filters.Regex(f"^{roles.MENU_TREATMENT_NOTE}$"), treat_start),
-            CallbackQueryHandler(plist_action_treat, pattern="^plistact_treat_"),
+            CallbackQueryHandler(treat_start_from_list, pattern="^plact_treat_"),
         ],
         states={
             TREAT_SEARCH: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), treat_search)],
@@ -1940,32 +1564,6 @@ def main():
     )
     app.add_handler(treat_conv)
 
-    tplan_conv = ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_TREATMENT_PLAN}$"), tplan_start),
-        ],
-        states={
-            TPLAN_SEARCH: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_search)],
-            TPLAN_SELECT: [CallbackQueryHandler(tplan_select_callback, pattern="^tplansel_")],
-            TPLAN_DIAGNOSIS: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_diagnosis)],
-            TPLAN_GIVEN: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_given)],
-            TPLAN_EXERCISE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_exercise)],
-            TPLAN_ELECTRO: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_electro)],
-            TPLAN_MANUAL: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_manual)],
-            TPLAN_MACHINES: [
-                CallbackQueryHandler(tplan_machine_toggle, pattern="^tpm_"),
-                CallbackQueryHandler(tplan_done, pattern="^tpdone_"),
-                CallbackQueryHandler(tplan_cancel_callback, pattern="^tpcancel_"),
-            ],
-        },
-        fallbacks=[
-            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
-            CommandHandler("cancel", tplan_cancel),
-            CommandHandler("start", _restart_via_start),
-        ],
-    )
-    app.add_handler(tplan_conv)
-
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_REPORTS}$"), reports_menu))
     hist_conv = ConversationHandler(
         entry_points=[MessageHandler(filters.Regex(f"^{roles.MENU_PATIENT_HISTORY}$"), hist_start)],
@@ -1980,23 +1578,6 @@ def main():
             CommandHandler("start", _restart_via_start),],
     )
     app.add_handler(hist_conv)
-
-    thist_conv = ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_TREATMENT_HISTORY}$"), thist_start),
-        ],
-        states={
-            "THIST_SEARCH": [
-                CallbackQueryHandler(thist_patient_callback, pattern="^thpsel_"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, thist_search),
-            ],
-            "THIST_DATE": [
-                CallbackQueryHandler(thist_date_callback, pattern="^thdate_"),
-            ],
-        },
-        fallbacks=[CommandHandler("cancel", thist_cancel)],
-    )
-    app.add_handler(thist_conv)
 
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_HOME}$"), go_home))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), unknown_menu))
