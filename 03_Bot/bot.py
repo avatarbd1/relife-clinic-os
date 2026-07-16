@@ -2129,7 +2129,8 @@ def main():
             APT_SEARCH: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_search)],
             APT_SELECT: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_select)],
             APT_DATE: [
-                CallbackQueryHandler(apt_date_callback, pattern="^aptdate_"),
+                CallbackQueryHandler(apt_date_toggle_callback, pattern="^aptdatetoggle_"),
+                CallbackQueryHandler(apt_date_done_callback, pattern="^aptdatedone$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_date),
             ],
             APT_TIME: [
