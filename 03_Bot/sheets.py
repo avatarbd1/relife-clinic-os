@@ -6,6 +6,18 @@ Google Sheets-কে ডেটাবেস হিসেবে ব্যবহা
 """
 
 import gspread
+
+def safe_get_all_records(ws):
+    """get_all_records()-এর নিরাপদ ভার্সন — sheet-এ শুধু header বা কোনো row না থাকলে crash না করে খালি list রিটার্ন করে।"""
+    try:
+        if ws.row_count < 2:
+            return []
+        first_row = ws.row_values(1)
+        if not first_row:
+            return []
+        return ws.get_all_records()
+    except Exception:
+        return []
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
@@ -43,7 +55,7 @@ def _worksheet(name: str):
 
 def get_staff_by_telegram_id(telegram_id: int) -> dict | None:
     ws = _worksheet(config.SHEET_STAFF)
-    records = ws.get_all_records()
+    records = safe_get_all_records(ws)
     for row in records:
         if str(row.get("Telegram_ID", "")).strip() == str(telegram_id):
             if str(row.get("Status", "")).strip().lower() == "inactive":
@@ -114,7 +126,7 @@ def add_patient(data: dict, created_by: str) -> str:
 
 def get_all_patients() -> list[dict]:
     ws = _worksheet(config.SHEET_PATIENTS)
-    records = ws.get_all_records()
+    records = safe_get_all_records(ws)
 
     for r in records:
         phone = str(r.get("Phone", "")).strip()
@@ -200,7 +212,7 @@ def add_appointment(data: dict, created_by: str) -> str:
 
 def get_all_appointments() -> list[dict]:
     ws = _worksheet(config.SHEET_APPOINTMENTS)
-    return ws.get_all_records()
+    return safe_get_all_records(ws)
 
 
 def get_appointments_for_date(date_str: str) -> list[dict]:
@@ -232,7 +244,7 @@ def _next_attendance_id(ws) -> str:
 
 def get_today_attendance(staff_id: str, date_str: str) -> dict | None:
     ws = _worksheet(config.SHEET_ATTENDANCE)
-    records = ws.get_all_records()
+    records = safe_get_all_records(ws)
     for idx, row in enumerate(records, start=2):
         if (
             str(row.get("Staff_ID", "")).strip() == str(staff_id).strip()
@@ -424,7 +436,7 @@ def get_active_package_for_patient(patient_id: str) -> dict | None:
         ws = _worksheet(package_sheet_name)
     except gspread.exceptions.WorksheetNotFound:
         return None
-    records = ws.get_all_records()
+    records = safe_get_all_records(ws)
     for idx, r in enumerate(records, start=2):
         if str(r.get("Patient_ID", "")).strip() == patient_id.strip() and r.get("Status", "") == "Active":
             r["_row_number"] = idx
@@ -462,7 +474,7 @@ def increment_package_session(patient_id: str) -> bool:
 def _next_daily_sl(ws, date_str: str) -> int:
     """সেই তারিখে এখন পর্যন্ত কতগুলো পেমেন্ট এন্ট্রি হয়েছে তা গুনে পরের SL নম্বর দেয়।"""
     try:
-        records = ws.get_all_records()
+        records = safe_get_all_records(ws)
     except Exception:
         return 1
     count = sum(1 for r in records if str(r.get("Date", "")) == date_str)
@@ -494,7 +506,7 @@ def add_payment(data: dict) -> str:
 
 def get_all_payments() -> list[dict]:
     ws = _worksheet(config.SHEET_PAYMENTS)
-    return ws.get_all_records()
+    return safe_get_all_records(ws)
 
 
 def get_payments_for_patient(patient_id: str) -> list[dict]:
@@ -509,7 +521,7 @@ def get_appointments_for_patient(patient_id: str) -> list[dict]:
 
 def get_treatment_notes_for_patient(patient_id: str) -> list[dict]:
     ws = _worksheet(config.SHEET_TREATMENTS)
-    all_notes = ws.get_all_records()
+    all_notes = safe_get_all_records(ws)
     return [n for n in all_notes if str(n.get("Patient_ID", "")).strip() == str(patient_id).strip()]
 
 
@@ -621,7 +633,7 @@ def add_treatment_plan(data: dict, created_by: str) -> str:
 def get_active_plan_for_patient(patient_id: str) -> dict | None:
     """রোগীর বর্তমান Active ট্রিটমেন্ট প্ল্যান ফেরত দেয় (থাকলে), না থাকলে None।"""
     ws = _worksheet(config.SHEET_TREATMENT_PLANS)
-    records = ws.get_all_records()
+    records = safe_get_all_records(ws)
     for idx, r in enumerate(records, start=2):
         if (
             str(r.get("Patient_ID", "")).strip() == patient_id.strip()
@@ -638,7 +650,7 @@ def get_last_plan_for_patient(patient_id: str) -> dict | None:
     নতুন প্ল্যান বানানোর সময় আগের প্ল্যানের মান ডিফল্ট হিসেবে (- দিলে) ব্যবহার করতে কাজে লাগে।
     """
     ws = _worksheet(config.SHEET_TREATMENT_PLANS)
-    records = ws.get_all_records()
+    records = safe_get_all_records(ws)
     patient_plans = [
         r for r in records
         if str(r.get("Patient_ID", "")).strip() == patient_id.strip()
