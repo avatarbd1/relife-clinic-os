@@ -729,3 +729,79 @@ def get_daily_register(date_str: str | None = None) -> dict:
         "total_paid": total_paid,
         "total_due": total_due,
     }
+
+
+def _next_bug_id(ws) -> str:
+    """13_BugReports শীটে পরবর্তী Bug_ID (BGxxxx ফরম্যাটে) বের করে।"""
+    ids = ws.col_values(1)[1:]
+    numbers = []
+    for v in ids:
+        if v.startswith("BG"):
+            try:
+                numbers.append(int(v[2:]))
+            except ValueError:
+                pass
+    next_num = (max(numbers) + 1) if numbers else 1
+    return f"BG{next_num:04d}"
+
+
+def add_bug_report(data: dict) -> str:
+    """13_BugReports শীটে নতুন বাগ রিপোর্ট যোগ করে, Status সবসময় 'Open' দিয়ে শুরু হয়।"""
+    ws = _worksheet(config.SHEET_BUG_REPORTS)
+    bug_id = _next_bug_id(ws)
+    now = datetime.now()
+    row = [
+        bug_id,
+        now.strftime("%Y-%m-%d"),
+        now.strftime("%H:%M"),
+        data.get("Reported_By", ""),
+        data.get("Role", ""),
+        data.get("Description", ""),
+        data.get("Photo_File_ID", ""),
+        "Open",
+        "",
+    ]
+    ws.append_row(row, value_input_option="RAW")
+    return bug_id
+
+
+def get_open_bug_reports() -> list[dict]:
+    """Status='Open' থাকা সব বাগ রিপোর্ট ফেরত দেয়, প্রতিটার সাথে শীট row_number সহ।"""
+    ws = _worksheet(config.SHEET_BUG_REPORTS)
+    records = safe_get_all_records(ws)
+    result = []
+    for idx, r in enumerate(records, start=2):
+        if str(r.get("Status", "")).strip() == "Open":
+            r["_row_number"] = idx
+            result.append(r)
+    return result
+
+
+def mark_bug_report_fixed(bug_id: str) -> bool:
+    """একটা Bug_ID-র Status='Fixed' করে দেয়।"""
+    ws = _worksheet(config.SHEET_BUG_REPORTS)
+    records = safe_get_all_records(ws)
+    for idx, r in enumerate(records, start=2):
+        if str(r.get("Bug_ID", "")).strip() == bug_id.strip():
+            ws.update_cell(idx, 8, "Fixed")  # Status কলাম H
+            return True
+    return False
+
+
+def get_staff_telegram_ids_by_role(role: str) -> list[int]:
+    """নির্দিষ্ট Role-এর active স্টাফদের Telegram_ID-র লিস্ট ফেরত দেয় (নোটিফিকেশন পাঠানোর জন্য)।"""
+    ws = _worksheet(config.SHEET_STAFF)
+    records = safe_get_all_records(ws)
+    ids = []
+    for r in records:
+        if (
+            str(r.get("Role", "")).strip() == role.strip()
+            and str(r.get("Status", "")).strip().lower() != "inactive"
+        ):
+            tid = str(r.get("Telegram_ID", "")).strip()
+            if tid:
+                try:
+                    ids.append(int(tid))
+                except ValueError:
+                    pass
+    return ids

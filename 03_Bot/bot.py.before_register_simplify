@@ -110,8 +110,6 @@ _ALL_MENU_ITEMS = [
     roles.MENU_TREATMENT_HISTORY,
     roles.MENU_PATIENT_LIST,
     roles.MENU_DAILY_REGISTER,
-    roles.MENU_BUG_REPORT,
-    roles.MENU_BUG_LIST,
 ]
 _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 
@@ -125,11 +123,6 @@ _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
     TPLAN_MANUAL,
     TPLAN_CONFIRM,
 ) = range(29, 37)
-
-(
-    BUG_DESC,
-    BUG_PHOTO,
-) = range(37, 39)
 
 MACHINE_LIST = [
     "Hot Pack", "Cold Pack",
@@ -888,7 +881,7 @@ async def pay_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     await query.answer()
     patient_id = query.data.replace("paysel_", "")
     results = context.user_data.get("pay_search_results", {})
-    patient = results.get(patient_id) or sheets.get_patient_by_id(patient_id)
+    patient = results.get(patient_id)
     if not patient:
         await query.edit_message_text(
             "❌ তালিকার মেয়াদ শেষ। আবার শুরু করতে /cancel দাও, তারপর 📋 আজকের রেজিস্টার থেকে ➕ নতুন এন্ট্রি চাপো।"
@@ -1156,7 +1149,7 @@ async def treat_select_callback(update: Update, context: ContextTypes.DEFAULT_TY
     await query.answer()
     patient_id = query.data.replace("treatsel_", "")
     results = context.user_data.get("treat_search_results", {})
-    patient = results.get(patient_id) or sheets.get_patient_by_id(patient_id)
+    patient = results.get(patient_id)
     if not patient:
         await query.edit_message_text(
             "❌ তালিকার মেয়াদ শেষ। আবার শুরু করতে /cancel দাও, তারপর 📝 ট্রিটমেন্ট নোট চাপো।"
@@ -1293,7 +1286,7 @@ async def tplan_select_callback(update: Update, context: ContextTypes.DEFAULT_TY
     await query.answer()
     patient_id = query.data.replace("tplansel_", "")
     results = context.user_data.get("tplan_search_results", {})
-    patient = results.get(patient_id) or sheets.get_patient_by_id(patient_id)
+    patient = results.get(patient_id)
     if not patient:
         await query.edit_message_text(
             "❌ তালিকার মেয়াদ শেষ। আবার শুরু করতে /cancel দাও, তারপর 🩺 ট্রিটমেন্ট প্ল্যান চাপো।"
@@ -1484,9 +1477,15 @@ def _register_view_text_and_keyboard():
         lines.append("আজ এখনো কোনো এন্ট্রি হয়নি।")
     else:
         for r in reg["rows"]:
-            lines.append(f"{r['Sl']}. {r['Patient_Name']} — সেশন: {r['Sessions']}")
+            lines.append(
+                f"{r['Sl']}. {r['Patient_Name']} | সেশন {r['Sessions']} | "
+                f"বিল {r['Bill']:.0f} | পেইড {r['Paid']:.0f} | বাকি {r['Due']:.0f} | {r['Status']}"
+            )
         lines.append("")
-        lines.append(f"👥 মোট রোগী: {reg['total_patients']}   🩺 মোট সেশন: {reg['total_sessions']}")
+        lines.append(f"👥 মোট রোগী: {reg['total_patients']} | 🩺 সেশন: {reg['total_sessions']}")
+        lines.append(
+            f"💵 বিল: {reg['total_bill']:.0f} | ✅ পেইড: {reg['total_paid']:.0f} | ⏳ বাকি: {reg['total_due']:.0f}"
+        )
     keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("➕ নতুন এন্ট্রি", callback_data="regnew")]])
     return "\n".join(lines), keyboard
 
@@ -2075,122 +2074,6 @@ async def plist_action_hist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(full_text)
 
 
-# ---------- বাগ রিপোর্ট ----------
-
-async def bug_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
-    if staff is None:
-        return ConversationHandler.END
-    context.user_data["bug_report"] = {}
-    await update.message.reply_text(
-        "🐛 কী সমস্যা হচ্ছে লিখো (এক বা একাধিক লাইনে):",
-        reply_markup=ReplyKeyboardRemove(),
-    )
-    return BUG_DESC
-
-
-async def bug_desc(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["bug_report"]["Description"] = update.message.text.strip()
-    await update.message.reply_text(
-        "স্ক্রিনশট/ছবি থাকলে পাঠাও, না থাকলে - দাও:",
-        reply_markup=_skip_keyboard(),
-    )
-    return BUG_PHOTO
-
-
-async def bug_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff", {})
-    photo_file_id = ""
-    if update.message.photo:
-        photo_file_id = update.message.photo[-1].file_id
-    bug = context.user_data.get("bug_report", {})
-    bug["Reported_By"] = staff.get("Full_Name", "Unknown")
-    bug["Role"] = staff.get("Role", "")
-    bug["Photo_File_ID"] = photo_file_id
-    bug_id = sheets.add_bug_report(bug)
-
-    await update.message.reply_text(
-        f"✅ ধন্যবাদ, সমস্যা রিপোর্ট করা হয়েছে। (ID: {bug_id})",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
-    )
-
-    owner_ids = sheets.get_staff_telegram_ids_by_role("Owner")
-    alert_text = (
-        f"🐛 নতুন সমস্যা রিপোর্ট (ID: {bug_id})\n"
-        f"রিপোর্ট করেছেন: {bug['Reported_By']} ({bug['Role']})\n\n"
-        f"{bug['Description']}"
-    )
-    for owner_id in owner_ids:
-        if owner_id == update.effective_user.id:
-            continue
-        try:
-            if photo_file_id:
-                await context.bot.send_photo(
-                    chat_id=owner_id, photo=photo_file_id, caption=alert_text
-                )
-            else:
-                await context.bot.send_message(chat_id=owner_id, text=alert_text)
-        except Exception:
-            logger.exception("Owner-কে বাগ রিপোর্ট নোটিফাই করতে ব্যর্থ হয়েছে")
-
-    context.user_data.pop("bug_report", None)
-    return ConversationHandler.END
-
-
-async def bug_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff", {})
-    context.user_data.pop("bug_report", None)
-    await update.message.reply_text(
-        "❌ বাতিল করা হয়েছে।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
-    )
-    return ConversationHandler.END
-
-
-def _bug_list_keyboard(bug_id: str) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        [[InlineKeyboardButton("✅ সমাধান হয়েছে", callback_data=f"bugfix_{bug_id}")]]
-    )
-
-
-async def bug_list_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
-    if staff is None:
-        return
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_BUG_LIST):
-        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
-        return
-    open_bugs = sheets.get_open_bug_reports()
-    if not open_bugs:
-        await update.message.reply_text("✅ কোনো Open সমস্যা নেই।")
-        return
-    await update.message.reply_text(f"📋 Open সমস্যা: {len(open_bugs)}টি")
-    for bug in open_bugs:
-        text = (
-            f"🐛 {bug.get('Bug_ID', '')} — {bug.get('Date', '')} {bug.get('Time', '')}\n"
-            f"রিপোর্ট করেছেন: {bug.get('Reported_By', '')} ({bug.get('Role', '')})\n\n"
-            f"{bug.get('Description', '')}"
-        )
-        photo_id = bug.get("Photo_File_ID", "")
-        keyboard = _bug_list_keyboard(bug.get("Bug_ID", ""))
-        if photo_id:
-            await update.message.reply_photo(photo=photo_id, caption=text, reply_markup=keyboard)
-        else:
-            await update.message.reply_text(text, reply_markup=keyboard)
-
-
-async def bug_fix_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    bug_id = query.data.replace("bugfix_", "")
-    sheets.mark_bug_report_fixed(bug_id)
-    try:
-        await query.edit_message_reply_markup(reply_markup=None)
-    except Exception:
-        pass
-    await query.message.reply_text(f"✅ {bug_id} সমাধান হয়েছে বলে মার্ক করা হলো।")
-
-
 def main():
     app = Application.builder().token(config.BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -2243,14 +2126,8 @@ def main():
             CallbackQueryHandler(plist_action_apt, pattern="^plistact_apt_"),
         ],
         states={
-            APT_SEARCH: [
-                CallbackQueryHandler(apt_select_callback, pattern="^aptsel_"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_search),
-            ],
-            APT_SELECT: [
-                CallbackQueryHandler(apt_select_callback, pattern="^aptsel_"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_select),
-            ],
+            APT_SEARCH: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_search)],
+            APT_SELECT: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_select)],
             APT_DATE: [
                 CallbackQueryHandler(apt_date_toggle_callback, pattern="^aptdatetoggle_"),
                 CallbackQueryHandler(apt_date_done_callback, pattern="^aptdatedone$"),
@@ -2279,10 +2156,7 @@ def main():
             CallbackQueryHandler(reg_new_start, pattern="^regnew$"),
         ],
         states={
-            PAY_SEARCH: [
-                CallbackQueryHandler(pay_select_callback, pattern="^paysel_"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_search),
-            ],
+            PAY_SEARCH: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_search)],
             PAY_SELECT: [
                 CallbackQueryHandler(pay_select_callback, pattern="^paysel_"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_select),
@@ -2308,10 +2182,7 @@ def main():
             CallbackQueryHandler(plist_action_treat, pattern="^plistact_treat_"),
         ],
         states={
-            TREAT_SEARCH: [
-                CallbackQueryHandler(treat_select_callback, pattern="^treatsel_"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), treat_search),
-            ],
+            TREAT_SEARCH: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), treat_search)],
             TREAT_SELECT: [CallbackQueryHandler(treat_select_callback, pattern="^treatsel_")],
             TREAT_MACHINES: [
                 CallbackQueryHandler(treat_machine_toggle, pattern="^trm_"),
@@ -2331,10 +2202,7 @@ def main():
             MessageHandler(filters.Regex(f"^{roles.MENU_TREATMENT_PLAN}$"), tplan_start),
         ],
         states={
-            TPLAN_SEARCH: [
-                CallbackQueryHandler(tplan_select_callback, pattern="^tplansel_"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_search),
-            ],
+            TPLAN_SEARCH: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_search)],
             TPLAN_SELECT: [CallbackQueryHandler(tplan_select_callback, pattern="^tplansel_")],
             TPLAN_DIAGNOSIS: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_diagnosis)],
             TPLAN_TOTAL: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_total)],
@@ -2382,30 +2250,6 @@ def main():
         fallbacks=[CommandHandler("cancel", thist_cancel)],
     )
     app.add_handler(thist_conv)
-
-    app.add_handler(
-        MessageHandler(filters.Regex(f"^{roles.MENU_BUG_LIST}$"), bug_list_menu)
-    )
-    app.add_handler(CallbackQueryHandler(bug_fix_callback, pattern="^bugfix_"))
-
-    bug_conv = ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_BUG_REPORT}$"), bug_start)
-        ],
-        states={
-            BUG_DESC: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), bug_desc)],
-            BUG_PHOTO: [
-                MessageHandler(filters.PHOTO, bug_photo),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), bug_photo),
-            ],
-        },
-        fallbacks=[
-            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
-            CommandHandler("cancel", bug_cancel),
-            CommandHandler("start", _restart_via_start),
-        ],
-    )
-    app.add_handler(bug_conv)
 
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_HOME}$"), go_home))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), unknown_menu))

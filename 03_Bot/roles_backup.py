@@ -23,8 +23,6 @@ MENU_PATIENT_HISTORY = "📜 রোগীর ইতিহাস"
 MENU_TREATMENT_HISTORY = "📅 ট্রিটমেন্ট হিস্টরি"
 MENU_PATIENT_LIST = "📋 রোগীর তালিকা"
 MENU_DAILY_REGISTER = "📋 আজকের রেজিস্টার"
-MENU_BUG_REPORT = "🐛 সমস্যা জানান"
-MENU_BUG_LIST = "📋 সমস্যার লিস্ট"
 
 ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
     Role.OWNER: [
@@ -35,7 +33,6 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_ATTENDANCE, MENU_TREATMENT_NOTE],
         [MENU_TREATMENT_PLAN, MENU_TREATMENT_HISTORY],
         [MENU_DAILY_REGISTER, MENU_REPORTS],
-        [MENU_BUG_REPORT, MENU_BUG_LIST],
         [MENU_SETTINGS],
     ],
     Role.RECEPTIONIST: [
@@ -45,7 +42,6 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_APPOINTMENT, MENU_TODAY_APPOINTMENTS],
         [MENU_ATTENDANCE],
         [MENU_DAILY_REGISTER, MENU_REPORTS],
-        [MENU_BUG_REPORT],
     ],
     Role.THERAPIST: [
         [MENU_HOME],
@@ -53,7 +49,6 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_MY_PATIENTS],
         [MENU_TREATMENT_NOTE],
         [MENU_TREATMENT_PLAN, MENU_TREATMENT_HISTORY],
-        [MENU_BUG_REPORT],
     ],
     Role.MANAGER: [
         [MENU_HOME],
@@ -62,7 +57,6 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_APPOINTMENT, MENU_TODAY_APPOINTMENTS],
         [MENU_ATTENDANCE],
         [MENU_REPORTS],
-        [MENU_BUG_REPORT],
     ],
 }
 
