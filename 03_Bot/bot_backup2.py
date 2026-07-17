@@ -672,13 +672,13 @@ async def apt_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text in ("হ্যাঁ", "yes", "y", "হা", "ha"):
         a = context.user_data.get("new_appointment", {})
         dates = a.get("Dates") or ([a["Date"]] if a.get("Date") else [])
-        rows_data = []
+        ids = []
         for d in dates:
             row = dict(a)
             row["Date"] = d
             row.pop("Dates", None)
-            rows_data.append(row)
-        ids = sheets.add_appointments_batch(rows_data, created_by=staff.get("Full_Name", "Unknown"))
+            appointment_id = sheets.add_appointment(row, created_by=staff.get("Full_Name", "Unknown"))
+            ids.append(appointment_id)
         if len(ids) > 1:
             msg = f"✅ {len(ids)}টা অ্যাপয়েন্টমেন্ট বুক হয়েছে!\nAppointment IDs: {', '.join(ids)}"
         else:

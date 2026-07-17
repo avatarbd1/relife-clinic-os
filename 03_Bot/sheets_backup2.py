@@ -179,7 +179,7 @@ def find_patient_by_phone(phone: str) -> dict | None:
     return None
 
 
-def _next_appointment_id_num(ws) -> int:
+def _next_appointment_id(ws) -> str:
     ids = ws.col_values(1)[1:]
     numbers = []
     for v in ids:
@@ -188,11 +188,8 @@ def _next_appointment_id_num(ws) -> int:
                 numbers.append(int(v[2:]))
             except ValueError:
                 pass
-    return (max(numbers) + 1) if numbers else 1
-
-
-def _next_appointment_id(ws) -> str:
-    return f"AP{_next_appointment_id_num(ws):04d}"
+    next_num = (max(numbers) + 1) if numbers else 1
+    return f"AP{next_num:04d}"
 
 
 def add_appointment(data: dict, created_by: str) -> str:
@@ -211,29 +208,6 @@ def add_appointment(data: dict, created_by: str) -> str:
     ]
     ws.append_row(row, value_input_option="RAW")
     return appointment_id
-
-
-def add_appointments_batch(data_list: list[dict], created_by: str) -> list[str]:
-    ws = _worksheet(config.SHEET_APPOINTMENTS)
-    start_num = _next_appointment_id_num(ws)
-    ids = []
-    rows = []
-    for i, data in enumerate(data_list):
-        appointment_id = f"AP{start_num + i:04d}"
-        ids.append(appointment_id)
-        rows.append([
-            appointment_id,
-            data.get("Date", ""),
-            data.get("Time", ""),
-            data.get("Patient_ID", ""),
-            data.get("Patient_Name", ""),
-            data.get("Department", ""),
-            data.get("Therapist", ""),
-            "Scheduled",
-            data.get("Remarks", ""),
-        ])
-    ws.append_rows(rows, value_input_option="RAW")
-    return ids
 
 
 def get_all_appointments() -> list[dict]:
