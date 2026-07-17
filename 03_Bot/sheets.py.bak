@@ -6,6 +6,18 @@ Google Sheets-কে ডেটাবেস হিসেবে ব্যবহা
 """
 
 import gspread
+
+def safe_get_all_records(ws):
+    """get_all_records()-এর নিরাপদ ভার্সন — sheet-এ শুধু header বা কোনো row না থাকলে crash না করে খালি list রিটার্ন করে।"""
+    try:
+        if ws.row_count < 2:
+            return []
+        first_row = ws.row_values(1)
+        if not first_row:
+            return []
+        return ws.get_all_records()
+    except Exception:
+        return []
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
@@ -43,7 +55,7 @@ def _worksheet(name: str):
 
 def get_staff_by_telegram_id(telegram_id: int) -> dict | None:
     ws = _worksheet(config.SHEET_STAFF)
-    records = ws.get_all_records()
+    records = safe_get_all_records(ws)
     for row in records:
         if str(row.get("Telegram_ID", "")).strip() == str(telegram_id):
             if str(row.get("Status", "")).strip().lower() == "inactive":
@@ -114,7 +126,7 @@ def add_patient(data: dict, created_by: str) -> str:
 
 def get_all_patients() -> list[dict]:
     ws = _worksheet(config.SHEET_PATIENTS)
-    records = ws.get_all_records()
+    records = safe_get_all_records(ws)
 
     for r in records:
         phone = str(r.get("Phone", "")).strip()
@@ -167,7 +179,7 @@ def find_patient_by_phone(phone: str) -> dict | None:
     return None
 
 
-def _next_appointment_id(ws) -> str:
+def _next_appointment_id_num(ws) -> int:
     ids = ws.col_values(1)[1:]
     numbers = []
     for v in ids:
@@ -176,8 +188,11 @@ def _next_appointment_id(ws) -> str:
                 numbers.append(int(v[2:]))
             except ValueError:
                 pass
-    next_num = (max(numbers) + 1) if numbers else 1
-    return f"AP{next_num:04d}"
+    return (max(numbers) + 1) if numbers else 1
+
+
+def _next_appointment_id(ws) -> str:
+    return f"AP{_next_appointment_id_num(ws):04d}"
 
 
 def add_appointment(data: dict, created_by: str) -> str:
@@ -198,9 +213,32 @@ def add_appointment(data: dict, created_by: str) -> str:
     return appointment_id
 
 
+def add_appointments_batch(data_list: list[dict], created_by: str) -> list[str]:
+    ws = _worksheet(config.SHEET_APPOINTMENTS)
+    start_num = _next_appointment_id_num(ws)
+    ids = []
+    rows = []
+    for i, data in enumerate(data_list):
+        appointment_id = f"AP{start_num + i:04d}"
+        ids.append(appointment_id)
+        rows.append([
+            appointment_id,
+            data.get("Date", ""),
+            data.get("Time", ""),
+            data.get("Patient_ID", ""),
+            data.get("Patient_Name", ""),
+            data.get("Department", ""),
+            data.get("Therapist", ""),
+            "Scheduled",
+            data.get("Remarks", ""),
+        ])
+    ws.append_rows(rows, value_input_option="RAW")
+    return ids
+
+
 def get_all_appointments() -> list[dict]:
     ws = _worksheet(config.SHEET_APPOINTMENTS)
-    return ws.get_all_records()
+    return safe_get_all_records(ws)
 
 
 def get_appointments_for_date(date_str: str) -> list[dict]:
@@ -232,7 +270,7 @@ def _next_attendance_id(ws) -> str:
 
 def get_today_attendance(staff_id: str, date_str: str) -> dict | None:
     ws = _worksheet(config.SHEET_ATTENDANCE)
-    records = ws.get_all_records()
+    records = safe_get_all_records(ws)
     for idx, row in enumerate(records, start=2):
         if (
             str(row.get("Staff_ID", "")).strip() == str(staff_id).strip()
@@ -424,7 +462,7 @@ def get_active_package_for_patient(patient_id: str) -> dict | None:
         ws = _worksheet(package_sheet_name)
     except gspread.exceptions.WorksheetNotFound:
         return None
-    records = ws.get_all_records()
+    records = safe_get_all_records(ws)
     for idx, r in enumerate(records, start=2):
         if str(r.get("Patient_ID", "")).strip() == patient_id.strip() and r.get("Status", "") == "Active":
             r["_row_number"] = idx
@@ -462,7 +500,7 @@ def increment_package_session(patient_id: str) -> bool:
 def _next_daily_sl(ws, date_str: str) -> int:
     """সেই তারিখে এখন পর্যন্ত কতগুলো পেমেন্ট এন্ট্রি হয়েছে তা গুনে পরের SL নম্বর দেয়।"""
     try:
-        records = ws.get_all_records()
+        records = safe_get_all_records(ws)
     except Exception:
         return 1
     count = sum(1 for r in records if str(r.get("Date", "")) == date_str)
@@ -494,7 +532,7 @@ def add_payment(data: dict) -> str:
 
 def get_all_payments() -> list[dict]:
     ws = _worksheet(config.SHEET_PAYMENTS)
-    return ws.get_all_records()
+    return safe_get_all_records(ws)
 
 
 def get_payments_for_patient(patient_id: str) -> list[dict]:
@@ -509,7 +547,7 @@ def get_appointments_for_patient(patient_id: str) -> list[dict]:
 
 def get_treatment_notes_for_patient(patient_id: str) -> list[dict]:
     ws = _worksheet(config.SHEET_TREATMENTS)
-    all_notes = ws.get_all_records()
+    all_notes = safe_get_all_records(ws)
     return [n for n in all_notes if str(n.get("Patient_ID", "")).strip() == str(patient_id).strip()]
 
 
@@ -621,7 +659,7 @@ def add_treatment_plan(data: dict, created_by: str) -> str:
 def get_active_plan_for_patient(patient_id: str) -> dict | None:
     """রোগীর বর্তমান Active ট্রিটমেন্ট প্ল্যান ফেরত দেয় (থাকলে), না থাকলে None।"""
     ws = _worksheet(config.SHEET_TREATMENT_PLANS)
-    records = ws.get_all_records()
+    records = safe_get_all_records(ws)
     for idx, r in enumerate(records, start=2):
         if (
             str(r.get("Patient_ID", "")).strip() == patient_id.strip()
@@ -638,7 +676,7 @@ def get_last_plan_for_patient(patient_id: str) -> dict | None:
     নতুন প্ল্যান বানানোর সময় আগের প্ল্যানের মান ডিফল্ট হিসেবে (- দিলে) ব্যবহার করতে কাজে লাগে।
     """
     ws = _worksheet(config.SHEET_TREATMENT_PLANS)
-    records = ws.get_all_records()
+    records = safe_get_all_records(ws)
     patient_plans = [
         r for r in records
         if str(r.get("Patient_ID", "")).strip() == patient_id.strip()
@@ -717,3 +755,79 @@ def get_daily_register(date_str: str | None = None) -> dict:
         "total_paid": total_paid,
         "total_due": total_due,
     }
+
+
+def _next_bug_id(ws) -> str:
+    """13_BugReports শীটে পরবর্তী Bug_ID (BGxxxx ফরম্যাটে) বের করে।"""
+    ids = ws.col_values(1)[1:]
+    numbers = []
+    for v in ids:
+        if v.startswith("BG"):
+            try:
+                numbers.append(int(v[2:]))
+            except ValueError:
+                pass
+    next_num = (max(numbers) + 1) if numbers else 1
+    return f"BG{next_num:04d}"
+
+
+def add_bug_report(data: dict) -> str:
+    """13_BugReports শীটে নতুন বাগ রিপোর্ট যোগ করে, Status সবসময় 'Open' দিয়ে শুরু হয়।"""
+    ws = _worksheet(config.SHEET_BUG_REPORTS)
+    bug_id = _next_bug_id(ws)
+    now = datetime.now()
+    row = [
+        bug_id,
+        now.strftime("%Y-%m-%d"),
+        now.strftime("%H:%M"),
+        data.get("Reported_By", ""),
+        data.get("Role", ""),
+        data.get("Description", ""),
+        data.get("Photo_File_ID", ""),
+        "Open",
+        "",
+    ]
+    ws.append_row(row, value_input_option="RAW")
+    return bug_id
+
+
+def get_open_bug_reports() -> list[dict]:
+    """Status='Open' থাকা সব বাগ রিপোর্ট ফেরত দেয়, প্রতিটার সাথে শীট row_number সহ।"""
+    ws = _worksheet(config.SHEET_BUG_REPORTS)
+    records = safe_get_all_records(ws)
+    result = []
+    for idx, r in enumerate(records, start=2):
+        if str(r.get("Status", "")).strip() == "Open":
+            r["_row_number"] = idx
+            result.append(r)
+    return result
+
+
+def mark_bug_report_fixed(bug_id: str) -> bool:
+    """একটা Bug_ID-র Status='Fixed' করে দেয়।"""
+    ws = _worksheet(config.SHEET_BUG_REPORTS)
+    records = safe_get_all_records(ws)
+    for idx, r in enumerate(records, start=2):
+        if str(r.get("Bug_ID", "")).strip() == bug_id.strip():
+            ws.update_cell(idx, 8, "Fixed")  # Status কলাম H
+            return True
+    return False
+
+
+def get_staff_telegram_ids_by_role(role: str) -> list[int]:
+    """নির্দিষ্ট Role-এর active স্টাফদের Telegram_ID-র লিস্ট ফেরত দেয় (নোটিফিকেশন পাঠানোর জন্য)।"""
+    ws = _worksheet(config.SHEET_STAFF)
+    records = safe_get_all_records(ws)
+    ids = []
+    for r in records:
+        if (
+            str(r.get("Role", "")).strip() == role.strip()
+            and str(r.get("Status", "")).strip().lower() != "inactive"
+        ):
+            tid = str(r.get("Telegram_ID", "")).strip()
+            if tid:
+                try:
+                    ids.append(int(tid))
+                except ValueError:
+                    pass
+    return ids

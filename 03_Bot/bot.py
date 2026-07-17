@@ -45,6 +45,19 @@ import config
 import sheets
 import roles
 
+
+def fmt_time_ampm(t):
+    """Convert stored 'HH:MM' (24h) to 12-hour 'hh:mm AM/PM'."""
+    if not t:
+        return t
+    t = str(t).strip()
+    if "AM" in t.upper() or "PM" in t.upper():
+        return t
+    try:
+        return datetime.strptime(t, "%H:%M").strftime("%I:%M %p").lstrip("0")
+    except ValueError:
+        return t
+
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO,
@@ -741,17 +754,17 @@ async def attendance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif not record.get("Break_Out"):
         buttons.append([InlineKeyboardButton("☕ Break Out", callback_data="att_breakout")])
         buttons.append([InlineKeyboardButton("🚪 Check Out", callback_data="att_checkout")])
-        status_line = f"🟢 Check In: {record.get('Check_In')}"
+        status_line = f"🟢 Check In: {fmt_time_ampm(record.get('Check_In'))}"
     elif not record.get("Break_In"):
         buttons.append([InlineKeyboardButton("🔙 Break In", callback_data="att_breakin")])
-        status_line = f"☕ Break Out: {record.get('Break_Out')}"
+        status_line = f"☕ Break Out: {fmt_time_ampm(record.get('Break_Out'))}"
     elif not record.get("Check_Out"):
         buttons.append([InlineKeyboardButton("🚪 Check Out", callback_data="att_checkout")])
-        status_line = f"🔙 Break In: {record.get('Break_In')}"
+        status_line = f"🔙 Break In: {fmt_time_ampm(record.get('Break_In'))}"
     else:
         await update.message.reply_text(
             f"✅ আজকের হাজিরা সম্পন্ন।\n"
-            f"Check In: {record.get('Check_In')}\nCheck Out: {record.get('Check_Out')}\n"
+            f"Check In: {fmt_time_ampm(record.get('Check_In'))}\nCheck Out: {fmt_time_ampm(record.get('Check_Out'))}\n"
             f"মোট কাজের সময়: {record.get('Working_Hours')} ঘণ্টা"
         )
         return
@@ -772,18 +785,18 @@ async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     if action == "att_checkin":
         time_str = sheets.attendance_check_in(staff)
-        await query.edit_message_text(f"✅ Check In হয়েছে: {time_str}")
+        await query.edit_message_text(f"✅ Check In হয়েছে: {fmt_time_ampm(time_str)}")
     elif action == "att_breakout":
         time_str = sheets.attendance_break_out(staff_id, date_str)
-        await query.edit_message_text(f"☕ Break শুরু: {time_str}" if time_str else "❌ আজকের রেকর্ড পাওয়া যায়নি।")
+        await query.edit_message_text(f"☕ Break শুরু: {fmt_time_ampm(time_str)}" if time_str else "❌ আজকের রেকর্ড পাওয়া যায়নি।")
     elif action == "att_breakin":
         time_str = sheets.attendance_break_in(staff_id, date_str)
-        await query.edit_message_text(f"🔙 Break শেষ: {time_str}" if time_str else "❌ আজকের রেকর্ড পাওয়া যায়নি।")
+        await query.edit_message_text(f"🔙 Break শেষ: {fmt_time_ampm(time_str)}" if time_str else "❌ আজকের রেকর্ড পাওয়া যায়নি।")
     elif action == "att_checkout":
         result = sheets.attendance_check_out(staff_id, date_str)
         if result:
             await query.edit_message_text(
-                f"🚪 Check Out হয়েছে: {result['time']}\n"
+                f"🚪 Check Out হয়েছে: {fmt_time_ampm(result['time'])}\n"
                 f"মোট কাজের সময়: {result['working_hours']} ঘণ্টা\n"
                 f"ওভারটাইম: {result['overtime']} ঘণ্টা"
             )
@@ -2167,7 +2180,7 @@ async def bug_list_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"📋 Open সমস্যা: {len(open_bugs)}টি")
     for bug in open_bugs:
         text = (
-            f"🐛 {bug.get('Bug_ID', '')} — {bug.get('Date', '')} {bug.get('Time', '')}\n"
+            f"🐛 {bug.get('Bug_ID', '')} — {bug.get('Date', '')} {fmt_time_ampm(bug.get('Time', ''))}\n"
             f"রিপোর্ট করেছেন: {bug.get('Reported_By', '')} ({bug.get('Role', '')})\n\n"
             f"{bug.get('Description', '')}"
         )
