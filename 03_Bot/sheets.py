@@ -113,7 +113,7 @@ def add_patient(data: dict, created_by: str) -> str:
         now.strftime("%Y-%m-%d %H:%M"),
         now.strftime("%Y-%m-%d %H:%M"),
     ]
-    ws.append_row(row, value_input_option="RAW")
+    ws.append_row(row, value_input_option="RAW", table_range="A1:AC1")
     new_row_number = len(ws.get_all_values())
     phone_val = data.get("Phone", "")
     alt_phone_val = data.get("Alternative_Phone", "")
@@ -209,7 +209,7 @@ def add_appointment(data: dict, created_by: str) -> str:
         "Scheduled",
         data.get("Remarks", ""),
     ]
-    ws.append_row(row, value_input_option="RAW")
+    ws.append_row(row, value_input_option="RAW", table_range="A1:I1")
     return appointment_id
 
 
@@ -232,7 +232,7 @@ def add_appointments_batch(data_list: list[dict], created_by: str) -> list[str]:
             "Scheduled",
             data.get("Remarks", ""),
         ])
-    ws.append_rows(rows, value_input_option="RAW")
+    ws.append_rows(rows, value_input_option="RAW", table_range="A1:I1")
     return ids
 
 
@@ -312,7 +312,7 @@ def attendance_check_in(staff: dict) -> str:
         status,
         "",
     ]
-    ws.append_row(row, value_input_option="RAW")
+    ws.append_row(row, value_input_option="RAW", table_range="A1:N1")
     return time_str
 
 
@@ -450,7 +450,7 @@ def add_package(patient_id: str, patient_name: str, total_sessions: int, package
         package_amount, paid_amount, due_amount,
         datetime.now().strftime("%Y-%m-%d"), status,
     ]
-    ws.append_row(row)
+    ws.append_row(row, table_range="A1:K1")
     return package_id
 
 
@@ -526,7 +526,7 @@ def add_payment(data: dict) -> str:
         data.get("Received_By", ""),
         data.get("Remarks", ""),
     ]
-    ws.append_row(row)
+    ws.append_row(row, table_range="A1:L1")
     return receipt_no
 
 
@@ -590,7 +590,7 @@ def add_treatment_note(data: dict, created_by: str) -> str:
         data.get("Remarks", ""),
         data.get("Plan_ID", ""),
     ]
-    ws.append_row(row, value_input_option="RAW")
+    ws.append_row(row, value_input_option="RAW", table_range="A1:M1")
     return treatment_id
 
 
@@ -652,7 +652,7 @@ def add_treatment_plan(data: dict, created_by: str) -> str:
         datetime.now().strftime("%Y-%m-%d"),
         "Active",
     ]
-    ws.append_row(row, value_input_option="RAW")
+    ws.append_row(row, value_input_option="RAW", table_range="A1:L1")
     return plan_id
 
 
@@ -787,7 +787,7 @@ def add_bug_report(data: dict) -> str:
         "Open",
         "",
     ]
-    ws.append_row(row, value_input_option="RAW")
+    ws.append_row(row, value_input_option="RAW", table_range="A1:I1")
     return bug_id
 
 
