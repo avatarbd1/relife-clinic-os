@@ -729,3 +729,40 @@ def get_daily_register(date_str: str | None = None) -> dict:
         "total_paid": total_paid,
         "total_due": total_due,
     }
+
+
+def _next_report_id(ws) -> str:
+    ids = ws.col_values(1)[1:]
+    numbers = []
+    for v in ids:
+        if v.startswith("RP"):
+            try:
+                numbers.append(int(v[2:]))
+            except ValueError:
+                pass
+    next_num = (max(numbers) + 1) if numbers else 1
+    return f"RP{next_num:04d}"
+
+
+def add_report(data: dict, uploaded_by: str) -> str:
+    ws = _worksheet(config.SHEET_REPORTS)
+    report_id = _next_report_id(ws)
+    row = [
+        report_id,
+        data.get("Patient_ID", ""),
+        data.get("Patient_Name", ""),
+        data.get("File_Telegram_ID", ""),
+        data.get("File_Name", ""),
+        data.get("File_Type", ""),
+        datetime.now().strftime("%Y-%m-%d %H:%M"),
+        uploaded_by,
+        data.get("File_Drive_Link", ""),
+    ]
+    ws.append_row(row, value_input_option="RAW")
+    return report_id
+
+
+def get_reports_for_patient(patient_id: str) -> list[dict]:
+    ws = _worksheet(config.SHEET_REPORTS)
+    all_reports = safe_get_all_records(ws)
+    return [r for r in all_reports if str(r.get("Patient_ID", "")).strip() == str(patient_id).strip()]
