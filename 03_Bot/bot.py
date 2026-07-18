@@ -148,6 +148,7 @@ def _machine_keyboard(selected: set) -> InlineKeyboardMarkup:
                 row.append(InlineKeyboardButton(prefix + MACHINE_LIST[j], callback_data=f"trm_{j}"))
         buttons.append(row)
     buttons.append([InlineKeyboardButton("✅ সম্পন্ন — সেভ করো", callback_data="trdone_save")])
+    buttons.append([InlineKeyboardButton("⬅️ আগের ধাপ", callback_data="trback_search")])
     buttons.append([InlineKeyboardButton("❌ বাতিল", callback_data="trcancel_")])
     return InlineKeyboardMarkup(buttons)
 
@@ -264,6 +265,7 @@ def _date_multi_keyboard(selected: set) -> InlineKeyboardMarkup:
         if selected else "➡️ অন্তত ১টা দিন বাছাই করো"
     )
     buttons.append([InlineKeyboardButton(done_label, callback_data="aptdatedone")])
+    buttons.append([InlineKeyboardButton("⬅️ আগের ধাপ", callback_data="aptback_search")])
     return InlineKeyboardMarkup(buttons)
 
 
@@ -299,6 +301,7 @@ def _time_keyboard() -> InlineKeyboardMarkup:
             row = []
     if row:
         buttons.append(row)
+    buttons.append([InlineKeyboardButton("⬅️ আগের ধাপ", callback_data="aptback_date")])
     return InlineKeyboardMarkup(buttons)
 
 
@@ -307,6 +310,7 @@ def _therapist_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(name, callback_data=f"aptther_{name}")]
         for name in THERAPIST_NAMES
     ]
+    buttons.append([InlineKeyboardButton("⬅️ আগের ধাপ", callback_data="aptback_time")])
     return InlineKeyboardMarkup(buttons)
 
 
@@ -584,6 +588,25 @@ async def apt_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     return APT_DATE
 
 
+async def apt_back_to_search_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """তারিখ-নির্বাচনের ধাপ থেকে '⬅️ আগের ধাপ' চাপলে আবার রোগী খোঁজার ধাপে ফিরে যায়।"""
+    query = update.callback_query
+    await query.answer()
+    context.user_data.pop("apt_dates", None)
+    context.user_data.pop("new_appointment", None)
+    await query.edit_message_text(
+        "⬅️ রোগী খোঁজার ধাপে ফিরে যাওয়া হলো।
+রোগীর নাম, ফোন নম্বর, অথবা Patient ID লিখো (খুঁজতে):"
+    )
+    recent_kb = _recent_patient_buttons("aptsel_")
+    if recent_kb:
+        await query.message.reply_text(
+            "👥 অথবা সাম্প্রতিক রোগীদের মধ্য থেকে সরাসরি বেছে নাও:",
+            reply_markup=recent_kb,
+        )
+    return APT_SEARCH
+
+
 async def apt_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip().upper()
     results = context.user_data.get("apt_search_results", {})
@@ -639,6 +662,20 @@ async def apt_date_done_callback(update: Update, context: ContextTypes.DEFAULT_T
     return APT_TIME
 
 
+async def apt_back_to_date_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """সময়-নির্বাচনের ধাপ থেকে '⬅️ আগের ধাপ' চাপলে আবার তারিখ-নির্বাচনের ধাপে ফিরে যায়।"""
+    query = update.callback_query
+    await query.answer()
+    a = context.user_data.setdefault("new_appointment", {})
+    prev_dates = set(a.get("Dates") or ([a["Date"]] if a.get("Date") else []))
+    context.user_data["apt_dates"] = prev_dates
+    await query.edit_message_text(
+        "⬅️ তারিখ বেছে নাও — একাধিক দিনও বাছাই করা যাবে (একাধিকবার চাপো), তারপর 'পরের ধাপ' চাপো:",
+        reply_markup=_date_multi_keyboard(prev_dates),
+    )
+    return APT_DATE
+
+
 async def apt_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     raw = update.message.text.strip()
     dates = [p.strip() for p in raw.replace(",", " ").split() if p.strip()]
@@ -670,6 +707,17 @@ async def apt_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=_therapist_keyboard(),
     )
     return APT_THERAPIST
+
+
+async def apt_back_to_time_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """থেরাপিস্ট-নির্বাচনের ধাপ থেকে '⬅️ আগের ধাপ' চাপলে আবার সময়-নির্বাচনের ধাপে ফিরে যায়।"""
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_text(
+        "⬅️ সময় বেছে নাও (অথবা টাইপ করো) — সবগুলো দিনের জন্য একই সময় প্রযোজ্য হবে:",
+        reply_markup=_time_keyboard(),
+    )
+    return APT_TIME
 
 
 def _apt_summary_text(a: dict) -> str:
@@ -1215,6 +1263,25 @@ async def treat_select_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     await query.edit_message_text(summary, reply_markup=_machine_keyboard(selected))
     return TREAT_MACHINES
+
+
+async def treat_back_to_search_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """মেশিন-নির্বাচনের ধাপ থেকে '⬅️ আগের ধাপ' চাপলে আবার রোগী খোঁজার ধাপে ফিরে যায়।"""
+    query = update.callback_query
+    await query.answer()
+    context.user_data.pop("treatment", None)
+    context.user_data.pop("treat_selected", None)
+    await query.edit_message_text(
+        "⬅️ রোগী খোঁজার ধাপে ফিরে যাওয়া হলো।
+রোগীর নাম, ফোন নম্বর, অথবা Patient ID লিখো (খুঁজতে):"
+    )
+    recent_kb = _recent_patient_buttons("treatsel_")
+    if recent_kb:
+        await query.message.reply_text(
+            "👥 অথবা সাম্প্রতিক রোগীদের মধ্য থেকে সরাসরি বেছে নাও:",
+            reply_markup=recent_kb,
+        )
+    return TREAT_SEARCH
 
 
 async def treat_machine_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2363,14 +2430,17 @@ def main():
             APT_DATE: [
                 CallbackQueryHandler(apt_date_toggle_callback, pattern="^aptdatetoggle_"),
                 CallbackQueryHandler(apt_date_done_callback, pattern="^aptdatedone$"),
+                CallbackQueryHandler(apt_back_to_search_callback, pattern="^aptback_search$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_date),
             ],
             APT_TIME: [
                 CallbackQueryHandler(apt_time_callback, pattern="^apttime_"),
+                CallbackQueryHandler(apt_back_to_date_callback, pattern="^aptback_date$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_time),
             ],
             APT_THERAPIST: [
                 CallbackQueryHandler(apt_therapist_callback, pattern="^aptther_"),
+                CallbackQueryHandler(apt_back_to_time_callback, pattern="^aptback_time$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_therapist),
             ],
             APT_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_confirm)],
@@ -2431,6 +2501,7 @@ def main():
             TREAT_MACHINES: [
                 CallbackQueryHandler(treat_machine_toggle, pattern="^trm_"),
                 CallbackQueryHandler(treat_machine_done, pattern="^trdone_"),
+                CallbackQueryHandler(treat_back_to_search_callback, pattern="^trback_search$"),
                 CallbackQueryHandler(treat_machine_cancel_callback, pattern="^trcancel_"),
             ],
         },
