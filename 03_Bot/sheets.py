@@ -766,3 +766,13 @@ def get_reports_for_patient(patient_id: str) -> list[dict]:
     ws = _worksheet(config.SHEET_REPORTS)
     all_reports = safe_get_all_records(ws)
     return [r for r in all_reports if str(r.get("Patient_ID", "")).strip() == str(patient_id).strip()]
+
+
+def get_report_by_id(report_id: str) -> dict | None:
+    """একটা নির্দিষ্ট Report_ID দিয়ে রিপোর্টের মেটাডেটা বের করে।"""
+    ws = _worksheet(config.SHEET_REPORTS)
+    all_reports = safe_get_all_records(ws)
+    for r in all_reports:
+        if str(r.get("Report_ID", "")).strip() == str(report_id).strip():
+            return r
+    return None

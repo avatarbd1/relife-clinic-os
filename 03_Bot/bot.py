@@ -1846,6 +1846,7 @@ def _patient_card_keyboard(patient_id: str) -> InlineKeyboardMarkup:
             InlineKeyboardButton("📜 সম্পূর্ণ ইতিহাস", callback_data=f"plistact_hist_{patient_id}"),
         ],
         [InlineKeyboardButton("📎 রিপোর্ট", callback_data=f"plistact_report_{patient_id}")],
+        [InlineKeyboardButton("👁️ ফাইল দেখুন", callback_data=f"plistact_viewfiles_{patient_id}")],
         [InlineKeyboardButton("🔙 তালিকায় ফিরুন", callback_data="plistact_back")],
     ]
     return InlineKeyboardMarkup(buttons)
@@ -2158,6 +2159,77 @@ async def report_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
+
+async def plist_action_viewfiles(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    patient_id = query.data.replace("plistact_viewfiles_", "")
+    staff = context.user_data.get("staff", {})
+    patient = sheets.get_patient_by_id(patient_id)
+    if not patient:
+        await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
+        return
+    role = staff.get("Role", "").strip()
+    allowed = role in ("Owner", "Manager") or (
+        role == "Therapist" and roles.is_therapist_owner_of_patient(staff.get("Full_Name", ""), patient)
+    )
+    if not allowed:
+        await query.edit_message_text("⛔ এই রোগীর ফাইল দেখার অনুমতি তোমার নেই।")
+        return
+    reports = sheets.get_reports_for_patient(patient_id)
+    if not reports:
+        await query.edit_message_text(f"📂 {patient.get('Full_Name')}-এর কোনো ফাইল এখনো আপলোড হয়নি।")
+        return
+    buttons = [
+        [InlineKeyboardButton(
+            f"{r.get('File_Type', 'ফাইল')} — {r.get('Upload_Date', '')}",
+            callback_data=f"plistact_getfile_{r.get('Report_ID', '')}",
+        )]
+        for r in reversed(reports)
+    ]
+    buttons.append([InlineKeyboardButton("🔙 তালিকায় ফিরুন", callback_data="plistact_back")])
+    await query.edit_message_text(
+        f"📂 {patient.get('Full_Name')}-এর ফাইল ({len(reports)}টি) — দেখতে চাপো:",
+        reply_markup=InlineKeyboardMarkup(buttons),
+    )
+
+
+async def plist_action_getfile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    report_id = query.data.replace("plistact_getfile_", "")
+    staff = context.user_data.get("staff", {})
+    record = sheets.get_report_by_id(report_id)
+    if not record:
+        await query.message.reply_text("❌ ফাইল পাওয়া যায়নি।")
+        return
+    patient = sheets.get_patient_by_id(record.get("Patient_ID", ""))
+    role = staff.get("Role", "").strip()
+    allowed = patient and (
+        role in ("Owner", "Manager") or (
+            role == "Therapist" and roles.is_therapist_owner_of_patient(staff.get("Full_Name", ""), patient)
+        )
+    )
+    if not allowed:
+        await query.message.reply_text("⛔ এই ফাইল দেখার অনুমতি তোমার নেই।")
+        return
+    caption = f"{record.get('File_Type', '')} — {record.get('Upload_Date', '')} ({record.get('Patient_Name', '')})"
+    tg_id = record.get("File_Telegram_ID", "")
+    sent = False
+    if tg_id:
+        try:
+            await context.bot.send_document(chat_id=query.message.chat_id, document=tg_id, caption=caption)
+            sent = True
+        except Exception:
+            logger.exception("Telegram file_id দিয়ে পাঠাতে ব্যর্থ")
+    if not sent:
+        link = record.get("File_Drive_Link", "")
+        if link:
+            await query.message.reply_text(f"{caption}\nDrive লিংক: {link}")
+        else:
+            await query.message.reply_text("❌ ফাইলটা এখন খুলতে পারা যাচ্ছে না।")
+
+
 def main():
     app = Application.builder().token(config.BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -2183,6 +2255,8 @@ def main():
     app.add_handler(CallbackQueryHandler(patient_list_page_callback, pattern="^plistpage_"))
     app.add_handler(CallbackQueryHandler(patient_list_select_callback, pattern="^plistsel_"))
     app.add_handler(CallbackQueryHandler(patient_list_back_callback, pattern="^plistact_back$"))
+    app.add_handler(CallbackQueryHandler(plist_action_viewfiles, pattern="^plistact_viewfiles_"))
+    app.add_handler(CallbackQueryHandler(plist_action_getfile, pattern="^plistact_getfile_"))
     app.add_handler(CallbackQueryHandler(plist_action_hist, pattern="^plistact_hist_"))
     report_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(plist_action_report, pattern="^plistact_report_")],
