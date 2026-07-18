@@ -185,6 +185,62 @@ def _recent_patient_buttons(prefix: str, limit: int = 8) -> InlineKeyboardMarkup
     return InlineKeyboardMarkup(buttons)
 
 
+def _patient_search_buttons(results, prefix: str, cancel_data: str) -> InlineKeyboardMarkup:
+    """সার্চ-রেজাল্ট থেকে রোগী বাছাইয়ের বাটন বানায় (নাম বাটন + শেষে 🔙 বাতিল বাটন)।
+    আগে apt/pay/treat/tplan/thist/hist প্রতিটাতে এই একই লুপ আলাদা আলাদা কপি-পেস্ট করা ছিল।"""
+    buttons = [
+        [InlineKeyboardButton(
+            f"{p.get('Full_Name') or p.get('Name') or 'Unknown'} ({p.get('Patient_ID', '')})",
+            callback_data=f"{prefix}{p.get('Patient_ID', '')}",
+        )]
+        for p in results
+    ]
+    buttons.append([InlineKeyboardButton("🔙 বাতিল করো", callback_data=cancel_data)])
+    return InlineKeyboardMarkup(buttons)
+
+
+async def _apt_search_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_reply_markup(reply_markup=None)
+    return await apt_cancel(update, context)
+
+
+async def _pay_search_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_reply_markup(reply_markup=None)
+    return await pay_cancel(update, context)
+
+
+async def _treat_search_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_reply_markup(reply_markup=None)
+    return await treat_cancel(update, context)
+
+
+async def _tplan_search_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_reply_markup(reply_markup=None)
+    return await tplan_cancel(update, context)
+
+
+async def _hist_search_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_reply_markup(reply_markup=None)
+    return await hist_cancel(update, context)
+
+
+async def _thist_search_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_reply_markup(reply_markup=None)
+    return await thist_cancel(update, context)
+
+
 def _date_multi_keyboard(selected: set) -> InlineKeyboardMarkup:
     """তারিখ মাল্টি-সিলেক্ট কীবোর্ড — একসাথে কয়েকদিনের অ্যাপয়েন্টমেন্ট বুক করার জন্য।
     ✅ চিহ্ন দিয়ে বোঝানো হয় কোন কোন দিন এখন পর্যন্ত বাছাই করা আছে।"""
@@ -492,16 +548,9 @@ async def apt_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["apt_search_results"] = {
         p.get("Patient_ID", "").strip(): p for p in results
     }
-    buttons = [
-        [InlineKeyboardButton(
-            f"{p.get('Full_Name')} ({p.get('Patient_ID')})",
-            callback_data=f"aptsel_{p.get('Patient_ID')}",
-        )]
-        for p in results
-    ]
     await update.message.reply_text(
         "🔍 নিচের তালিকা থেকে রোগী বেছে নাও:",
-        reply_markup=InlineKeyboardMarkup(buttons),
+        reply_markup=_patient_search_buttons(results, "aptsel_", "aptsearchback"),
     )
     return APT_SELECT
 
@@ -878,16 +927,9 @@ async def pay_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["pay_search_results"] = {
         p.get("Patient_ID", "").strip(): p for p in results
     }
-    buttons = [
-        [InlineKeyboardButton(
-            f"{p.get('Full_Name')} ({p.get('Patient_ID')})",
-            callback_data=f"paysel_{p.get('Patient_ID')}",
-        )]
-        for p in results
-    ]
     await update.message.reply_text(
         "🔍 নিচের তালিকা থেকে রোগী বেছে নাও:",
-        reply_markup=InlineKeyboardMarkup(buttons),
+        reply_markup=_patient_search_buttons(results, "paysel_", "paysearchback"),
     )
     return PAY_SELECT
 
@@ -1146,16 +1188,9 @@ async def treat_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["treat_search_results"] = {
         p.get("Patient_ID", "").strip(): p for p in results
     }
-    buttons = [
-        [InlineKeyboardButton(
-            f"{p.get('Full_Name')} ({p.get('Patient_ID')})",
-            callback_data=f"treatsel_{p.get('Patient_ID')}",
-        )]
-        for p in results
-    ]
     await update.message.reply_text(
         "🔍 নিচের তালিকা থেকে রোগী বেছে নাও:",
-        reply_markup=InlineKeyboardMarkup(buttons),
+        reply_markup=_patient_search_buttons(results, "treatsel_", "treatsearchback"),
     )
     return TREAT_SELECT
 
@@ -1283,16 +1318,9 @@ async def tplan_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["tplan_search_results"] = {
         p.get("Patient_ID", "").strip(): p for p in results
     }
-    buttons = [
-        [InlineKeyboardButton(
-            f"{p.get('Full_Name')} ({p.get('Patient_ID')})",
-            callback_data=f"tplansel_{p.get('Patient_ID')}",
-        )]
-        for p in results
-    ]
     await update.message.reply_text(
         "🔍 নিচের তালিকা থেকে রোগী বেছে নাও:",
-        reply_markup=InlineKeyboardMarkup(buttons),
+        reply_markup=_patient_search_buttons(results, "tplansel_", "tplansearchback"),
     )
     return TPLAN_SELECT
 
@@ -1606,14 +1634,10 @@ async def thist_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not results:
         await update.message.reply_text("কোনো রোগী পাওয়া যায়নি। আবার চেষ্টা করো, অথবা /cancel দাও।")
         return "THIST_SEARCH"
-    buttons = []
-    for p in results[:10]:
-        pid = p.get("Patient_ID", "")
-        name = p.get("Full_Name") or p.get("Name") or "Unknown"
-        buttons.append([InlineKeyboardButton(f"{name} ({pid})", callback_data=f"thpsel_{pid}")])
+    results = results[:10]
     await update.message.reply_text(
         "কোন রোগীর ট্রিটমেন্ট হিস্টরি দেখতে চাও?",
-        reply_markup=InlineKeyboardMarkup(buttons),
+        reply_markup=_patient_search_buttons(results, "thpsel_", "thistsearchback"),
     )
     return "THIST_SEARCH"
 
@@ -1768,14 +1792,10 @@ async def hist_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not results:
         await update.message.reply_text("কোনো রোগী পাওয়া যায়নি। আবার চেষ্টা করো, অথবা /cancel দাও।")
         return "HIST_SEARCH"
-    buttons = []
-    for p in results[:10]:
-        pid = p.get("Patient_ID", "")
-        name = p.get("Full_Name") or p.get("Name") or "Unknown"
-        buttons.append([InlineKeyboardButton(f"{name} ({pid})", callback_data=f"histsel_{pid}")])
+    results = results[:10]
     await update.message.reply_text(
         "কোন রোগী দেখতে চাও?",
-        reply_markup=InlineKeyboardMarkup(buttons),
+        reply_markup=_patient_search_buttons(results, "histsel_", "histsearchback"),
     )
     return "HIST_SEARCH"
 
@@ -2332,10 +2352,12 @@ def main():
         states={
             APT_SEARCH: [
                 CallbackQueryHandler(apt_select_callback, pattern="^aptsel_"),
+                CallbackQueryHandler(_apt_search_cancel, pattern="^aptsearchback$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_search),
             ],
             APT_SELECT: [
                 CallbackQueryHandler(apt_select_callback, pattern="^aptsel_"),
+                CallbackQueryHandler(_apt_search_cancel, pattern="^aptsearchback$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_select),
             ],
             APT_DATE: [
@@ -2368,10 +2390,12 @@ def main():
         states={
             PAY_SEARCH: [
                 CallbackQueryHandler(pay_select_callback, pattern="^paysel_"),
+                CallbackQueryHandler(_pay_search_cancel, pattern="^paysearchback$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_search),
             ],
             PAY_SELECT: [
                 CallbackQueryHandler(pay_select_callback, pattern="^paysel_"),
+                CallbackQueryHandler(_pay_search_cancel, pattern="^paysearchback$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_select),
             ],
             PAY_SESSION: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_session)],
@@ -2397,9 +2421,13 @@ def main():
         states={
             TREAT_SEARCH: [
                 CallbackQueryHandler(treat_select_callback, pattern="^treatsel_"),
+                CallbackQueryHandler(_treat_search_cancel, pattern="^treatsearchback$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), treat_search),
             ],
-            TREAT_SELECT: [CallbackQueryHandler(treat_select_callback, pattern="^treatsel_")],
+            TREAT_SELECT: [
+                CallbackQueryHandler(treat_select_callback, pattern="^treatsel_"),
+                CallbackQueryHandler(_treat_search_cancel, pattern="^treatsearchback$"),
+            ],
             TREAT_MACHINES: [
                 CallbackQueryHandler(treat_machine_toggle, pattern="^trm_"),
                 CallbackQueryHandler(treat_machine_done, pattern="^trdone_"),
@@ -2420,9 +2448,13 @@ def main():
         states={
             TPLAN_SEARCH: [
                 CallbackQueryHandler(tplan_select_callback, pattern="^tplansel_"),
+                CallbackQueryHandler(_tplan_search_cancel, pattern="^tplansearchback$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_search),
             ],
-            TPLAN_SELECT: [CallbackQueryHandler(tplan_select_callback, pattern="^tplansel_")],
+            TPLAN_SELECT: [
+                CallbackQueryHandler(tplan_select_callback, pattern="^tplansel_"),
+                CallbackQueryHandler(_tplan_search_cancel, pattern="^tplansearchback$"),
+            ],
             TPLAN_DIAGNOSIS: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_diagnosis)],
             TPLAN_TOTAL: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_total)],
             TPLAN_EXERCISE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_exercise)],
@@ -2447,6 +2479,7 @@ def main():
         states={
             "HIST_SEARCH": [
                 CallbackQueryHandler(hist_select_callback, pattern="^histsel_"),
+                CallbackQueryHandler(_hist_search_cancel, pattern="^histsearchback$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), hist_search),
             ],
         },
@@ -2463,6 +2496,7 @@ def main():
         states={
             "THIST_SEARCH": [
                 CallbackQueryHandler(thist_patient_callback, pattern="^thpsel_"),
+                CallbackQueryHandler(_thist_search_cancel, pattern="^thistsearchback$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, thist_search),
             ],
             "THIST_DATE": [
