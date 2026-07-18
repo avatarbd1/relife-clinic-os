@@ -86,7 +86,7 @@ def add_patient(data: dict, created_by: str) -> str:
     row = [
         patient_id,
         now.strftime("%Y-%m-%d"),
-        now.strftime("%H:%M"),
+        now.strftime("%I:%M %p"),
         data.get("Full_Name", ""),
         data.get("Father_Husband_Name", ""),
         data.get("Phone", ""),
@@ -111,8 +111,8 @@ def add_patient(data: dict, created_by: str) -> str:
         data.get("Remarks", ""),
         "Active",
         created_by,
-        now.strftime("%Y-%m-%d %H:%M"),
-        now.strftime("%Y-%m-%d %H:%M"),
+        now.strftime("%Y-%m-%d %I:%M %p"),
+        now.strftime("%Y-%m-%d %I:%M %p"),
     ]
     ws.append_row(row, value_input_option="RAW")
     new_row_number = len(ws.get_all_values())
@@ -265,7 +265,7 @@ def attendance_check_in(staff: dict) -> str:
     ws = _worksheet(config.SHEET_ATTENDANCE)
     now = bd_now()
     date_str = now.strftime("%Y-%m-%d")
-    time_str = now.strftime("%H:%M")
+    time_str = now.strftime("%I:%M %p")
     attendance_id = _next_attendance_id(ws)
 
     shift_start = now.replace(hour=9, minute=0, second=0, microsecond=0)
@@ -295,7 +295,7 @@ def attendance_break_out(staff_id: str, date_str: str) -> str | None:
     record = get_today_attendance(staff_id, date_str)
     if not record:
         return None
-    time_str = bd_now().strftime("%H:%M")
+    time_str = bd_now().strftime("%I:%M %p")
     _update_attendance_cell(record["_row_number"], 7, time_str)
     return time_str
 
@@ -304,7 +304,7 @@ def attendance_break_in(staff_id: str, date_str: str) -> str | None:
     record = get_today_attendance(staff_id, date_str)
     if not record:
         return None
-    time_str = bd_now().strftime("%H:%M")
+    time_str = bd_now().strftime("%I:%M %p")
     _update_attendance_cell(record["_row_number"], 8, time_str)
     return time_str
 
@@ -314,10 +314,10 @@ def attendance_check_out(staff_id: str, date_str: str) -> dict | None:
     if not record:
         return None
     now = bd_now()
-    time_str = now.strftime("%H:%M")
+    time_str = now.strftime("%I:%M %p")
 
     try:
-        check_in = datetime.strptime(f"{date_str} {record.get('Check_In','')}", "%Y-%m-%d %H:%M")
+        check_in = datetime.strptime(f"{date_str} {record.get('Check_In','')}", "%Y-%m-%d %I:%M %p")
     except ValueError:
         check_in = now
 
@@ -327,8 +327,8 @@ def attendance_check_out(staff_id: str, date_str: str) -> dict | None:
     break_in = record.get("Break_In", "")
     if break_out and break_in:
         try:
-            bo = datetime.strptime(f"{date_str} {break_out}", "%Y-%m-%d %H:%M")
-            bi = datetime.strptime(f"{date_str} {break_in}", "%Y-%m-%d %H:%M")
+            bo = datetime.strptime(f"{date_str} {break_out}", "%Y-%m-%d %I:%M %p")
+            bi = datetime.strptime(f"{date_str} {break_in}", "%Y-%m-%d %I:%M %p")
             total_minutes -= (bi - bo).total_seconds() / 60
         except ValueError:
             pass
@@ -380,7 +380,7 @@ def update_patient_payment(patient_id: str, additional_paid: float, discount: fl
     ws.update_cell(row_number, 20, status)      # Payment_Status
     ws.update_cell(row_number, 22, new_paid)    # Paid_Amount
     ws.update_cell(row_number, 23, new_due)     # Due_Amount
-    ws.update_cell(row_number, 29, bd_now().strftime("%Y-%m-%d %H:%M"))  # updated_at
+    ws.update_cell(row_number, 29, bd_now().strftime("%Y-%m-%d %I:%M %p"))  # updated_at
 
     return {
         "total_bill": total_bill,
@@ -755,7 +755,7 @@ def add_report(data: dict, uploaded_by: str) -> str:
         data.get("File_Telegram_ID", ""),
         data.get("File_Name", ""),
         data.get("File_Type", ""),
-        bd_now().strftime("%Y-%m-%d %H:%M"),
+        bd_now().strftime("%Y-%m-%d %I:%M %p"),
         uploaded_by,
         data.get("File_Drive_Link", ""),
     ]
