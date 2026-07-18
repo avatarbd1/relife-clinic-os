@@ -45,6 +45,19 @@ import config
 import sheets
 import roles
 
+
+def fmt_time_ampm(t):
+    """Convert stored 'HH:MM' (24h) to 12-hour 'hh:mm AM/PM'."""
+    if not t:
+        return t
+    t = str(t).strip()
+    if "AM" in t.upper() or "PM" in t.upper():
+        return t
+    try:
+        return datetime.strptime(t, "%H:%M").strftime("%I:%M %p").lstrip("0")
+    except ValueError:
+        return t
+
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO,
@@ -110,6 +123,8 @@ _ALL_MENU_ITEMS = [
     roles.MENU_TREATMENT_HISTORY,
     roles.MENU_PATIENT_LIST,
     roles.MENU_DAILY_REGISTER,
+    roles.MENU_BUG_REPORT,
+    roles.MENU_BUG_LIST,
 ]
 _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 
@@ -123,6 +138,11 @@ _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
     TPLAN_MANUAL,
     TPLAN_CONFIRM,
 ) = range(29, 37)
+
+(
+    BUG_DESC,
+    BUG_PHOTO,
+) = range(37, 39)
 
 MACHINE_LIST = [
     "Hot Pack", "Cold Pack",
@@ -665,13 +685,13 @@ async def apt_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text in ("হ্যাঁ", "yes", "y", "হা", "ha"):
         a = context.user_data.get("new_appointment", {})
         dates = a.get("Dates") or ([a["Date"]] if a.get("Date") else [])
-        ids = []
+        rows_data = []
         for d in dates:
             row = dict(a)
             row["Date"] = d
             row.pop("Dates", None)
-            appointment_id = sheets.add_appointment(row, created_by=staff.get("Full_Name", "Unknown"))
-            ids.append(appointment_id)
+            rows_data.append(row)
+        ids = sheets.add_appointments_batch(rows_data, created_by=staff.get("Full_Name", "Unknown"))
         if len(ids) > 1:
             msg = f"✅ {len(ids)}টা অ্যাপয়েন্টমেন্ট বুক হয়েছে!\nAppointment IDs: {', '.join(ids)}"
         else:
@@ -734,17 +754,17 @@ async def attendance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif not record.get("Break_Out"):
         buttons.append([InlineKeyboardButton("☕ Break Out", callback_data="att_breakout")])
         buttons.append([InlineKeyboardButton("🚪 Check Out", callback_data="att_checkout")])
-        status_line = f"🟢 Check In: {record.get('Check_In')}"
+        status_line = f"🟢 Check In: {fmt_time_ampm(record.get('Check_In'))}"
     elif not record.get("Break_In"):
         buttons.append([InlineKeyboardButton("🔙 Break In", callback_data="att_breakin")])
-        status_line = f"☕ Break Out: {record.get('Break_Out')}"
+        status_line = f"☕ Break Out: {fmt_time_ampm(record.get('Break_Out'))}"
     elif not record.get("Check_Out"):
         buttons.append([InlineKeyboardButton("🚪 Check Out", callback_data="att_checkout")])
-        status_line = f"🔙 Break In: {record.get('Break_In')}"
+        status_line = f"🔙 Break In: {fmt_time_ampm(record.get('Break_In'))}"
     else:
         await update.message.reply_text(
             f"✅ আজকের হাজিরা সম্পন্ন।\n"
-            f"Check In: {record.get('Check_In')}\nCheck Out: {record.get('Check_Out')}\n"
+            f"Check In: {fmt_time_ampm(record.get('Check_In'))}\nCheck Out: {fmt_time_ampm(record.get('Check_Out'))}\n"
             f"মোট কাজের সময়: {record.get('Working_Hours')} ঘণ্টা"
         )
         return
@@ -765,18 +785,18 @@ async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     if action == "att_checkin":
         time_str = sheets.attendance_check_in(staff)
-        await query.edit_message_text(f"✅ Check In হয়েছে: {time_str}")
+        await query.edit_message_text(f"✅ Check In হয়েছে: {fmt_time_ampm(time_str)}")
     elif action == "att_breakout":
         time_str = sheets.attendance_break_out(staff_id, date_str)
-        await query.edit_message_text(f"☕ Break শুরু: {time_str}" if time_str else "❌ আজকের রেকর্ড পাওয়া যায়নি।")
+        await query.edit_message_text(f"☕ Break শুরু: {fmt_time_ampm(time_str)}" if time_str else "❌ আজকের রেকর্ড পাওয়া যায়নি।")
     elif action == "att_breakin":
         time_str = sheets.attendance_break_in(staff_id, date_str)
-        await query.edit_message_text(f"🔙 Break শেষ: {time_str}" if time_str else "❌ আজকের রেকর্ড পাওয়া যায়নি।")
+        await query.edit_message_text(f"🔙 Break শেষ: {fmt_time_ampm(time_str)}" if time_str else "❌ আজকের রেকর্ড পাওয়া যায়নি।")
     elif action == "att_checkout":
         result = sheets.attendance_check_out(staff_id, date_str)
         if result:
             await query.edit_message_text(
-                f"🚪 Check Out হয়েছে: {result['time']}\n"
+                f"🚪 Check Out হয়েছে: {fmt_time_ampm(result['time'])}\n"
                 f"মোট কাজের সময়: {result['working_hours']} ঘণ্টা\n"
                 f"ওভারটাইম: {result['overtime']} ঘণ্টা"
             )
@@ -2068,6 +2088,122 @@ async def plist_action_hist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(full_text)
 
 
+# ---------- বাগ রিপোর্ট ----------
+
+async def bug_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return ConversationHandler.END
+    context.user_data["bug_report"] = {}
+    await update.message.reply_text(
+        "🐛 কী সমস্যা হচ্ছে লিখো (এক বা একাধিক লাইনে):",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    return BUG_DESC
+
+
+async def bug_desc(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["bug_report"]["Description"] = update.message.text.strip()
+    await update.message.reply_text(
+        "স্ক্রিনশট/ছবি থাকলে পাঠাও, না থাকলে - দাও:",
+        reply_markup=_skip_keyboard(),
+    )
+    return BUG_PHOTO
+
+
+async def bug_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff", {})
+    photo_file_id = ""
+    if update.message.photo:
+        photo_file_id = update.message.photo[-1].file_id
+    bug = context.user_data.get("bug_report", {})
+    bug["Reported_By"] = staff.get("Full_Name", "Unknown")
+    bug["Role"] = staff.get("Role", "")
+    bug["Photo_File_ID"] = photo_file_id
+    bug_id = sheets.add_bug_report(bug)
+
+    await update.message.reply_text(
+        f"✅ ধন্যবাদ, সমস্যা রিপোর্ট করা হয়েছে। (ID: {bug_id})",
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
+
+    owner_ids = sheets.get_staff_telegram_ids_by_role("Owner")
+    alert_text = (
+        f"🐛 নতুন সমস্যা রিপোর্ট (ID: {bug_id})\n"
+        f"রিপোর্ট করেছেন: {bug['Reported_By']} ({bug['Role']})\n\n"
+        f"{bug['Description']}"
+    )
+    for owner_id in owner_ids:
+        if owner_id == update.effective_user.id:
+            continue
+        try:
+            if photo_file_id:
+                await context.bot.send_photo(
+                    chat_id=owner_id, photo=photo_file_id, caption=alert_text
+                )
+            else:
+                await context.bot.send_message(chat_id=owner_id, text=alert_text)
+        except Exception:
+            logger.exception("Owner-কে বাগ রিপোর্ট নোটিফাই করতে ব্যর্থ হয়েছে")
+
+    context.user_data.pop("bug_report", None)
+    return ConversationHandler.END
+
+
+async def bug_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff", {})
+    context.user_data.pop("bug_report", None)
+    await update.message.reply_text(
+        "❌ বাতিল করা হয়েছে।",
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
+    return ConversationHandler.END
+
+
+def _bug_list_keyboard(bug_id: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton("✅ সমাধান হয়েছে", callback_data=f"bugfix_{bug_id}")]]
+    )
+
+
+async def bug_list_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_BUG_LIST):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    open_bugs = sheets.get_open_bug_reports()
+    if not open_bugs:
+        await update.message.reply_text("✅ কোনো Open সমস্যা নেই।")
+        return
+    await update.message.reply_text(f"📋 Open সমস্যা: {len(open_bugs)}টি")
+    for bug in open_bugs:
+        text = (
+            f"🐛 {bug.get('Bug_ID', '')} — {bug.get('Date', '')} {fmt_time_ampm(bug.get('Time', ''))}\n"
+            f"রিপোর্ট করেছেন: {bug.get('Reported_By', '')} ({bug.get('Role', '')})\n\n"
+            f"{bug.get('Description', '')}"
+        )
+        photo_id = bug.get("Photo_File_ID", "")
+        keyboard = _bug_list_keyboard(bug.get("Bug_ID", ""))
+        if photo_id:
+            await update.message.reply_photo(photo=photo_id, caption=text, reply_markup=keyboard)
+        else:
+            await update.message.reply_text(text, reply_markup=keyboard)
+
+
+async def bug_fix_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    bug_id = query.data.replace("bugfix_", "")
+    sheets.mark_bug_report_fixed(bug_id)
+    try:
+        await query.edit_message_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+    await query.message.reply_text(f"✅ {bug_id} সমাধান হয়েছে বলে মার্ক করা হলো।")
+
+
 def main():
     app = Application.builder().token(config.BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -2259,6 +2395,30 @@ def main():
         fallbacks=[CommandHandler("cancel", thist_cancel)],
     )
     app.add_handler(thist_conv)
+
+    app.add_handler(
+        MessageHandler(filters.Regex(f"^{roles.MENU_BUG_LIST}$"), bug_list_menu)
+    )
+    app.add_handler(CallbackQueryHandler(bug_fix_callback, pattern="^bugfix_"))
+
+    bug_conv = ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_BUG_REPORT}$"), bug_start)
+        ],
+        states={
+            BUG_DESC: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), bug_desc)],
+            BUG_PHOTO: [
+                MessageHandler(filters.PHOTO, bug_photo),
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), bug_photo),
+            ],
+        },
+        fallbacks=[
+            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
+            CommandHandler("cancel", bug_cancel),
+            CommandHandler("start", _restart_via_start),
+        ],
+    )
+    app.add_handler(bug_conv)
 
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_HOME}$"), go_home))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), unknown_menu))

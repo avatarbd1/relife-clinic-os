@@ -4,7 +4,7 @@ path = 'bot.py'
 src = open(path, encoding='utf-8').read()
 
 old_0 = "import config\nimport sheets\nimport roles"
-new_0 = "import config\nimport sheets\nimport roles\n\n\ndef fmt_time_ampm(t):\n    \"\"\"Convert stored 'HH:MM' (24h) to 12-hour 'hh:mm AM/PM'.\"\"\"\n    if not t:\n        return t\n    t = str(t).strip()\n    if \"AM\" in t.upper() or \"PM\" in t.upper():\n        return t\n    try:\n        return datetime.strptime(t, \"%H:%M\").strftime(\"%I:%M %p\").lstrip(\"0\")\n    except ValueError:\n        return t"
+new_0 = "import config\nimport sheets\nimport roles\n\n\ndef fmt_time_ampm(t):\n    \"\"\"Convert stored 'HH:MM' (24h) to 12-hour 'hh:mm AM/PM'.\"\"\"\n    if not t:\n        return t\n    t = str(t).strip()\n    if \"AM\" in t.upper() or \"PM\" in t.upper():\n        return t\n    try:\n        return datetime.strptime(t, \"%I:%M %p\").strftime(\"%I:%M %p\").lstrip(\"0\")\n    except ValueError:\n        return t"
 if src.count(old_0) == 1:
     src = src.replace(old_0, new_0)
     print('✅ patch 1/10 applied')

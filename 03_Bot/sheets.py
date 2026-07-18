@@ -22,7 +22,6 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 
 import config
-from config import bd_now
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -81,7 +80,7 @@ def _next_patient_id(ws) -> str:
 def add_patient(data: dict, created_by: str) -> str:
     ws = _worksheet(config.SHEET_PATIENTS)
     patient_id = _next_patient_id(ws)
-    now = bd_now()
+    now = datetime.now()
 
     row = [
         patient_id,
@@ -114,7 +113,7 @@ def add_patient(data: dict, created_by: str) -> str:
         now.strftime("%Y-%m-%d %H:%M"),
         now.strftime("%Y-%m-%d %H:%M"),
     ]
-    ws.append_row(row, value_input_option="RAW", table_range="A1:AC1")
+    ws.append_row(row, value_input_option="RAW")
     new_row_number = len(ws.get_all_values())
     phone_val = data.get("Phone", "")
     alt_phone_val = data.get("Alternative_Phone", "")
@@ -180,7 +179,7 @@ def find_patient_by_phone(phone: str) -> dict | None:
     return None
 
 
-def _next_appointment_id_num(ws) -> int:
+def _next_appointment_id(ws) -> str:
     ids = ws.col_values(1)[1:]
     numbers = []
     for v in ids:
@@ -189,11 +188,8 @@ def _next_appointment_id_num(ws) -> int:
                 numbers.append(int(v[2:]))
             except ValueError:
                 pass
-    return (max(numbers) + 1) if numbers else 1
-
-
-def _next_appointment_id(ws) -> str:
-    return f"AP{_next_appointment_id_num(ws):04d}"
+    next_num = (max(numbers) + 1) if numbers else 1
+    return f"AP{next_num:04d}"
 
 
 def add_appointment(data: dict, created_by: str) -> str:
@@ -210,31 +206,8 @@ def add_appointment(data: dict, created_by: str) -> str:
         "Scheduled",
         data.get("Remarks", ""),
     ]
-    ws.append_row(row, value_input_option="RAW", table_range="A1:I1")
+    ws.append_row(row, value_input_option="RAW")
     return appointment_id
-
-
-def add_appointments_batch(data_list: list[dict], created_by: str) -> list[str]:
-    ws = _worksheet(config.SHEET_APPOINTMENTS)
-    start_num = _next_appointment_id_num(ws)
-    ids = []
-    rows = []
-    for i, data in enumerate(data_list):
-        appointment_id = f"AP{start_num + i:04d}"
-        ids.append(appointment_id)
-        rows.append([
-            appointment_id,
-            data.get("Date", ""),
-            data.get("Time", ""),
-            data.get("Patient_ID", ""),
-            data.get("Patient_Name", ""),
-            data.get("Department", ""),
-            data.get("Therapist", ""),
-            "Scheduled",
-            data.get("Remarks", ""),
-        ])
-    ws.append_rows(rows, value_input_option="RAW", table_range="A1:I1")
-    return ids
 
 
 def get_all_appointments() -> list[dict]:
@@ -289,7 +262,7 @@ def _update_attendance_cell(row_number: int, col_index: int, value):
 
 def attendance_check_in(staff: dict) -> str:
     ws = _worksheet(config.SHEET_ATTENDANCE)
-    now = bd_now()
+    now = datetime.now()
     date_str = now.strftime("%Y-%m-%d")
     time_str = now.strftime("%H:%M")
     attendance_id = _next_attendance_id(ws)
@@ -313,7 +286,7 @@ def attendance_check_in(staff: dict) -> str:
         status,
         "",
     ]
-    ws.append_row(row, value_input_option="RAW", table_range="A1:N1")
+    ws.append_row(row, value_input_option="RAW")
     return time_str
 
 
@@ -321,7 +294,7 @@ def attendance_break_out(staff_id: str, date_str: str) -> str | None:
     record = get_today_attendance(staff_id, date_str)
     if not record:
         return None
-    time_str = bd_now().strftime("%H:%M")
+    time_str = datetime.now().strftime("%H:%M")
     _update_attendance_cell(record["_row_number"], 7, time_str)
     return time_str
 
@@ -330,7 +303,7 @@ def attendance_break_in(staff_id: str, date_str: str) -> str | None:
     record = get_today_attendance(staff_id, date_str)
     if not record:
         return None
-    time_str = bd_now().strftime("%H:%M")
+    time_str = datetime.now().strftime("%H:%M")
     _update_attendance_cell(record["_row_number"], 8, time_str)
     return time_str
 
@@ -339,7 +312,7 @@ def attendance_check_out(staff_id: str, date_str: str) -> dict | None:
     record = get_today_attendance(staff_id, date_str)
     if not record:
         return None
-    now = bd_now()
+    now = datetime.now()
     time_str = now.strftime("%H:%M")
 
     try:
@@ -406,7 +379,7 @@ def update_patient_payment(patient_id: str, additional_paid: float, discount: fl
     ws.update_cell(row_number, 20, status)      # Payment_Status
     ws.update_cell(row_number, 22, new_paid)    # Paid_Amount
     ws.update_cell(row_number, 23, new_due)     # Due_Amount
-    ws.update_cell(row_number, 29, bd_now().strftime("%Y-%m-%d %H:%M"))  # updated_at
+    ws.update_cell(row_number, 29, datetime.now().strftime("%Y-%m-%d %H:%M"))  # updated_at
 
     return {
         "total_bill": total_bill,
@@ -449,9 +422,9 @@ def add_package(patient_id: str, patient_name: str, total_sessions: int, package
     row = [
         package_id, patient_id, patient_name, total_sessions, 0, total_sessions,
         package_amount, paid_amount, due_amount,
-        bd_now().strftime("%Y-%m-%d"), status,
+        datetime.now().strftime("%Y-%m-%d"), status,
     ]
-    ws.append_row(row, table_range="A1:K1")
+    ws.append_row(row)
     return package_id
 
 
@@ -511,7 +484,7 @@ def _next_daily_sl(ws, date_str: str) -> int:
 def add_payment(data: dict) -> str:
     ws = _worksheet(config.SHEET_PAYMENTS)
     receipt_no = _next_receipt_no(ws)
-    date_str = bd_now().strftime("%Y-%m-%d")
+    date_str = datetime.now().strftime("%Y-%m-%d")
     sl = _next_daily_sl(ws, date_str)
     row = [
         receipt_no,
@@ -527,7 +500,7 @@ def add_payment(data: dict) -> str:
         data.get("Received_By", ""),
         data.get("Remarks", ""),
     ]
-    ws.append_row(row, table_range="A1:L1")
+    ws.append_row(row)
     return receipt_no
 
 
@@ -578,7 +551,7 @@ def add_treatment_note(data: dict, created_by: str) -> str:
     treatment_id = _next_treatment_id(ws)
     row = [
         treatment_id,
-        bd_now().strftime("%Y-%m-%d"),
+        datetime.now().strftime("%Y-%m-%d"),
         data.get("Patient_ID", ""),
         data.get("Patient_Name", ""),
         data.get("Diagnosis", ""),
@@ -591,7 +564,7 @@ def add_treatment_note(data: dict, created_by: str) -> str:
         data.get("Remarks", ""),
         data.get("Plan_ID", ""),
     ]
-    ws.append_row(row, value_input_option="RAW", table_range="A1:M1")
+    ws.append_row(row, value_input_option="RAW")
     return treatment_id
 
 
@@ -650,10 +623,10 @@ def add_treatment_plan(data: dict, created_by: str) -> str:
         data.get("Electrotherapy_Plan", ""),
         data.get("Manual_Therapy_Plan", ""),
         created_by,
-        bd_now().strftime("%Y-%m-%d"),
+        datetime.now().strftime("%Y-%m-%d"),
         "Active",
     ]
-    ws.append_row(row, value_input_option="RAW", table_range="A1:L1")
+    ws.append_row(row, value_input_option="RAW")
     return plan_id
 
 
@@ -711,7 +684,7 @@ def get_daily_register(date_str: str | None = None) -> dict:
     সহ রেজিস্টার বানায়, দিনশেষের টোটাল হিসাব করে।
     """
     if date_str is None:
-        date_str = bd_now().strftime("%Y-%m-%d")
+        date_str = datetime.now().strftime("%Y-%m-%d")
     payments_today = [
         p for p in get_all_payments() if str(p.get("Date", "")).strip() == date_str
     ]
@@ -756,79 +729,3 @@ def get_daily_register(date_str: str | None = None) -> dict:
         "total_paid": total_paid,
         "total_due": total_due,
     }
-
-
-def _next_bug_id(ws) -> str:
-    """13_BugReports শীটে পরবর্তী Bug_ID (BGxxxx ফরম্যাটে) বের করে।"""
-    ids = ws.col_values(1)[1:]
-    numbers = []
-    for v in ids:
-        if v.startswith("BG"):
-            try:
-                numbers.append(int(v[2:]))
-            except ValueError:
-                pass
-    next_num = (max(numbers) + 1) if numbers else 1
-    return f"BG{next_num:04d}"
-
-
-def add_bug_report(data: dict) -> str:
-    """13_BugReports শীটে নতুন বাগ রিপোর্ট যোগ করে, Status সবসময় 'Open' দিয়ে শুরু হয়।"""
-    ws = _worksheet(config.SHEET_BUG_REPORTS)
-    bug_id = _next_bug_id(ws)
-    now = bd_now()
-    row = [
-        bug_id,
-        now.strftime("%Y-%m-%d"),
-        now.strftime("%H:%M"),
-        data.get("Reported_By", ""),
-        data.get("Role", ""),
-        data.get("Description", ""),
-        data.get("Photo_File_ID", ""),
-        "Open",
-        "",
-    ]
-    ws.append_row(row, value_input_option="RAW", table_range="A1:I1")
-    return bug_id
-
-
-def get_open_bug_reports() -> list[dict]:
-    """Status='Open' থাকা সব বাগ রিপোর্ট ফেরত দেয়, প্রতিটার সাথে শীট row_number সহ।"""
-    ws = _worksheet(config.SHEET_BUG_REPORTS)
-    records = safe_get_all_records(ws)
-    result = []
-    for idx, r in enumerate(records, start=2):
-        if str(r.get("Status", "")).strip() == "Open":
-            r["_row_number"] = idx
-            result.append(r)
-    return result
-
-
-def mark_bug_report_fixed(bug_id: str) -> bool:
-    """একটা Bug_ID-র Status='Fixed' করে দেয়।"""
-    ws = _worksheet(config.SHEET_BUG_REPORTS)
-    records = safe_get_all_records(ws)
-    for idx, r in enumerate(records, start=2):
-        if str(r.get("Bug_ID", "")).strip() == bug_id.strip():
-            ws.update_cell(idx, 8, "Fixed")  # Status কলাম H
-            return True
-    return False
-
-
-def get_staff_telegram_ids_by_role(role: str) -> list[int]:
-    """নির্দিষ্ট Role-এর active স্টাফদের Telegram_ID-র লিস্ট ফেরত দেয় (নোটিফিকেশন পাঠানোর জন্য)।"""
-    ws = _worksheet(config.SHEET_STAFF)
-    records = safe_get_all_records(ws)
-    ids = []
-    for r in records:
-        if (
-            str(r.get("Role", "")).strip() == role.strip()
-            and str(r.get("Status", "")).strip().lower() != "inactive"
-        ):
-            tid = str(r.get("Telegram_ID", "")).strip()
-            if tid:
-                try:
-                    ids.append(int(tid))
-                except ValueError:
-                    pass
-    return ids
