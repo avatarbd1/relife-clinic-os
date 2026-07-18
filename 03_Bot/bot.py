@@ -2124,8 +2124,13 @@ async def report_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     local_path = os.path.join(tmp_dir, file_name)
     await file_obj.download_to_drive(local_path)
 
+    drive_link = ""
     try:
-        drive_id, drive_link = drive_module.upload_file_to_drive(local_path, file_name)
+        _drive_id, drive_link = drive_module.upload_file_to_drive(local_path, file_name)
+    except Exception:
+        logger.exception("Drive আপলোড ব্যর্থ হয়েছে, শুধু Telegram-এ সংরক্ষিত থাকবে")
+
+    try:
         report_id = sheets.add_report({
             "Patient_ID": rp["Patient_ID"],
             "Patient_Name": rp["Patient_Name"],
@@ -2134,13 +2139,14 @@ async def report_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "File_Type": file_type,
             "File_Drive_Link": drive_link,
         }, uploaded_by=staff.get("Full_Name", "Unknown"))
+        note = "" if drive_link else "\n(⚠️ Drive ব্যাকআপ হয়নি, শুধু Telegram-এ সংরক্ষিত আছে)"
         await update.message.reply_text(
-            f"✅ রিপোর্ট সেভ হয়েছে! Report ID: {report_id}\n"
+            f"✅ রিপোর্ট সেভ হয়েছে! Report ID: {report_id}{note}\n"
             "আরেকটা পাঠাতে চাইলে পাঠাও, নাহলে /cancel দাও।"
         )
     except Exception as e:
-        logger.exception("report_receive ব্যর্থ হয়েছে")
-        await update.message.reply_text(f"❌ আপলোড করতে সমস্যা হয়েছে।\nError: {e}")
+        logger.exception("report_receive শীটে সেভ করতে ব্যর্থ হয়েছে")
+        await update.message.reply_text(f"❌ সেভ করতে সমস্যা হয়েছে।\nError: {e}")
     finally:
         try:
             os.remove(local_path)
