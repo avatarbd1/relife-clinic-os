@@ -59,3 +59,11 @@ SHEET_PACKAGES = "11_Packages"
 SHEET_TREATMENT_PLANS = "12_Treatment_Plans"
 
 SHEET_REPORTS = "14_Reports"
+
+# ---- Bangladesh time helper ----
+from datetime import timedelta as _td, timezone as _tz
+
+def bd_now():
+    """বর্তমান বাংলাদেশ সময় (UTC+6) naive datetime হিসেবে রিটার্ন করে।"""
+    from datetime import datetime as _dt
+    return _dt.now(_tz.utc).replace(tzinfo=None) + _td(hours=6)
