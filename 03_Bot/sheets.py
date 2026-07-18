@@ -832,3 +832,17 @@ def get_month_running_total(year: int, month: int, up_to_day: int) -> dict:
         "total_income": total_income,
         "total_patients_month": len(unique_month),
     }
+
+
+def get_daily_patient_list(date_str: str) -> list[dict]:
+    payments = safe_get_all_records(_worksheet(config.SHEET_PAYMENTS))
+    day_payments = [p for p in payments if str(p.get("Date", "")).strip() == date_str]
+    day_payments.sort(key=lambda p: str(p.get("SL", "")))
+    return [
+        {
+            "name": p.get("Patient_Name", ""),
+            "session": p.get("Session_Type", ""),
+            "amount": float(p.get("Amount", 0) or 0),
+        }
+        for p in day_payments
+    ]

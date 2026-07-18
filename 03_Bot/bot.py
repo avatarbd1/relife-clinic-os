@@ -2276,6 +2276,14 @@ async def date_report_day_selected(update, context):
         f"💳 পেমেন্ট এন্ট্রি: {monthly['payment_count']}\n"
         f"💰 মোট আয়: {monthly['total_income']:.0f} টাকা"
     )
+    patient_list = sheets.get_daily_patient_list(date_str)
+    if patient_list:
+        list_lines = "\n".join(
+            f"{i+1}. {p['name']} — {p['session']} — {p['amount']:.0f} টাকা"
+            for i, p in enumerate(patient_list)
+        )
+        text += f"\n\n📋 রোগীর তালিকা:\n{list_lines}"
+
     await query.edit_message_text(text, reply_markup=calendar_helper.build_calendar(year, month))
 
 
