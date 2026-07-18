@@ -2266,12 +2266,14 @@ async def date_report_day_selected(update, context):
     import calendar as _cal
     text = (
         f"📅 {date_str} — দিনের হিসাব\n"
-        f"👥 রোগী রেজিস্ট্রেশন: {daily['patient_count']}\n"
-        f"💳 পেমেন্ট: {daily['payment_count']}\n"
+        f"🆕 নতুন রোগী রেজিস্ট্রেশন: {daily['patient_count']}\n"
+        f"🧍 মোট রোগী (ভিজিট): {daily['total_patients_today']}\n"
+        f"💳 পেমেন্ট এন্ট্রি: {daily['payment_count']}\n"
         f"💰 আয়: {daily['total_income']:.0f} টাকা\n\n"
         f"📊 {_cal.month_name[month]} {year} — মাসের রানিং টোটাল (১–{day} তারিখ)\n"
-        f"👥 মোট রোগী: {monthly['patient_count']}\n"
-        f"💳 মোট পেমেন্ট: {monthly['payment_count']}\n"
+        f"🆕 নতুন রোগী: {monthly['patient_count']}\n"
+        f"🧍 মোট রোগী (ভিজিট): {monthly['total_patients_month']}\n"
+        f"💳 পেমেন্ট এন্ট্রি: {monthly['payment_count']}\n"
         f"💰 মোট আয়: {monthly['total_income']:.0f} টাকা"
     )
     await query.edit_message_text(text, reply_markup=calendar_helper.build_calendar(year, month))

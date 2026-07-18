@@ -786,11 +786,13 @@ def get_daily_report(date_str: str) -> dict:
     patient_count = sum(1 for p in patients if str(p.get("Registration_Date", "")).strip() == date_str)
     day_payments = [p for p in payments if str(p.get("Date", "")).strip() == date_str]
     total_income = sum(float(p.get("Amount", 0) or 0) for p in day_payments)
+    unique_today = set(str(p.get("Patient_ID", "")).strip() for p in day_payments if str(p.get("Patient_ID", "")).strip())
 
     return {
         "patient_count": patient_count,
         "payment_count": len(day_payments),
         "total_income": total_income,
+        "total_patients_today": len(unique_today),
     }
 
 
@@ -810,6 +812,7 @@ def get_month_running_total(year: int, month: int, up_to_day: int) -> dict:
                 continue
 
     payment_count, total_income = 0, 0.0
+    unique_month = set()
     for p in payments:
         d = str(p.get("Date", "")).strip()
         if d.startswith(month_prefix):
@@ -817,7 +820,15 @@ def get_month_running_total(year: int, month: int, up_to_day: int) -> dict:
                 if int(d.split("-")[2]) <= up_to_day:
                     payment_count += 1
                     total_income += float(p.get("Amount", 0) or 0)
+                    pid = str(p.get("Patient_ID", "")).strip()
+                    if pid:
+                        unique_month.add(pid)
             except (IndexError, ValueError):
                 continue
 
-    return {"patient_count": patient_count, "payment_count": payment_count, "total_income": total_income}
+    return {
+        "patient_count": patient_count,
+        "payment_count": payment_count,
+        "total_income": total_income,
+        "total_patients_month": len(unique_month),
+    }
