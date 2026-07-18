@@ -45,6 +45,7 @@ import config
 from config import bd_now
 import sheets
 import roles
+import calendar_helper
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -2240,6 +2241,42 @@ async def plist_action_getfile(update: Update, context: ContextTypes.DEFAULT_TYP
             await query.message.reply_text("❌ ফাইলটা এখন খুলতে পারা যাচ্ছে না।")
 
 
+async def date_report_menu(update, context):
+    today = bd_now().date()
+    await update.message.reply_text(
+        "📅 তারিখ সিলেক্ট করুন:",
+        reply_markup=calendar_helper.build_calendar(today.year, today.month)
+    )
+
+async def date_report_calendar_navigate(update, context):
+    query = update.callback_query
+    await query.answer()
+    year, month = map(int, query.data.split("_", 1)[1].split("-"))
+    await query.edit_message_reply_markup(reply_markup=calendar_helper.build_calendar(year, month))
+
+async def date_report_day_selected(update, context):
+    query = update.callback_query
+    await query.answer()
+    date_str = query.data.split("_", 1)[1]
+    year, month, day = map(int, date_str.split("-"))
+
+    daily = sheets.get_daily_report(date_str)
+    monthly = sheets.get_month_running_total(year, month, day)
+
+    import calendar as _cal
+    text = (
+        f"📅 {date_str} — দিনের হিসাব\n"
+        f"👥 রোগী রেজিস্ট্রেশন: {daily['patient_count']}\n"
+        f"💳 পেমেন্ট: {daily['payment_count']}\n"
+        f"💰 আয়: {daily['total_income']:.0f} টাকা\n\n"
+        f"📊 {_cal.month_name[month]} {year} — মাসের রানিং টোটাল (১–{day} তারিখ)\n"
+        f"👥 মোট রোগী: {monthly['patient_count']}\n"
+        f"💳 মোট পেমেন্ট: {monthly['payment_count']}\n"
+        f"💰 মোট আয়: {monthly['total_income']:.0f} টাকা"
+    )
+    await query.edit_message_text(text, reply_markup=calendar_helper.build_calendar(year, month))
+
+
 def main():
     app = Application.builder().token(config.BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -2416,6 +2453,9 @@ def main():
     app.add_handler(tplan_conv)
 
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_REPORTS}$"), reports_menu))
+    app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_DATE_REPORT}$"), date_report_menu))
+    app.add_handler(CallbackQueryHandler(date_report_calendar_navigate, pattern="^calnav_"))
+    app.add_handler(CallbackQueryHandler(date_report_day_selected, pattern="^calday_"))
     hist_conv = ConversationHandler(
         entry_points=[MessageHandler(filters.Regex(f"^{roles.MENU_PATIENT_HISTORY}$"), hist_start)],
         states={

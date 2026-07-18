@@ -777,3 +777,47 @@ def get_report_by_id(report_id: str) -> dict | None:
         if str(r.get("Report_ID", "")).strip() == str(report_id).strip():
             return r
     return None
+
+
+def get_daily_report(date_str: str) -> dict:
+    patients = safe_get_all_records(_worksheet(config.SHEET_PATIENTS))
+    payments = safe_get_all_records(_worksheet(config.SHEET_PAYMENTS))
+
+    patient_count = sum(1 for p in patients if str(p.get("Registration_Date", "")).strip() == date_str)
+    day_payments = [p for p in payments if str(p.get("Date", "")).strip() == date_str]
+    total_income = sum(float(p.get("Amount", 0) or 0) for p in day_payments)
+
+    return {
+        "patient_count": patient_count,
+        "payment_count": len(day_payments),
+        "total_income": total_income,
+    }
+
+
+def get_month_running_total(year: int, month: int, up_to_day: int) -> dict:
+    patients = safe_get_all_records(_worksheet(config.SHEET_PATIENTS))
+    payments = safe_get_all_records(_worksheet(config.SHEET_PAYMENTS))
+    month_prefix = f"{year:04d}-{month:02d}-"
+
+    patient_count = 0
+    for p in patients:
+        d = str(p.get("Registration_Date", "")).strip()
+        if d.startswith(month_prefix):
+            try:
+                if int(d.split("-")[2]) <= up_to_day:
+                    patient_count += 1
+            except (IndexError, ValueError):
+                continue
+
+    payment_count, total_income = 0, 0.0
+    for p in payments:
+        d = str(p.get("Date", "")).strip()
+        if d.startswith(month_prefix):
+            try:
+                if int(d.split("-")[2]) <= up_to_day:
+                    payment_count += 1
+                    total_income += float(p.get("Amount", 0) or 0)
+            except (IndexError, ValueError):
+                continue
+
+    return {"patient_count": patient_count, "payment_count": payment_count, "total_income": total_income}
