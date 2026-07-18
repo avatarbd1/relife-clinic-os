@@ -2224,7 +2224,10 @@ async def plist_action_getfile(update: Update, context: ContextTypes.DEFAULT_TYP
     sent = False
     if tg_id:
         try:
-            await context.bot.send_document(chat_id=query.message.chat_id, document=tg_id, caption=caption)
+            if str(record.get("File_Type", "")).strip() == "Photo":
+                await context.bot.send_photo(chat_id=query.message.chat_id, photo=tg_id, caption=caption)
+            else:
+                await context.bot.send_document(chat_id=query.message.chat_id, document=tg_id, caption=caption)
             sent = True
         except Exception:
             logger.exception("Telegram file_id দিয়ে পাঠাতে ব্যর্থ")
