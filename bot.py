@@ -1,4 +1,5 @@
 """
+from tz_helper import bd_now
 bot.py — Relife Clinic OS Telegram Bot (প্রথম ভার্সন)
 """
 
@@ -113,7 +114,7 @@ def _menu_keyboard(role_str: str) -> ReplyKeyboardMarkup:
 
 
 def _date_keyboard() -> InlineKeyboardMarkup:
-    today = datetime.now()
+    today = bd_now()
     buttons = []
     row = []
     for i in range(7):
@@ -178,7 +179,7 @@ def _session_count(session_type: str) -> int:
 
 
 def _time_keyboard_quick() -> ReplyKeyboardMarkup:
-    now_str = datetime.now().strftime("%I:%M %p")
+    now_str = bd_now().strftime("%I:%M %p")
     return ReplyKeyboardMarkup(
         [[f"এখন ({now_str})"]], resize_keyboard=True, one_time_keyboard=True
     )
@@ -686,7 +687,7 @@ async def attendance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
     staff_id = staff.get("Staff_ID", "") or str(staff.get("Telegram_ID", ""))
-    date_str = datetime.now().strftime("%Y-%m-%d")
+    date_str = bd_now().strftime("%Y-%m-%d")
     record = sheets.get_today_attendance(staff_id, date_str)
 
     buttons = []
@@ -722,7 +723,7 @@ async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         await query.edit_message_text("❌ স্টাফ তথ্য পাওয়া যায়নি।")
         return
     staff_id = staff.get("Staff_ID", "") or str(staff.get("Telegram_ID", ""))
-    date_str = datetime.now().strftime("%Y-%m-%d")
+    date_str = bd_now().strftime("%Y-%m-%d")
     action = query.data
 
     if action == "att_checkin":
@@ -755,7 +756,7 @@ async def today_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not roles.can_access(staff.get("Role", ""), roles.MENU_TODAY_APPOINTMENTS):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
-    date_str = datetime.now().strftime("%Y-%m-%d")
+    date_str = bd_now().strftime("%Y-%m-%d")
     appts = [
         a for a in sheets.get_appointments_for_date(date_str)
         if a.get("Status", "").strip() == "Scheduled"
@@ -806,7 +807,7 @@ async def today_register(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not roles.can_access(staff.get("Role", ""), roles.MENU_TODAY_REGISTER):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
-    date_str = datetime.now().strftime("%Y-%m-%d")
+    date_str = bd_now().strftime("%Y-%m-%d")
     rows = sheets.get_payments_for_date(date_str)
     if not rows:
         await update.message.reply_text("আজ এখনো কোনো এন্ট্রি হয়নি।")
@@ -1011,7 +1012,7 @@ async def pay_method(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def pay_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     if text.startswith("এখন"):
-        text = datetime.now().strftime("%I:%M %p")
+        text = bd_now().strftime("%I:%M %p")
     context.user_data["payment"]["Time"] = text
     p = context.user_data["payment"]
     summary = (
@@ -1317,7 +1318,7 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if not roles.can_access(staff.get("Role", ""), roles.MENU_REPORTS):
         return
-    today_str = datetime.now().strftime("%Y-%m-%d")
+    today_str = bd_now().strftime("%Y-%m-%d")
     patients = sheets.get_all_patients()
     total_patients = len(patients)
     today_appointments = sheets.get_appointments_for_date(today_str)
