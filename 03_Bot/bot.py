@@ -594,10 +594,8 @@ async def apt_back_to_search_callback(update: Update, context: ContextTypes.DEFA
     await query.answer()
     context.user_data.pop("apt_dates", None)
     context.user_data.pop("new_appointment", None)
-    await query.edit_message_text(
-        "⬅️ রোগী খোঁজার ধাপে ফিরে যাওয়া হলো।
-রোগীর নাম, ফোন নম্বর, অথবা Patient ID লিখো (খুঁজতে):"
-    )
+    await query.edit_message_text("⬅️ রোগী খোঁজার ধাপে ফিরে যাওয়া হলো।")
+    await query.message.reply_text("রোগীর নাম, ফোন নম্বর, অথবা Patient ID লিখো (খুঁজতে):")
     recent_kb = _recent_patient_buttons("aptsel_")
     if recent_kb:
         await query.message.reply_text(
@@ -1271,10 +1269,8 @@ async def treat_back_to_search_callback(update: Update, context: ContextTypes.DE
     await query.answer()
     context.user_data.pop("treatment", None)
     context.user_data.pop("treat_selected", None)
-    await query.edit_message_text(
-        "⬅️ রোগী খোঁজার ধাপে ফিরে যাওয়া হলো।
-রোগীর নাম, ফোন নম্বর, অথবা Patient ID লিখো (খুঁজতে):"
-    )
+    await query.edit_message_text("⬅️ রোগী খোঁজার ধাপে ফিরে যাওয়া হলো।")
+    await query.message.reply_text("রোগীর নাম, ফোন নম্বর, অথবা Patient ID লিখো (খুঁজতে):")
     recent_kb = _recent_patient_buttons("treatsel_")
     if recent_kb:
         await query.message.reply_text(
