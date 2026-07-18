@@ -22,6 +22,7 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 
 import config
+from config import bd_now
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -80,7 +81,7 @@ def _next_patient_id(ws) -> str:
 def add_patient(data: dict, created_by: str) -> str:
     ws = _worksheet(config.SHEET_PATIENTS)
     patient_id = _next_patient_id(ws)
-    now = datetime.now()
+    now = bd_now()
 
     row = [
         patient_id,
@@ -262,7 +263,7 @@ def _update_attendance_cell(row_number: int, col_index: int, value):
 
 def attendance_check_in(staff: dict) -> str:
     ws = _worksheet(config.SHEET_ATTENDANCE)
-    now = datetime.now()
+    now = bd_now()
     date_str = now.strftime("%Y-%m-%d")
     time_str = now.strftime("%H:%M")
     attendance_id = _next_attendance_id(ws)
@@ -294,7 +295,7 @@ def attendance_break_out(staff_id: str, date_str: str) -> str | None:
     record = get_today_attendance(staff_id, date_str)
     if not record:
         return None
-    time_str = datetime.now().strftime("%H:%M")
+    time_str = bd_now().strftime("%H:%M")
     _update_attendance_cell(record["_row_number"], 7, time_str)
     return time_str
 
@@ -303,7 +304,7 @@ def attendance_break_in(staff_id: str, date_str: str) -> str | None:
     record = get_today_attendance(staff_id, date_str)
     if not record:
         return None
-    time_str = datetime.now().strftime("%H:%M")
+    time_str = bd_now().strftime("%H:%M")
     _update_attendance_cell(record["_row_number"], 8, time_str)
     return time_str
 
@@ -312,7 +313,7 @@ def attendance_check_out(staff_id: str, date_str: str) -> dict | None:
     record = get_today_attendance(staff_id, date_str)
     if not record:
         return None
-    now = datetime.now()
+    now = bd_now()
     time_str = now.strftime("%H:%M")
 
     try:
@@ -379,7 +380,7 @@ def update_patient_payment(patient_id: str, additional_paid: float, discount: fl
     ws.update_cell(row_number, 20, status)      # Payment_Status
     ws.update_cell(row_number, 22, new_paid)    # Paid_Amount
     ws.update_cell(row_number, 23, new_due)     # Due_Amount
-    ws.update_cell(row_number, 29, datetime.now().strftime("%Y-%m-%d %H:%M"))  # updated_at
+    ws.update_cell(row_number, 29, bd_now().strftime("%Y-%m-%d %H:%M"))  # updated_at
 
     return {
         "total_bill": total_bill,
@@ -422,7 +423,7 @@ def add_package(patient_id: str, patient_name: str, total_sessions: int, package
     row = [
         package_id, patient_id, patient_name, total_sessions, 0, total_sessions,
         package_amount, paid_amount, due_amount,
-        datetime.now().strftime("%Y-%m-%d"), status,
+        bd_now().strftime("%Y-%m-%d"), status,
     ]
     ws.append_row(row)
     return package_id
@@ -484,7 +485,7 @@ def _next_daily_sl(ws, date_str: str) -> int:
 def add_payment(data: dict) -> str:
     ws = _worksheet(config.SHEET_PAYMENTS)
     receipt_no = _next_receipt_no(ws)
-    date_str = datetime.now().strftime("%Y-%m-%d")
+    date_str = bd_now().strftime("%Y-%m-%d")
     sl = _next_daily_sl(ws, date_str)
     row = [
         receipt_no,
@@ -551,7 +552,7 @@ def add_treatment_note(data: dict, created_by: str) -> str:
     treatment_id = _next_treatment_id(ws)
     row = [
         treatment_id,
-        datetime.now().strftime("%Y-%m-%d"),
+        bd_now().strftime("%Y-%m-%d"),
         data.get("Patient_ID", ""),
         data.get("Patient_Name", ""),
         data.get("Diagnosis", ""),
@@ -623,7 +624,7 @@ def add_treatment_plan(data: dict, created_by: str) -> str:
         data.get("Electrotherapy_Plan", ""),
         data.get("Manual_Therapy_Plan", ""),
         created_by,
-        datetime.now().strftime("%Y-%m-%d"),
+        bd_now().strftime("%Y-%m-%d"),
         "Active",
     ]
     ws.append_row(row, value_input_option="RAW")
@@ -684,7 +685,7 @@ def get_daily_register(date_str: str | None = None) -> dict:
     সহ রেজিস্টার বানায়, দিনশেষের টোটাল হিসাব করে।
     """
     if date_str is None:
-        date_str = datetime.now().strftime("%Y-%m-%d")
+        date_str = bd_now().strftime("%Y-%m-%d")
     payments_today = [
         p for p in get_all_payments() if str(p.get("Date", "")).strip() == date_str
     ]
@@ -754,7 +755,7 @@ def add_report(data: dict, uploaded_by: str) -> str:
         data.get("File_Telegram_ID", ""),
         data.get("File_Name", ""),
         data.get("File_Type", ""),
-        datetime.now().strftime("%Y-%m-%d %H:%M"),
+        bd_now().strftime("%Y-%m-%d %H:%M"),
         uploaded_by,
         data.get("File_Drive_Link", ""),
     ]

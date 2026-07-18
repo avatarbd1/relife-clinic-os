@@ -42,6 +42,7 @@ from telegram.ext import (
 )
 
 import config
+from config import bd_now
 import sheets
 import roles
 
@@ -186,7 +187,7 @@ def _recent_patient_buttons(prefix: str, limit: int = 8) -> InlineKeyboardMarkup
 def _date_multi_keyboard(selected: set) -> InlineKeyboardMarkup:
     """তারিখ মাল্টি-সিলেক্ট কীবোর্ড — একসাথে কয়েকদিনের অ্যাপয়েন্টমেন্ট বুক করার জন্য।
     ✅ চিহ্ন দিয়ে বোঝানো হয় কোন কোন দিন এখন পর্যন্ত বাছাই করা আছে।"""
-    today = datetime.now()
+    today = bd_now()
     buttons = []
     row = []
     for i in range(7):
@@ -210,7 +211,7 @@ def _date_multi_keyboard(selected: set) -> InlineKeyboardMarkup:
 
 
 def _date_keyboard() -> InlineKeyboardMarkup:
-    today = datetime.now()
+    today = bd_now()
     buttons = []
     row = []
     for i in range(7):
@@ -724,7 +725,7 @@ async def attendance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
     staff_id = staff.get("Staff_ID", "") or str(staff.get("Telegram_ID", ""))
-    date_str = datetime.now().strftime("%Y-%m-%d")
+    date_str = bd_now().strftime("%Y-%m-%d")
     record = sheets.get_today_attendance(staff_id, date_str)
 
     buttons = []
@@ -760,7 +761,7 @@ async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         await query.edit_message_text("❌ স্টাফ তথ্য পাওয়া যায়নি।")
         return
     staff_id = staff.get("Staff_ID", "") or str(staff.get("Telegram_ID", ""))
-    date_str = datetime.now().strftime("%Y-%m-%d")
+    date_str = bd_now().strftime("%Y-%m-%d")
     action = query.data
 
     if action == "att_checkin":
@@ -793,7 +794,7 @@ async def today_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not roles.can_access(staff.get("Role", ""), roles.MENU_TODAY_APPOINTMENTS):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
-    date_str = datetime.now().strftime("%Y-%m-%d")
+    date_str = bd_now().strftime("%Y-%m-%d")
     appts = [
         a for a in sheets.get_appointments_for_date(date_str)
         if a.get("Status", "").strip() == "Scheduled"
@@ -1550,7 +1551,7 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if not roles.can_access(staff.get("Role", ""), roles.MENU_REPORTS):
         return
-    today_str = datetime.now().strftime("%Y-%m-%d")
+    today_str = bd_now().strftime("%Y-%m-%d")
     patients = sheets.get_all_patients()
     total_patients = len(patients)
     today_appointments = sheets.get_appointments_for_date(today_str)
