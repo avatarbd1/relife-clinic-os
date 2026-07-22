@@ -1,0 +1,17 @@
+{
+    "generated": "2026-07-23 05:30:43.584952",
+    "module": "Finance Insight Engine",
+    "financial_summary": {
+        "total_income": 0,
+        "total_expense": 0,
+        "net_profit": 0
+    },
+    "cash_flow": {
+        "status": "WAITING_FOR_FINANCE_DATA",
+        "monthly_target": 0
+    },
+    "business_health": {
+        "score": 0,
+        "status": "READY"
+    }
+}

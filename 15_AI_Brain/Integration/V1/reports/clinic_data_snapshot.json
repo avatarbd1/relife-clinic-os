@@ -1,0 +1,19 @@
+{
+    "generated": "2026-07-23 05:28:12.191765",
+    "clinic": "Relife Clinic OS",
+    "modules": {
+        "patient": {
+            "status": "connected",
+            "records": 0
+        },
+        "staff": {
+            "status": "connected",
+            "records": 0
+        },
+        "finance": {
+            "status": "connected",
+            "records": 0
+        }
+    },
+    "note": "Integration layer initialized. Waiting for real clinic data."
+}

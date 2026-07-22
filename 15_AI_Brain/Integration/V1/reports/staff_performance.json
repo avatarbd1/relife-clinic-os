@@ -1,0 +1,15 @@
+{
+    "generated": "2026-07-23 05:29:20.959745",
+    "module": "Staff Performance Engine",
+    "staff_summary": {
+        "total_staff": 0,
+        "active_staff": 0,
+        "attendance": 0
+    },
+    "performance_metrics": {
+        "patient_handled": 0,
+        "task_completed": 0,
+        "discipline_score": 0
+    },
+    "status": "READY_FOR_STAFF_DATA_CONNECTION"
+}

@@ -1,0 +1,16 @@
+{
+    "generated": "2026-07-23 05:28:54.385117",
+    "module": "Patient Insight Engine",
+    "summary": {
+        "total_patient": 0,
+        "new_patient": 0,
+        "follow_up": 0
+    },
+    "conditions": {
+        "stroke": 0,
+        "back_pain": 0,
+        "neck_pain": 0,
+        "others": 0
+    },
+    "status": "READY_FOR_DATABASE_CONNECTION"
+}
