@@ -40,6 +40,14 @@ TASK_QUEUE.md-এর Pending তালিকা থেকে এমন কাজ
 আমি নিজে AI_REGISTRY.md-এ Active এবং TASK_QUEUE.md-এ In-Progress করার
 টার্মিনাল কমান্ড তোমার কাছে চাইব — সেটা রেডি রাখো।
 
+## 🚨 Live File — কনফার্মড, অনুমান কোরো না
+Render dashboard Root Directory = `03_Bot`। মানে `03_Bot/bot.py`,
+`03_Bot/roles.py`, `03_Bot/sheets.py`, `03_Bot/config.py` — এগুলোই
+আসল Live ফাইল। root-এর একই-নামের ফাইলগুলো ডিপ্লয় হয় না।
+কখনো file mtime/size/import pattern দেখে উল্টো অনুমান কোরো না — এটা
+আগে একবার ভুল করা হয়েছিল। নিশ্চিত না হলে ব্যবহারকারীকে Render
+dashboard-এর Root Directory স্ক্রিনশট চাও।
+
 ## নিয়ম (সবসময় প্রযোজ্য)
 - শুধু তোমার বরাদ্দ করা কাজ/মডিউল ছোঁবে, অন্য কিছুতে হাত দেবে না
 - 03_Bot বা root-এর কোনো ফাইল (bot.py/sheets.py/roles.py) পুরো
