@@ -2319,29 +2319,15 @@ async def date_report_day_selected(update, context):
     date_str = query.data.split("_", 1)[1]
     year, month, day = map(int, date_str.split("-"))
 
-    daily = sheets.get_daily_report(date_str)
-    monthly = sheets.get_month_running_total(year, month, day)
-
-    import calendar as _cal
-    text = (
-        f"📅 {date_str} — দিনের হিসাব\n"
-        f"🆕 নতুন রোগী রেজিস্ট্রেশন: {daily['patient_count']}\n"
-        f"🧍 মোট রোগী (ভিজিট): {daily['total_patients_today']}\n"
-        f"💳 পেমেন্ট এন্ট্রি: {daily['payment_count']}\n"
-        f"💰 আয়: {daily['total_income']:.0f} টাকা\n\n"
-        f"📊 {_cal.month_name[month]} {year} — মাসের রানিং টোটাল (১–{day} তারিখ)\n"
-        f"🆕 নতুন রোগী: {monthly['patient_count']}\n"
-        f"🧍 মোট রোগী (ভিজিট): {monthly['total_patients_month']}\n"
-        f"💳 পেমেন্ট এন্ট্রি: {monthly['payment_count']}\n"
-        f"💰 মোট আয়: {monthly['total_income']:.0f} টাকা"
-    )
     patient_list = sheets.get_daily_patient_list(date_str)
     if patient_list:
         list_lines = "\n".join(
             f"{i+1}. {p['name']} — {p['session']} — {p['amount']:.0f} টাকা"
             for i, p in enumerate(patient_list)
         )
-        text += f"\n\n📋 রোগীর তালিকা:\n{list_lines}"
+        text = f"📋 {date_str} — রোগীর তালিকা:\n{list_lines}"
+    else:
+        text = f"📋 {date_str} — এই তারিখে কোনো রোগীর এন্ট্রি পাওয়া যায়নি।"
 
     await query.edit_message_text(text, reply_markup=calendar_helper.build_calendar(year, month))
 

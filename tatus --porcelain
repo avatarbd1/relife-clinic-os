@@ -1,0 +1,41 @@
+[33mcommit e7ce02f64f0ae926034ca93bdcf9349a95d92ff8[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: avatarbd1 <hmesmail3@gmail.com>
+Date:   Thu Jul 23 01:14:25 2026 +0600
+
+    Add async board-proposal/voting system (14_Proposals) + Master Prompt reference
+
+[33mcommit ff7ffb3e1fd0b8c53c8e541c7488c31c3255659e[m
+Author: avatarbd1 <hmesmail3@gmail.com>
+Date:   Thu Jul 23 01:08:12 2026 +0600
+
+    Add fetch-fallback and duplicate bot.py warning to Master Prompt
+
+[33mcommit 9c9c20c573155022c42d5197d9b18babd1d7309a[m
+Author: avatarbd1 <hmesmail3@gmail.com>
+Date:   Thu Jul 23 01:00:30 2026 +0600
+
+    Register Claude-2, mark Patch 3 (back button) In-Progress
+
+[33mcommit 4fadd642542d664afe9609c4ea3d3cb649e9d290[m
+Author: avatarbd1 <hmesmail3@gmail.com>
+Date:   Thu Jul 23 00:31:26 2026 +0600
+
+    Add registration step to Master Prompt
+
+[33mcommit 474a6328d90a61b53f0dad3fde94b41aab7071ba[m
+Author: avatarbd1 <hmesmail3@gmail.com>
+Date:   Thu Jul 23 00:22:44 2026 +0600
+
+    Add AI Registry and Handover Log
+
+[33mcommit f3b46d8dfe9571cb0f6c0c0eb169c15f71c044cc[m
+Author: avatarbd1 <hmesmail3@gmail.com>
+Date:   Thu Jul 23 00:18:28 2026 +0600
+
+    Add Master Prompt
+
+[33mcommit ec1187a1dd55cbeb43c5c5fa6a42e2cde88f3297[m
+Author: avatarbd1 <hmesmail3@gmail.com>
+Date:   Thu Jul 23 00:15:39 2026 +0600
+
+    Add AI Constitution

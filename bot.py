@@ -145,7 +145,23 @@ def _time_keyboard() -> InlineKeyboardMarkup:
             row = []
     if row:
         buttons.append(row)
+    buttons.append([InlineKeyboardButton("⬅️ আগের ধাপ (তারিখ)", callback_data="aptback_date")])
     return InlineKeyboardMarkup(buttons)
+
+
+def _therapist_back_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        [["⬅️ আগের ধাপ (সময়)"]], resize_keyboard=True, one_time_keyboard=True
+    )
+
+
+async def apt_back_to_date_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """সময় বাছাইয়ের ধাপ থেকে 'আগের ধাপ' চাপলে আবার তারিখ বাছাইয়ে ফিরিয়ে নেয়।"""
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_text("⬅️ তারিখ আবার বেছে নাও:")
+    await query.message.reply_text("তারিখ বেছে নাও 👇", reply_markup=_date_keyboard())
+    return APT_DATE
 
 
 def _payment_method_keyboard() -> ReplyKeyboardMarkup:
@@ -597,18 +613,28 @@ async def apt_time_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     time_str = query.data.replace("apttime_", "")
     context.user_data.setdefault("new_appointment", {})["Time"] = time_str
     await query.edit_message_text(f"✅ সময় নির্বাচন করা হয়েছে: {time_str}")
-    await query.message.reply_text("থেরাপিস্ট / ডাক্তারের নাম লেখো:")
+    await query.message.reply_text(
+        "থেরাপিস্ট / ডাক্তারের নাম লেখো:", reply_markup=_therapist_back_keyboard()
+    )
     return APT_THERAPIST
 
 
 async def apt_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["new_appointment"]["Time"] = update.message.text.strip()
-    await update.message.reply_text("থেরাপিস্ট / ডাক্তারের নাম লেখো:")
+    await update.message.reply_text(
+        "থেরাপিস্ট / ডাক্তারের নাম লেখো:", reply_markup=_therapist_back_keyboard()
+    )
     return APT_THERAPIST
 
 
 async def apt_therapist(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["new_appointment"]["Therapist"] = update.message.text.strip()
+    text = update.message.text.strip()
+    if text == "⬅️ আগের ধাপ (সময়)":
+        await update.message.reply_text(
+            "সময় আবার বেছে নাও:", reply_markup=_time_keyboard()
+        )
+        return APT_TIME
+    context.user_data["new_appointment"]["Therapist"] = text
     a = context.user_data["new_appointment"]
     summary = (
         "নিচের তথ্য ঠিক আছে কিনা চেক করো:\n\n"
@@ -1207,22 +1233,40 @@ async def treat_given(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return TREAT_EXERCISE
 
 
+def _skip_back_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup([["-", "⬅️ আগের ধাপ"]], resize_keyboard=True, one_time_keyboard=True)
+
+
 async def treat_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     context.user_data["treatment"]["Exercise"] = "" if text == "-" else text
-    await update.message.reply_text("ইলেক্ট্রোথেরাপি মোডালিটি লেখো (না থাকলে - দাও):", reply_markup=_skip_keyboard())
+    await update.message.reply_text(
+        "ইলেক্ট্রোথেরাপি মোডালিটি লেখো (না থাকলে - দাও):", reply_markup=_skip_back_keyboard()
+    )
     return TREAT_ELECTRO
 
 
 async def treat_electro(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
+    if text == "⬅️ আগের ধাপ":
+        await update.message.reply_text(
+            "এক্সারসাইজ প্ল্যান আবার লেখো (না থাকলে - দাও):", reply_markup=_skip_keyboard()
+        )
+        return TREAT_EXERCISE
     context.user_data["treatment"]["Electrotherapy"] = "" if text == "-" else text
-    await update.message.reply_text("ম্যানুয়াল থেরাপি টেকনিক লেখো (না থাকলে - দাও):", reply_markup=_skip_keyboard())
+    await update.message.reply_text(
+        "ম্যানুয়াল থেরাপি টেকনিক লেখো (না থাকলে - দাও):", reply_markup=_skip_back_keyboard()
+    )
     return TREAT_MANUAL
 
 
 async def treat_manual(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
+    if text == "⬅️ আগের ধাপ":
+        await update.message.reply_text(
+            "ইলেক্ট্রোথেরাপি মোডালিটি আবার লেখো (না থাকলে - দাও):", reply_markup=_skip_back_keyboard()
+        )
+        return TREAT_ELECTRO
     context.user_data["treatment"]["Manual_Therapy"] = "" if text == "-" else text
     await update.message.reply_text(
         "সেশন নম্বর লেখো (যেমন: 5):",
@@ -1586,6 +1630,7 @@ def main():
             ],
             APT_TIME: [
                 CallbackQueryHandler(apt_time_callback, pattern="^apttime_"),
+                CallbackQueryHandler(apt_back_to_date_callback, pattern="^aptback_date$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_time),
             ],
             APT_THERAPIST: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_therapist)],

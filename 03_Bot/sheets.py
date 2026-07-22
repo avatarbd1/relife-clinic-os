@@ -399,6 +399,40 @@ def update_appointment_status(appointment_id: str, status: str) -> bool:
     return True
 
 
+def get_appointment_by_id(appointment_id: str) -> dict | None:
+    """Appointment_ID দিয়ে একটা নির্দিষ্ট অ্যাপয়েন্টমেন্ট খুঁজে বের করে।"""
+    for a in get_all_appointments():
+        if str(a.get("Appointment_ID", "")).strip() == str(appointment_id).strip():
+            return a
+    return None
+
+
+def has_payment_for_appointment(appointment_id: str, date_str: str) -> bool:
+    """এই অ্যাপয়েন্টমেন্টের জন্য আগে থেকে রেজিস্টার এন্ট্রি (Payment) তৈরি হয়েছে কিনা চেক করে (একই অ্যাপয়েন্টমেন্টে দুইবার এন্ট্রি ঠেকাতে)।"""
+    tag = f"APT:{appointment_id}"
+    for p in get_all_payments():
+        if str(p.get("Date", "")).strip() == str(date_str).strip() and tag in str(p.get("Remarks", "")):
+            return True
+    return False
+
+
+def get_appointment_by_id(appointment_id: str) -> dict | None:
+    """Appointment_ID দিয়ে একটা নির্দিষ্ট অ্যাপয়েন্টমেন্ট খুঁজে বের করে।"""
+    for a in get_all_appointments():
+        if str(a.get("Appointment_ID", "")).strip() == str(appointment_id).strip():
+            return a
+    return None
+
+
+def has_payment_for_appointment(appointment_id: str, date_str: str) -> bool:
+    """এই অ্যাপয়েন্টমেন্টের জন্য আগে থেকে রেজিস্টার এন্ট্রি (Payment) তৈরি হয়েছে কিনা চেক করে (একই অ্যাপয়েন্টমেন্টে দুইবার এন্ট্রি ঠেকাতে)।"""
+    tag = f"APT:{appointment_id}"
+    for p in get_all_payments():
+        if str(p.get("Date", "")).strip() == str(date_str).strip() and tag in str(p.get("Remarks", "")):
+            return True
+    return False
+
+
 # ===== Payment & Package Functions =====
 
 def _next_package_id(ws) -> str:
