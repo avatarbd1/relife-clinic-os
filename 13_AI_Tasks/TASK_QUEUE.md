@@ -13,14 +13,13 @@
 
 | কাজ | মডিউল/ফাইল | অগ্রাধিকার |
 |-----|------------|------------|
-| Patch 3: Back button (booking + treatment machine) | 03_Bot/bot.py | Medium |
 | Salary System (design ready, code বাকি) | sheets.py + bot.py + roles.py | High |
 
 ## In-Progress
 
 | কাজ | AI ID | শুরুর তারিখ | মডিউল/ফাইল |
 |-----|-------|-------------|------------|
-|     |       |             |            |
+| Patch 3: Back button (booking + treatment machine) | Claude-2 | 2026-07-23 | 03_Bot/bot.py |
 
 ## Done
 
