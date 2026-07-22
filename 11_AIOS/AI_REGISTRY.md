@@ -15,7 +15,7 @@ HANDOVER.md এবং TASK_QUEUE.md-এ ব্যবহার হবে — আ�
 |------------|----------|-----------------------------------|-----------|
 | Claude-1   | Claude   |                                    | Active    |
 | Claude-2   | Claude   | 03_Bot/bot.py (Patch 3: Back button) | Active    |
-| Claude-3   | Claude   |                                    |           |
+| Claude-3   | Claude   |                                    | Active    |
 | Claude-4   | Claude   |                                    |           |
 | Claude-5   | Claude   |                                    |           |
 | Claude-6   | Claude   |                                    |           |
