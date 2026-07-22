@@ -69,3 +69,31 @@ AI-দের কাছে নিয়ে গিয়ে মতামত/ভো
 - GitHub browsing/fetch টুল সাব-ফোল্ডারের নির্দিষ্ট ফাইল URL অনুমান করে
   খুলতে পারে না (permission error দেয়)। সবচেয়ে নির্ভরযোগ্য উপায়:
   ব্যবহারকারীকে বলো Termux থেকে `cat <file>` করে আউটপুট paste করে দিতে।
+
+## 🚨 CRITICAL — Live File নির্ণয়ের নিয়ম (Claude-4, 2026-07-23)
+
+### কনফার্মড সত্য (Render dashboard screenshot দিয়ে যাচাই করা, 2026-07-23)
+- **Render Root Directory = `03_Bot`** এবং Build Command `03_Bot/ $ pip install -r requirements.txt`
+- মানে **`03_Bot/bot.py`, `03_Bot/roles.py`, `03_Bot/sheets.py`, `03_Bot/config.py` — এগুলোই আসল Live ফাইল।**
+- root-এ থাকা `bot.py`/`roles.py`/`sheets.py`/`config.py` — এগুলো Render-এ ডিপ্লয়ই হয় না, লাইভ বটে কোনো প্রভাব ফেলে না।
+
+### ⚠️ এই ভুলটা আগে একটা AI সেশনে হয়েছিল — কখনো পুনরাবৃত্তি কোরো না
+আগের একটা সেশনে শুধু file mtime (root bot.py-র তারিখ নতুন ছিল) আর plain
+`import bot/roles/sheets` প্যাটার্ন দেখে ভুলভাবে সিদ্ধান্ত নেওয়া হয়েছিল যে
+root bot.py-ই Live। এই ভুল ধারণা নিয়ে প্রায় `03_Bot` ফোল্ডার rename/archive
+করে ফেলা হতো — যেটা আসলে লাইভ বট ভেঙে দিত।
+
+### বাধ্যতামূলক নিয়ম — কখনো লঙ্ঘন করবে না
+1. **কখনোই** file mtime, size, বা import statement দেখে অনুমান করবে না
+   কোনটা "Live"।
+2. Live ফাইল নিশ্চিত করার একমাত্র উপায়: ব্যবহারকারীকে জিজ্ঞাসা করো
+   Render dashboard → Settings → Build & Deploy সেকশনের "Root Directory"
+   আর "Start Command" স্ক্রিনশট দিতে, অথবা Termux-এ যদি Root Directory
+   জানা থাকে সেটাই ধরে নাও।
+3. **এই মুহূর্তে নিশ্চিত: Root Directory = `03_Bot` — তাই সব প্যাচ/এডিট
+   `03_Bot/` ফোল্ডারের ফাইলে যাবে, root ফাইলে না** (যতক্ষণ না ব্যবহারকারী
+   কনফার্ম করে এটা বদলেছে)।
+4. root-এর ফাইলে যদি কোনো ফিচার/কোড দেখো যা `03_Bot`-এর ফাইলে নেই
+   (যেমন `treat_manual`, "Patch 3: Back button") — সন্দেহ কোরো না যে
+   এটা "লাইভে চলে গেছে", কারণ **এটা যায়নি।** ব্যবহারকারীকে জানাও যে
+   root-এ করা সেই কাজ এখনো লাইভ বটে merge/copy হয়নি।
