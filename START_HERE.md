@@ -1,8 +1,29 @@
 # START HERE — relife-clinic-os
 
-Welcome AI worker.
+## Repository (Single Source of Truth)
 
-Before doing any work, read this order:
+https://github.com/avatarbd1/relife-clinic-os
+
+---
+
+# Universal AI Onboarding
+
+Every AI worker MUST follow this order before doing any work.
+
+## Step 1 — Open Repository
+
+Repository:
+https://github.com/avatarbd1/relife-clinic-os
+
+Branch:
+main
+
+Production Code:
+03_Bot/
+
+---
+
+## Step 2 — Read These Files
 
 1. PROJECT_STATUS.md
 2. 11_AIOS/MASTER_PROMPT.md
@@ -11,23 +32,49 @@ Before doing any work, read this order:
 5. 12_Handover/HANDOVER.md
 6. 13_AI_Tasks/TASK_QUEUE.md
 
+---
 
-## Important
+## Step 3 — If GitHub Cannot Be Read
 
-Production code:
+If browsing, fetch or GitHub access fails:
 
-Do not work on random files.
+DO NOT GUESS.
 
-Do not guess.
+Ask the user to run:
 
-Check ownership before editing.
+cd ~/relife-clinic-os
 
-Every change must have:
-- Task record
-- Validation
-- Handover note
+cat START_HERE.md
 
+cat PROJECT_STATUS.md
+
+cat 11_AIOS/MASTER_PROMPT.md
+
+cat 11_AIOS/AI_CONSTITUTION.md
+
+cat 11_AIOS/AI_REGISTRY.md
+
+cat 12_Handover/HANDOVER.md
+
+cat 13_AI_Tasks/TASK_QUEUE.md
+
+Never request individual files one by one.
+
+Always request the complete onboarding bundle.
+
+---
+
+## Rules
+
+- Do not guess.
+- Do not edit unrelated files.
+- Check TASK_QUEUE first.
+- Check AI_REGISTRY before claiming an ID.
+- Update HANDOVER after finishing.
+- Never overwrite production files completely.
+
+---
 
 ## Mission
 
-Build and maintain Relife Clinic OS safely with a coordinated AI team.
+Build and maintain Relife Clinic OS safely through coordinated multi-AI collaboration.

@@ -1,67 +1,77 @@
 # RELIFE CLINIC OS — PROJECT STATUS
 
-## Production Deployment (Official)
+## Repository
 
-This file is the single reference for current deployment information.
+GitHub:
+https://github.com/avatarbd1/relife-clinic-os
 
-### Repository
-- GitHub: avatarbd1/relife-clinic-os
-- Branch: main
-
-### Live Deployment
-- Platform: Render Web Service
-- Root Directory: `03_Bot`
-
-### Production Code Path
-
-### Main Application Files
-
-### Build Configuration
-
-Build Command:
-
-### Deployment Rule
-
-All AI workers must treat `03_Bot/` as the current production source.
-
-Do not assume root-level duplicate files are live.
-
-If deployment changes, this document must be updated first.
+Branch:
+main
 
 ---
 
-# AI Development Rules
+## Production Deployment
 
-Before modifying code:
+Platform:
+Render Web Service
 
-1. Read:
-   - 11_AIOS/MASTER_PROMPT.md
-   - 11_AIOS/AI_CONSTITUTION.md
-   - 11_AIOS/AI_REGISTRY.md
-   - 12_Handover/HANDOVER.md
-   - 13_AI_Tasks/TASK_QUEUE.md
+Production Root:
+03_Bot/
 
-2. Confirm task ownership.
+Production Source Files
 
-3. Never overwrite production files completely.
-
-4. Never guess configuration values.
-
-5. Keep changes traceable.
+- 03_Bot/bot.py
+- 03_Bot/roles.py
+- 03_Bot/sheets.py
+- 03_Bot/config.py
 
 ---
 
-# Current Architecture
+## Deployment Rule
+
+Every AI must treat **03_Bot/** as the production source.
+
+Never assume any duplicate file outside this folder is live unless the owner explicitly changes the deployment path.
 
 ---
 
-# Status
+## AI Operating System
 
-Production source:
-03_Bot
+Required reading:
 
-AI Operating System:
+- START_HERE.md
+- 11_AIOS/MASTER_PROMPT.md
+- 11_AIOS/AI_CONSTITUTION.md
+- 11_AIOS/AI_REGISTRY.md
+- 12_Handover/HANDOVER.md
+- 13_AI_Tasks/TASK_QUEUE.md
+
+---
+
+## Development Rules
+
+Before editing code:
+
+1. Claim an available AI ID.
+2. Read the required documents.
+3. Check TASK_QUEUE.
+4. Avoid conflicts.
+5. Make traceable changes.
+6. Update HANDOVER.
+7. Mark the task Done.
+
+---
+
+## Current Status
+
+Repository Status:
 Active Development
 
-Last update:
+Production Platform:
+Render
+
+Production Root:
+03_Bot/
+
+Last Updated:
 2026-07-23
