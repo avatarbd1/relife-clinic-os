@@ -1,0 +1,101 @@
+{
+    "generated": "2026-07-23 05:11:25.181496",
+    "total_ai": 19,
+    "workers": [
+        {
+            "id": "Claude-1",
+            "platform": "Claude",
+            "status": "registered"
+        },
+        {
+            "id": "Claude-2",
+            "platform": "Claude",
+            "status": "registered"
+        },
+        {
+            "id": "Claude-3",
+            "platform": "Claude",
+            "status": "registered"
+        },
+        {
+            "id": "Claude-4",
+            "platform": "Claude",
+            "status": "registered"
+        },
+        {
+            "id": "Claude-5",
+            "platform": "Claude",
+            "status": "registered"
+        },
+        {
+            "id": "Claude-6",
+            "platform": "Claude",
+            "status": "registered"
+        },
+        {
+            "id": "Claude-7",
+            "platform": "Claude",
+            "status": "registered"
+        },
+        {
+            "id": "ChatGPT-1",
+            "platform": "ChatGPT",
+            "status": "registered"
+        },
+        {
+            "id": "ChatGPT-2",
+            "platform": "ChatGPT",
+            "status": "registered"
+        },
+        {
+            "id": "ChatGPT-3",
+            "platform": "ChatGPT",
+            "status": "registered"
+        },
+        {
+            "id": "ChatGPT-4",
+            "platform": "ChatGPT",
+            "status": "registered"
+        },
+        {
+            "id": "ChatGPT-5",
+            "platform": "ChatGPT",
+            "status": "registered"
+        },
+        {
+            "id": "ChatGPT-6",
+            "platform": "ChatGPT",
+            "status": "registered"
+        },
+        {
+            "id": "ChatGPT-7",
+            "platform": "ChatGPT",
+            "status": "registered"
+        },
+        {
+            "id": "Gemini-1",
+            "platform": "Gemini",
+            "status": "registered"
+        },
+        {
+            "id": "DeepSeek-1",
+            "platform": "DeepSeek",
+            "status": "registered"
+        },
+        {
+            "id": "Grok-1",
+            "platform": "Grok",
+            "status": "registered"
+        },
+        {
+            "id": "Genspark-1",
+            "platform": "Genspark",
+            "status": "registered"
+        },
+        {
+            "id": "Copilot-1",
+            "platform": "Copilot",
+            "status": "registered"
+        }
+    ]
+}
