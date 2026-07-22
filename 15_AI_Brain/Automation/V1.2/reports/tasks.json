@@ -1,0 +1,80 @@
+[
+    {
+        "task": "------------",
+        "ai": "------------",
+        "status": "",
+        "module": "Salary System (design ready, code বাকি)"
+    },
+    {
+        "task": "High",
+        "ai": "",
+        "status": "Patch 3: Back button (booking + treatment machine)",
+        "module": "03_Bot/bot.py"
+    },
+    {
+        "task": "## In-Progress",
+        "ai": "কাজ",
+        "status": "AI ID",
+        "module": "শুরুর তারিখ"
+    },
+    {
+        "task": "",
+        "ai": "-----",
+        "status": "-------",
+        "module": "-------------"
+    },
+    {
+        "task": "## Done",
+        "ai": "কাজ",
+        "status": "AI ID",
+        "module": "তারিখ"
+    },
+    {
+        "task": "",
+        "ai": "-----",
+        "status": "-------",
+        "module": "-------"
+    },
+    {
+        "task": "",
+        "ai": "Patient Action Panel auto-attach (Patch 1)",
+        "status": "Claude-1",
+        "module": "(আগের তারিখ)"
+    },
+    {
+        "task": "",
+        "ai": "Search-result keyboard merge + cancel buttons (Patch 2)",
+        "status": "Claude-1",
+        "module": "(আগের তারিখ)"
+    },
+    {
+        "task": "",
+        "ai": "AI Workspace setup (Constitution/Master Prompt/Registry/Handover)",
+        "status": "Claude-1",
+        "module": "2026-07-23"
+    },
+    {
+        "task": "## Brain Activation Test Task",
+        "ai": "কাজ",
+        "status": "AI ID",
+        "module": "Status"
+    },
+    {
+        "task": "",
+        "ai": "-----",
+        "status": "------",
+        "module": "--------"
+    },
+    {
+        "task": "",
+        "ai": "Create clinic improvement idea document",
+        "status": "ChatGPT-1",
+        "module": "In-Progress"
+    },
+    {
+        "task": "Create clinic improvement idea document",
+        "ai": "ChatGPT-1",
+        "status": "Done",
+        "module": "15_AI_Brain/Knowledge"
+    }
+]
