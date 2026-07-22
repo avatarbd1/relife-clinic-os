@@ -13,10 +13,10 @@ HANDOVER.md এবং TASK_QUEUE.md-এ ব্যবহার হবে — আ�
 
 | ID         | Platform | বরাদ্দকৃত মডিউল (যদি স্থায়ী হয়) | স্ট্যাটাস |
 |------------|----------|-----------------------------------|-----------|
-| Claude-1   | Claude   |                                    | Active    |
-| Claude-2   | Claude   | 03_Bot/bot.py (Patch 3: Back button) | Active    |
-| Claude-3   | Claude   |                                    | Active    |
-| Claude-4   | Claude   |                                    | Active    |
+| Claude-1   | Claude   |                                    |           |
+| Claude-2   | Claude   |                                    |           |
+| Claude-3   | Claude   |                                    |           |
+| Claude-4   | Claude   |                                    |           |
 | Claude-5   | Claude   |                                    |           |
 | Claude-6   | Claude   |                                    |           |
 | Claude-7   | Claude   |                                    |           |
@@ -32,4 +32,3 @@ HANDOVER.md এবং TASK_QUEUE.md-এ ব্যবহার হবে — আ�
 | Grok-1     | Grok     |                                    |           |
 | Genspark-1 | Genspark |                                    |           |
 | Copilot-1  | Copilot  |                                    |           |
-

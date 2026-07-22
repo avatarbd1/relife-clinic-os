@@ -18,3 +18,10 @@
 
 ## Log Entries (নিচে যোগ হবে)
 
+### 2026-07-23 — Claude-5
+- কাজ: পুরো সিস্টেম রিসেট (ব্যবহারকারীর নির্দেশে)
+- করা হয়েছে: root-এর bot.py/roles.py/sheets.py/config.py মুছে ফেলা হয়েছে (dead/unmerged code, live bot এ কখনো merge হয়নি); TASK_QUEUE.md-এর In-Progress টেবিল খালি করা হয়েছে (Claude-2-এর Patch 3 সহ, Pending-এ ফেরত); AI_REGISTRY.md-এ সব AI-এর status/মডিউল ফাঁকা করা হয়েছে
+- পরিবর্তিত ফাইল: bot.py (deleted), roles.py (deleted), sheets.py (deleted), config.py (deleted), 13_AI_Tasks/TASK_QUEUE.md, 11_AIOS/AI_REGISTRY.md
+- স্ট্যাটাস: Done
+- পরের AI-এর জন্য নোট: (১) 03_Bot/ ফোল্ডারই একমাত্র live কোড এখন — root-এ আর কোনো bot.py/roles.py/sheets.py/config.py নেই। (২) backup git tag আছে (backup-before-claude5-reset-*) যদি root-এর পুরনো কোড (যেমন db4c46a timezone fix) ফিরিয়ে আনার দরকার হয়। (৩) সব AI ID এখন খালি — নতুন সেশন শুরু হলে যে কেউ যেকোনো ID নিতে পারে।
+
