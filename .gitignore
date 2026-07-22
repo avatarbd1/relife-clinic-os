@@ -6,3 +6,19 @@ __pycache__/
 03_Bot/*.bak
 03_Bot/*.bak.*
 03_Bot/*_backup_*.py
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+
+# Backup files
+*.bak*
+*.zip
+*.tar.gz
+
+# Temporary files
+repo_files.txt
+repo_dirs.txt
