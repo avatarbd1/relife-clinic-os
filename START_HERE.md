@@ -78,3 +78,45 @@ Always request the complete onboarding bundle.
 ## Mission
 
 Build and maintain Relife Clinic OS safely through coordinated multi-AI collaboration.
+
+---
+
+# Language Policy (Foundation v1)
+
+## Default Language
+
+Documentation:
+- English (preferred)
+
+Source Code:
+- English identifiers, function names, variables and comments where appropriate
+
+Telegram Bot UI:
+- Bengali (বাংলা)
+
+User-facing Messages:
+- Bengali by default
+
+Admin Panel:
+- Bengali
+
+Google Sheet Labels:
+- Bengali unless the owner requests English
+
+Medical Logic:
+- English terminology is allowed internally,
+  but patient-visible text should be natural Bengali.
+
+---
+
+## AI Worker Rule
+
+Never convert the Telegram bot into English.
+
+Documentation may remain English.
+
+Production user experience must remain Bengali unless the owner explicitly requests another language.
+
+If uncertain:
+Ask before changing any user-visible language.
+
