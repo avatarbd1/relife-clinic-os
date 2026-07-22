@@ -28,3 +28,32 @@
 | Patient Action Panel auto-attach (Patch 1) | Claude-1 | (আগের তারিখ) | 03_Bot/bot.py |
 | Search-result keyboard merge + cancel buttons (Patch 2) | Claude-1 | (আগের তারিখ) | 03_Bot/bot.py |
 | AI Workspace setup (Constitution/Master Prompt/Registry/Handover) | Claude-1 | 2026-07-23 | 11_AIOS, 12_Handover |
+
+## Brain Activation Test Task
+
+| কাজ | AI ID | Status | Module/File |
+|-----|------|--------|-------------|
+| Create clinic improvement idea document | ChatGPT-1 | In-Progress | 15_AI_Brain/Knowledge |
+
+Task ID:
+T-20260723-brain-test
+
+Evidence:
+Pending
+
+
+## Brain Activation Test Completion
+
+| কাজ | AI ID | Status | Module/File |
+|-----|------|--------|-------------|
+| Create clinic improvement idea document | ChatGPT-1 | Done | 15_AI_Brain/Knowledge |
+
+Task ID:
+T-20260723-brain-test
+
+Evidence:
+Knowledge entry added
+
+Result:
+Completed successfully
+
