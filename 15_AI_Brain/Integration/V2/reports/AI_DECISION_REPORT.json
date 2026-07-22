@@ -1,0 +1,18 @@
+{
+    "generated": "2026-07-23 05:48:04.690693",
+    "system": "Relife Clinic OS AI Brain",
+    "patient_decision": {
+        "status": "WAITING_FOR_DATA",
+        "message": "Patient database connection required"
+    },
+    "staff_decision": {
+        "status": "WAITING_FOR_DATA",
+        "message": "Staff data required"
+    },
+    "finance_decision": {
+        "income": 0,
+        "expense": 0,
+        "status": "WAITING_FOR_FINANCE_DATA"
+    },
+    "next_action": "Connect real clinic database"
+}
