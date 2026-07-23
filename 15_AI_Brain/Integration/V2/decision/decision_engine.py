@@ -36,7 +36,11 @@ class DecisionEngine:
 
         return {
             "status":"ANALYZED",
-            "message":"Patient activity reviewed"
+            "message":(
+                f"Patient database active. "
+                f"Total records: {data['records']}. "
+                "Follow-up and diagnosis trend monitoring required."
+            )
         }
 
 
@@ -52,7 +56,12 @@ class DecisionEngine:
 
 
         return {
-            "status":"ANALYZED"
+            "status":"ANALYZED",
+            "message":(
+                f"Staff records active. "
+                f"Total records: {data['records']}. "
+                "Attendance and performance tracking required."
+            )
         }
 
 
@@ -68,7 +77,7 @@ class DecisionEngine:
             expense["amount"],
 
             "status":
-            "WAITING_FOR_FINANCE_DATA"
+            "CONNECTED"
 
         }
 
@@ -111,7 +120,7 @@ class DecisionEngine:
 
 
             "next_action":
-            "Connect real clinic database"
+            "Review patient follow-up, monitor collection, and improve staff performance tracking."
 
         }
 
