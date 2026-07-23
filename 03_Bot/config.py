@@ -67,3 +67,7 @@ def bd_now():
     """বর্তমান বাংলাদেশ সময় (UTC+6) naive datetime হিসেবে রিটার্ন করে।"""
     from datetime import datetime as _dt
     return _dt.now(_tz.utc).replace(tzinfo=None) + _td(hours=6)
+
+# Salary Sheet
+SHEET_SALARY = "13_Salary"
+

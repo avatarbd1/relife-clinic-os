@@ -95,3 +95,9 @@ def can_access(role_str: str, menu_item: str) -> bool:
 
 def is_therapist_owner_of_patient(therapist_name: str, patient_row: dict) -> bool:
     return patient_row.get("Therapist", "").strip() == therapist_name.strip()
+
+# Salary Menu Items
+MENU_SALARY = "💰 স্যালারি"
+MENU_MY_SALARY = "💰 আমার স্যালারি"
+MENU_ALL_SALARIES = "📊 সব স্যালারি"
+MENU_GENERATE_PAYROLL = "📥 পেওয়েল তৈরি"
