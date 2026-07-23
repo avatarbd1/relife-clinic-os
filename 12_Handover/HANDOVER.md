@@ -18,6 +18,14 @@
 
 ## Log Entries (নিচে যোগ হবে)
 
+### 2026-07-23 — Claude-3
+- কাজ: 16_ClinicOS_CLI/ — Termux-ভিত্তিক ডেভেলপমেন্ট CLI টুল যোগ (relife command)
+- করা হয়েছে: একটা স্বতন্ত্র Python CLI (task manager, code runner, log viewer, ZIP backup, git sync wrapper, doctor/health-check) বানানো হয়েছে এবং 16_ClinicOS_CLI/ ফোল্ডারে রাখা হয়েছে। এটা 03_Bot বা অন্য কোনো production ফাইল স্পর্শ করেনি — সম্পূর্ণ নতুন, স্বতন্ত্র ফোল্ডার। ব্যবহারকারী Termux-এ ইনস্টল করে টেস্ট করেছেন (task/run/backup/status/doctor সব কাজ করছে); git sync ফিচার এখন repo root স্বয়ংক্রিয়ভাবে খুঁজে নেয় (parent ফোল্ডারে .git থাকলেও কাজ করে), তাই এটা বড় রিপোর সাবফোল্ডার হিসেবে বসানো নিরাপদ।
+- পরিবর্তিত ফাইল: 16_ClinicOS_CLI/ (নতুন ফোল্ডার — cli/*.py, install.sh, README.md), 11_AIOS/AI_REGISTRY.md (Claude-3 claim), 13_AI_Tasks/TASK_QUEUE.md (Done এন্ট্রি যোগ)
+- স্ট্যাটাস: Done
+- পরের AI-এর জন্য নোট: 16_ClinicOS_CLI সম্পূর্ণ স্বতন্ত্র প্রজেক্ট — clinic bot (03_Bot)-এর কোনো dependency নেই, ছোঁয়ার দরকার নেই যদি না ব্যবহারকারী নতুন CLI ফিচার চান। কোনো production/bot ফাইলে কোনো পরিবর্তন হয়নি।
+
+
 
 ### 2026-07-23 — Claude-1
 - কাজ: Patch 3 যাচাই (Back button — booking + treatment)
