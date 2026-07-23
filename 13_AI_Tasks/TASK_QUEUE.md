@@ -13,17 +13,12 @@
 
 | কাজ | মডিউল/ফাইল | অগ্রাধিকার |
 |-----|------------|------------|
-| Salary System (design ready, code বাকি) | sheets.py + bot.py + roles.py | High |
-
-## In-Progress
-
-| কাজ | AI ID | শুরুর তারিখ | মডিউল/ফাইল |
-|-----|-------|-------------|------------|
 
 ## In-Progress
 
 | কাজ | AI ID | শুরুর তারিখ | মডিউল/ফাইল |
 |-----|-------|-------------|-------------|
+| Salary System (design ready, code বাকি) | Claude-2 | 2026-07-23 | sheets.py + bot.py + roles.py |
 
 | AI Brain CEO Command Center V2 | ChatGPT-1 | 2026-07-23 | 15_AI_Brain/Integration/V2 |
 
