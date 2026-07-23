@@ -1,0 +1,201 @@
+#!/usr/bin/env python3
+"""
+relife — RELIFE AI DEVELOPMENT OS
+একক কমান্ড, ইন্টারঅ্যাকটিভ মেনু + ডিরেক্ট সাবকমান্ড দুইভাবেই কাজ করে।
+
+ব্যবহার:
+    relife                -> ইন্টারঅ্যাকটিভ মেনু
+    relife task            -> নতুন টাস্ক
+    relife task list        -> টাস্ক লিস্ট
+    relife task done 3       -> টাস্ক #3 সম্পন্ন
+    relife run file.py       -> কোড রান
+    relife logs               -> আজকের রান লগ
+    relife backup              -> ব্যাকআপ
+    relife sync                 -> git add+commit+push
+    relife status                -> প্রজেক্ট স্ট্যাটাস
+    relife doctor                 -> সিস্টেম চেক
+"""
+
+import sys
+import os
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import config
+import task
+import run as run_mod
+import backup
+import github
+import log as log_mod
+import doctor
+
+BANNER = r"""
+╔════════════════════════════════════╗
+║     RELIFE AI DEVELOPMENT OS       ║
+╠════════════════════════════════════╣
+║ 1. New Task                        ║
+║ 2. Continue Task (list/complete)   ║
+║ 3. Run Code                        ║
+║ 4. View Logs                       ║
+║ 5. Backup Project                  ║
+║ 6. GitHub Sync                     ║
+║ 7. Project Status                  ║
+║ 8. Doctor (system check)           ║
+║ 9. Settings                        ║
+║ 0. Exit                            ║
+╚════════════════════════════════════╝
+"""
+
+
+def show_status():
+    config.ensure_dirs()
+    s = task.stats()
+    settings = config.load_settings()
+    print("\n--- Project Status ---")
+    print(f"Project      : {settings.get('current_project')}")
+    print(f"Completed    : {s['percent']}% ({s['completed']}/{s['total']})")
+    print(f"Pending      : {s['pending']}")
+    errors = config.read_json_log(config.ERROR_LOG)
+    print(f"Errors       : {len(errors)}")
+    print(f"Last Backup  : {settings.get('last_backup', 'N/A')}")
+    runs = config.read_json_log(config.RUN_LOG)
+    print(f"Last Run     : {runs[-1]['timestamp'] if runs else 'N/A'}")
+    print()
+
+
+def settings_menu():
+    settings = config.load_settings()
+    print("\n--- Settings ---")
+    for i, (k, v) in enumerate(settings.items(), 1):
+        print(f"{i}. {k} = {v}")
+    key = input("\nকোন সেটিং পরিবর্তন করবেন? (নাম লিখুন, খালি রাখলে বাতিল): ").strip()
+    if not key:
+        return
+    value = input(f"নতুন মান '{key}' এর জন্য: ").strip()
+    config.set_setting(key, value)
+    print("✅ সেটিং আপডেট হয়েছে।\n")
+
+
+def interactive_menu():
+    while True:
+        print(BANNER)
+        choice = input("আপনার পছন্দ লিখুন: ").strip()
+
+        if choice == "1":
+            task.new_task_interactive()
+        elif choice == "2":
+            task.list_tasks()
+            sub = input("সম্পন্ন করতে টাস্ক ID লিখুন (খালি রাখলে ফেরত): ").strip()
+            if sub:
+                task.complete_task(int(sub))
+        elif choice == "3":
+            f = input("ফাইলের পাথ দিন: ").strip()
+            run_mod.run_file(f)
+        elif choice == "4":
+            log_mod.show_today_runs()
+        elif choice == "5":
+            backup.create_backup()
+        elif choice == "6":
+            msg = input("কমিট মেসেজ (খালি রাখলে অটো): ").strip()
+            github.sync(msg or None)
+        elif choice == "7":
+            show_status()
+        elif choice == "8":
+            doctor.run()
+        elif choice == "9":
+            settings_menu()
+        elif choice == "0":
+            print("বিদায়! 👋")
+            break
+        else:
+            print("❌ ভুল অপশন, আবার চেষ্টা করুন।\n")
+
+
+def main():
+    config.ensure_dirs()
+    args = sys.argv[1:]
+
+    if not args:
+        interactive_menu()
+        return
+
+    cmd = args[0]
+    rest = args[1:]
+
+    if cmd == "task":
+        if not rest:
+            task.new_task_interactive()
+        elif rest[0] == "list":
+            task.list_tasks()
+        elif rest[0] == "done" and len(rest) > 1:
+            task.complete_task(int(rest[1]))
+        elif rest[0] == "search" and len(rest) > 1:
+            task.search_tasks(" ".join(rest[1:]))
+        else:
+            print("ব্যবহার: relife task | relife task list | relife task done <id> | relife task search <keyword>")
+
+    elif cmd == "run":
+        if not rest:
+            print("ব্যবহার: relife run <file> [--lang python|bash|node]")
+        else:
+            lang = None
+            if "--lang" in rest:
+                idx = rest.index("--lang")
+                lang = rest[idx + 1]
+                rest = rest[:idx]
+            run_mod.run_file(rest[0], lang)
+
+    elif cmd == "logs":
+        if not rest:
+            log_mod.show_today_runs()
+        elif rest[0] == "run":
+            log_mod.show_run_log()
+        elif rest[0] == "error":
+            log_mod.show_error_log()
+        elif rest[0] == "activity":
+            log_mod.show_activity_log()
+        elif rest[0] == "search" and len(rest) > 1:
+            log_mod.search_errors(" ".join(rest[1:]))
+        else:
+            print("ব্যবহার: relife logs | logs run | logs error | logs activity | logs search <keyword>")
+
+    elif cmd == "backup":
+        if not rest:
+            backup.create_backup()
+        elif rest[0] == "list":
+            backup.list_backups()
+        elif rest[0] == "restore" and len(rest) > 1:
+            backup.restore_backup(int(rest[1]))
+        elif rest[0] == "clean":
+            backup.clean_old_backups()
+        else:
+            print("ব্যবহার: relife backup | backup list | backup restore <n> | backup clean")
+
+    elif cmd == "sync":
+        if rest and rest[0] == "status":
+            github.status()
+        elif rest and rest[0] == "pull":
+            github.pull()
+        else:
+            github.sync(" ".join(rest) if rest else None)
+
+    elif cmd == "status":
+        show_status()
+
+    elif cmd == "doctor":
+        doctor.run()
+
+    elif cmd == "settings":
+        settings_menu()
+
+    elif cmd in ("-h", "--help", "help"):
+        print(__doc__)
+
+    else:
+        print(f"❌ অজানা কমান্ড: {cmd}")
+        print("সাহায্যের জন্য: relife help")
+
+
+if __name__ == "__main__":
+    main()
