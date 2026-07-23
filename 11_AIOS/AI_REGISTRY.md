@@ -13,14 +13,14 @@ HANDOVER.md এবং TASK_QUEUE.md-এ ব্যবহার হবে — আ�
 
 | ID         | Platform | বরাদ্দকৃত মডিউল (যদি স্থায়ী হয়) | স্ট্যাটাস |
 |------------|----------|-----------------------------------|-----------|
-| Claude-1   | Claude   | 03_Bot/bot.py (Patch 3: Back button) | Active    |
+| Claude-1   | Claude   |                                    |           |
 | Claude-2   | Claude   |                                    |           |
 | Claude-3   | Claude   |                                    |           |
 | Claude-4   | Claude   |                                    |           |
 | Claude-5   | Claude   |                                    |           |
 | Claude-6   | Claude   |                                    |           |
 | Claude-7   | Claude   |                                    |           |
-| ChatGPT-1  | ChatGPT  |                                    |           |
+| ChatGPT-1  | ChatGPT  | 15_AI_Brain/Integration/V2         | Active    |
 | ChatGPT-2  | ChatGPT  |                                    |           |
 | ChatGPT-3  | ChatGPT  |                                    |           |
 | ChatGPT-4  | ChatGPT  |                                    |           |
