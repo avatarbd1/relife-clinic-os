@@ -1,9 +1,11 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class BrainConfig:
-
 
     def __init__(self):
 
@@ -17,22 +19,13 @@ class BrainConfig:
             "credentials.json"
         )
 
-
     def status(self):
 
         return {
-
-            "sheet_id_available":
-            bool(self.sheet_id),
-
-            "credentials_available":
-            Path(self.credentials).exists(),
-
-            "credentials_path":
-            self.credentials
-
+            "sheet_id_available": bool(self.sheet_id),
+            "credentials_available": Path(self.credentials).exists(),
+            "credentials_path": self.credentials
         }
-
 
 
 if __name__ == "__main__":
