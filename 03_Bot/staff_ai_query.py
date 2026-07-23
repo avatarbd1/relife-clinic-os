@@ -2,20 +2,24 @@
 staff_ai_query.py
 ==================
 স্টাফদের জন্য Natural Language Query ফিচার — Relife Clinic OS bot-এর অংশ।
+
+কাজ ভাগ করা আছে দুই AI-র মধ্যে:
+- Grok (xAI)      -> প্রশ্ন দেখে কোন sheet লাগবে সেটা ঠিক করে
+- OpenRouter       -> sheet-এর ডেটা দেখে মানুষের ভাষায় উত্তর লেখে
 """
 
 import os
 import json
-import google.generativeai as genai
+import requests
 
 import config
 import sheets
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+GROK_API_KEY = os.environ.get("GROK_API_KEY")
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 
-MODEL_NAME = "gemini-2.0-flash"
+GROK_MODEL = "grok-4.3"
+OPENROUTER_MODEL = "openai/gpt-4o-mini"
 
 SHEET_CATALOG = {
     "06_Payments": (
@@ -42,6 +46,41 @@ SHEET_CATALOG = {
 }
 
 
+def _call_grok(prompt: str) -> str:
+    resp = requests.post(
+        "https://api.x.ai/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {GROK_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": GROK_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.1,
+        },
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json()["choices"][0]["message"]["content"].strip()
+
+
+def _call_openrouter(prompt: str) -> str:
+    resp = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": OPENROUTER_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+        },
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json()["choices"][0]["message"]["content"].strip()
+
+
 def _pick_relevant_sheet(question: str) -> str:
     catalog_text = "\n".join(
         f"- {name}: {desc}" for name, desc in SHEET_CATALOG.items()
@@ -54,9 +93,7 @@ def _pick_relevant_sheet(question: str) -> str:
 
 শুধু সবচেয়ে প্রাসঙ্গিক sheet-এর নাম লিখুন (যেমন: 06_Payments), অন্য কিছু লিখবেন না।
 """
-    model = genai.GenerativeModel(MODEL_NAME)
-    response = model.generate_content(prompt)
-    sheet_name = response.text.strip()
+    sheet_name = _call_grok(prompt)
 
     if sheet_name not in SHEET_CATALOG:
         return None
@@ -77,14 +114,14 @@ def _summarize_answer(question: str, sheet_name: str, records: list) -> str:
 হিসাব থাকলে স্পষ্টভাবে দেখান। যদি ডেটাতে উত্তর না থাকে, সেটা সরাসরি বলুন —
 অনুমান করে উত্তর বানাবেন না।
 """
-    model = genai.GenerativeModel(MODEL_NAME)
-    response = model.generate_content(prompt)
-    return response.text.strip()
+    return _call_openrouter(prompt)
 
 
 def answer_staff_query(question: str) -> str:
-    if not GEMINI_API_KEY:
-        return "⚠️ AI query ফিচার এখনো সেটআপ হয়নি (GEMINI_API_KEY নেই)।"
+    if not GROK_API_KEY:
+        return "⚠️ AI query ফিচার এখনো সেটআপ হয়নি (GROK_API_KEY নেই)।"
+    if not OPENROUTER_API_KEY:
+        return "⚠️ AI query ফিচার এখনো সেটআপ হয়নি (OPENROUTER_API_KEY নেই)।"
 
     try:
         sheet_name = _pick_relevant_sheet(question)
