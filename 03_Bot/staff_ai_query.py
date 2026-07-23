@@ -3,24 +3,45 @@ staff_ai_query.py
 ==================
 স্টাফদের জন্য Natural Language Query ফিচার — Relife Clinic OS bot-এর অংশ।
 
-কাজ ভাগ করা আছে দুই AI-র মধ্যে:
-- Grok (xAI)      -> প্রশ্ন দেখে কোন sheet লাগবে সেটা ঠিক করে
-- OpenRouter       -> sheet-এর ডেটা দেখে মানুষের ভাষায় উত্তর লেখে
+কী করে:
+- স্টাফ Telegram-এ সাধারণ ভাষায় প্রশ্ন করবে (যেমন: "গত সপ্তাহে income কত হয়েছে?")
+- এই মডিউল Gemini API দিয়ে প্রশ্নটা বুঝে, কোন sheet/data লাগবে সেটা ঠিক করে
+- relevant sheet থেকে ডেটা টেনে এনে, Gemini-কে আবার দিয়ে মানুষের ভাষায় উত্তর
+  তৈরি করায়
+- Patient-দের কোনো access নেই এই ফিচারে — শুধু স্টাফদের জন্য (roles.py-এর
+  can_access() চেক দিয়ে আটকানো)
+
+এই ফাইলটা আপনার প্রজেক্টের `sheets.py`/`config.py`/`roles.py`-এর পাশে বসবে,
+এবং bot.py থেকে import হবে।
+
+নির্ভরতা (নতুন করে ইনস্টল করতে হবে):
+    pip install google-generativeai --break-system-packages
+
+Environment variable লাগবে:
+    export GEMINI_API_KEY="আপনার-key"
+    (Render-এ deploy করলে, Render dashboard-এর Environment Variables-এ যোগ
+    করতে হবে — .env ফাইলেও রাখা যায় স্থানীয় টেস্টের জন্য)
 """
 
 import os
 import json
-import requests
+import google.generativeai as genai
 
 import config
-import sheets
+import sheets  # আপনার বিদ্যমান sheets.py — _worksheet(), safe_get_all_records()
 
-GROK_API_KEY = os.environ.get("GROK_API_KEY")
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 
-GROK_MODEL = "grok-4.3"
-OPENROUTER_MODEL = "openai/gpt-4o-mini"
+# ---------- Gemini সেটআপ ----------
 
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+
+MODEL_NAME = "gemini-2.0-flash"  # ফ্রি tier-এ দ্রুত ও সাশ্রয়ী
+
+
+# কোন sheet-এ কী ধরনের প্রশ্নের উত্তর পাওয়া যাবে, তার একটা ম্যাপ —
+# এটা Gemini-কে বলে দেওয়া হবে যাতে সে সঠিক sheet বেছে নেয়
 SHEET_CATALOG = {
     "06_Payments": (
         "আয়, payment, income, revenue, বিল, receipt সংক্রান্ত প্রশ্নের জন্য। "
@@ -46,42 +67,11 @@ SHEET_CATALOG = {
 }
 
 
-def _call_grok(prompt: str) -> str:
-    resp = requests.post(
-        "https://api.x.ai/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {GROK_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": GROK_MODEL,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.1,
-        },
-        timeout=30,
-    )
-    resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"].strip()
-
-
-def _call_openrouter(prompt: str) -> str:
-    resp = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": OPENROUTER_MODEL,
-            "messages": [{"role": "user", "content": prompt}],
-        },
-        timeout=30,
-    )
-    resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"].strip()
-
-
 def _pick_relevant_sheet(question: str) -> str:
+    """
+    Gemini-কে জিজ্ঞেস করা হচ্ছে: এই প্রশ্নের উত্তর দিতে কোন sheet লাগবে?
+    রিটার্ন করে sheet-এর নাম (যেমন "06_Payments")।
+    """
     catalog_text = "\n".join(
         f"- {name}: {desc}" for name, desc in SHEET_CATALOG.items()
     )
@@ -93,15 +83,23 @@ def _pick_relevant_sheet(question: str) -> str:
 
 শুধু সবচেয়ে প্রাসঙ্গিক sheet-এর নাম লিখুন (যেমন: 06_Payments), অন্য কিছু লিখবেন না।
 """
-    sheet_name = _call_grok(prompt)
+    model = genai.GenerativeModel(MODEL_NAME)
+    response = model.generate_content(prompt)
+    sheet_name = response.text.strip()
 
+    # নিরাপত্তার জন্য যাচাই — Gemini যদি ভুল/অচেনা নাম দেয়
     if sheet_name not in SHEET_CATALOG:
         return None
     return sheet_name
 
 
 def _summarize_answer(question: str, sheet_name: str, records: list) -> str:
-    data_json = json.dumps(records, ensure_ascii=False)[:8000]
+    """
+    আসল ডেটা (records) আর প্রশ্ন Gemini-কে দিয়ে মানুষের ভাষায় উত্তর তৈরি করানো।
+    """
+    # টোকেন খরচ কমাতে, খুব বড় ডেটাসেট হলে শুধু সাম্প্রতিক অংশ পাঠানো ভালো —
+    # এখানে সরল রাখার জন্য সব পাঠানো হচ্ছে, প্রয়োজনে filter/limit যোগ করুন
+    data_json = json.dumps(records, ensure_ascii=False)[:8000]  # সীমা রাখা হলো
 
     prompt = f"""আপনি একজন ক্লিনিক assistant, স্টাফকে ডেটা বুঝিয়ে বলছেন।
 
@@ -114,14 +112,22 @@ def _summarize_answer(question: str, sheet_name: str, records: list) -> str:
 হিসাব থাকলে স্পষ্টভাবে দেখান। যদি ডেটাতে উত্তর না থাকে, সেটা সরাসরি বলুন —
 অনুমান করে উত্তর বানাবেন না।
 """
-    return _call_openrouter(prompt)
+    model = genai.GenerativeModel(MODEL_NAME)
+    response = model.generate_content(prompt)
+    return response.text.strip()
 
 
 def answer_staff_query(question: str) -> str:
-    if not GROK_API_KEY:
-        return "⚠️ AI query ফিচার এখনো সেটআপ হয়নি (GROK_API_KEY নেই)।"
-    if not OPENROUTER_API_KEY:
-        return "⚠️ AI query ফিচার এখনো সেটআপ হয়নি (OPENROUTER_API_KEY নেই)।"
+    """
+    মূল ফাংশন — bot.py থেকে এটা কল হবে।
+
+    ব্যবহার (bot.py-তে):
+        import staff_ai_query
+        answer = staff_ai_query.answer_staff_query(user_message_text)
+        await update.message.reply_text(answer)
+    """
+    if not GEMINI_API_KEY:
+        return "⚠️ AI query ফিচার এখনো সেটআপ হয়নি (GEMINI_API_KEY নেই)।"
 
     try:
         sheet_name = _pick_relevant_sheet(question)
@@ -139,3 +145,29 @@ def answer_staff_query(question: str) -> str:
 
     except Exception as e:
         return f"⚠️ প্রশ্নের উত্তর দিতে সমস্যা হয়েছে: {e}"
+
+
+# ---------- bot.py-তে যেভাবে যুক্ত করবেন (উদাহরণ হ্যান্ডলার) ----------
+"""
+bot.py-তে এই অংশটা যোগ করুন (roles.py-এর can_access() প্যাটার্ন অনুসরণ করে,
+শুধু staff/owner-দের জন্য, patient-দের জন্য না):
+
+    import staff_ai_query
+
+    async def handle_staff_ai_query(update, context):
+        user_id = update.effective_user.id
+        if not roles.can_access(user_id, "staff_ai_query"):  # আপনার existing
+                                                                # permission
+                                                                # প্যাটার্ন
+                                                                # অনুযায়ী
+            return  # patient হলে কিছুই হবে না, নীরবে ignore
+
+        question = update.message.text
+        await update.message.reply_text("🤔 খুঁজছি...")
+        answer = staff_ai_query.answer_staff_query(question)
+        await update.message.reply_text(answer)
+
+    # main()-এ handler যোগ (উদাহরণ — একটা নির্দিষ্ট মেনু বাটনের পর free-text
+    # নেওয়ার জন্য ConversationHandler বা একটা আলাদা command/state লাগবে,
+    # আপনার existing reg_conv প্যাটার্ন অনুসরণ করে বসাতে হবে)
+"""
