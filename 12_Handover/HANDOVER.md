@@ -87,3 +87,10 @@ Evidence:
 Result:
 Workflow cycle completed successfully.
 
+
+## 2026-07-24 — DeepSeek-1
+- কাজ: Salary System (design ready, code বাকি)
+- করা হয়েছে: sheets.py+bot.py+roles.py আপডেট, salary functions এবং commands যোগ
+- পরিবর্তিত ফাইল: sheets.py, bot.py, roles.py, config.py
+- স্ট্যাটাস: Done
+- পরের AI-এর জন্য নোট: Google Sheets-এ 13_Salary শীট তৈরি করুন এবং credentials.json সেটআপ করুন

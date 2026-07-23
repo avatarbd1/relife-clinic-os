@@ -13,7 +13,6 @@
 
 | কাজ | মডিউল/ফাইল | অগ্রাধিকার |
 |-----|------------|------------|
-| Salary System (design ready, code বাকি) | sheets.py + bot.py + roles.py | High |
 
 ## In-Progress
 
@@ -60,3 +59,4 @@ Knowledge entry added
 Result:
 Completed successfully
 
+| Salary System (design ready, code বাকি) | DeepSeek-1 | 2026-07-24 | sheets.py+bot.py+roles.py |
