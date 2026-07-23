@@ -18,7 +18,6 @@
 
 | কাজ | AI ID | শুরুর তারিখ | মডিউল/ফাইল |
 |-----|-------|-------------|-------------|
-| Salary System (design ready, code বাকি) | Claude-2 | 2026-07-23 | sheets.py + bot.py + roles.py |
 
 | AI Brain CEO Command Center V2 | ChatGPT-1 | 2026-07-23 | 15_AI_Brain/Integration/V2 |
 
@@ -26,6 +25,7 @@
 
 | কাজ | AI ID | তারিখ | মডিউল/ফাইল |
 |-----|-------|-------|------------|
+| Salary System (design ready, code বাকি) | Claude-2 | 2026-07-23 | sheets.py + bot.py + roles.py |
 | Patch 3: Back button (booking + treatment machine) | Claude-1 | 2026-07-23 | 03_Bot/bot.py |
 | Patient Action Panel auto-attach (Patch 1) | Claude-1 | (আগের তারিখ) | 03_Bot/bot.py |
 | Search-result keyboard merge + cancel buttons (Patch 2) | Claude-1 | (আগের তারিখ) | 03_Bot/bot.py |

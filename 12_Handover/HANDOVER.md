@@ -18,6 +18,14 @@
 
 ## Log Entries (নিচে যোগ হবে)
 
+### 2026-07-23 — Claude-2
+- কাজ: Salary System (design ready, code বাকি)
+- করা হয়েছে: যা যা করা হয়েছে সংক্ষেপে
+- পরিবর্তিত ফাইল: sheets.py + bot.py + roles.py
+- স্ট্যাটাস: Done
+- পরের AI-এর জন্য নোট: -
+
+
 ### 2026-07-23 — Claude-1
 - কাজ: Patch 3 যাচাই (Back button — booking + treatment)
 - করা হয়েছে: 03_Bot/bot.py পরীক্ষা করে দেখা গেছে back-button ফিচারগুলো (APT_DATE/TIME/THERAPIST-এ aptback_* callback, TREAT_MACHINES-এ trback_search) ইতিমধ্যেই বাস্তবায়িত আছে — নতুন কোনো patch লাগেনি। py_compile দিয়ে ফাইল সিনট্যাক্স ঠিক আছে যাচাই করা হয়েছে।
