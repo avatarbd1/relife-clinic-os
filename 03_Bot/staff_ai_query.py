@@ -37,7 +37,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
-MODEL_NAME = "gemini-2.0-flash"  # ফ্রি tier-এ দ্রুত ও সাশ্রয়ী
+MODEL_NAME = "gemini-2.5-flash"  # ফ্রি tier-এ দ্রুত ও সাশ্রয়ী
 
 
 # কোন sheet-এ কী ধরনের প্রশ্নের উত্তর পাওয়া যাবে, তার একটা ম্যাপ —
