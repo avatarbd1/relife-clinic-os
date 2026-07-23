@@ -19,7 +19,6 @@
 
 | কাজ | AI ID | শুরুর তারিখ | মডিউল/ফাইল |
 |-----|-------|-------------|------------|
-| Patch 3: Back button (booking + treatment machine) | Claude-1 | 2026-07-23 | 03_Bot/bot.py |
 
 ## In-Progress
 
@@ -32,6 +31,7 @@
 
 | কাজ | AI ID | তারিখ | মডিউল/ফাইল |
 |-----|-------|-------|------------|
+| Patch 3: Back button (booking + treatment machine) | Claude-1 | 2026-07-23 | 03_Bot/bot.py |
 | Patient Action Panel auto-attach (Patch 1) | Claude-1 | (আগের তারিখ) | 03_Bot/bot.py |
 | Search-result keyboard merge + cancel buttons (Patch 2) | Claude-1 | (আগের তারিখ) | 03_Bot/bot.py |
 | AI Workspace setup (Constitution/Master Prompt/Registry/Handover) | Claude-1 | 2026-07-23 | 11_AIOS, 12_Handover |

@@ -18,6 +18,14 @@
 
 ## Log Entries (নিচে যোগ হবে)
 
+### 2026-07-23 — Claude-1
+- কাজ: Patch 3 যাচাই (Back button — booking + treatment)
+- করা হয়েছে: 03_Bot/bot.py পরীক্ষা করে দেখা গেছে back-button ফিচারগুলো (APT_DATE/TIME/THERAPIST-এ aptback_* callback, TREAT_MACHINES-এ trback_search) ইতিমধ্যেই বাস্তবায়িত আছে — নতুন কোনো patch লাগেনি। py_compile দিয়ে ফাইল সিনট্যাক্স ঠিক আছে যাচাই করা হয়েছে।
+- পরিবর্তিত ফাইল: কোনোটা না (শুধু TASK_QUEUE.md status আপডেট)
+- স্ট্যাটাস: Done
+- পরের AI-এর জন্য নোট: root bot.py আর নেই (Claude-5 রিসেট করেছে) — শুধু 03_Bot/bot.py-ই লাইভ কোড। কাজ ধরার আগে সবসময় py_compile দিয়ে যাচাই করে নিও এবং grep দিয়ে ফাংশন/state নাম আগে থেকে আছে কিনা দেখে নিও, ধরে নিও না।
+
+
 ### 2026-07-23 — Claude-5
 - কাজ: পুরো সিস্টেম রিসেট (ব্যবহারকারীর নির্দেশে)
 - করা হয়েছে: root-এর bot.py/roles.py/sheets.py/config.py মুছে ফেলা হয়েছে (dead/unmerged code, live bot এ কখনো merge হয়নি); TASK_QUEUE.md-এর In-Progress টেবিল খালি করা হয়েছে (Claude-2-এর Patch 3 সহ, Pending-এ ফেরত); AI_REGISTRY.md-এ সব AI-এর status/মডিউল ফাঁকা করা হয়েছে
