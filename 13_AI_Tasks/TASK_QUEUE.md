@@ -14,12 +14,19 @@
 | কাজ | মডিউল/ফাইল | অগ্রাধিকার |
 |-----|------------|------------|
 | Salary System (design ready, code বাকি) | sheets.py + bot.py + roles.py | High |
-| Patch 3: Back button (booking + treatment machine) | 03_Bot/bot.py | Medium |
 
 ## In-Progress
 
 | কাজ | AI ID | শুরুর তারিখ | মডিউল/ফাইল |
 |-----|-------|-------------|------------|
+| Patch 3: Back button (booking + treatment machine) | Claude-1 | 2026-07-23 | 03_Bot/bot.py |
+
+## In-Progress
+
+| কাজ | AI ID | শুরুর তারিখ | মডিউল/ফাইল |
+|-----|-------|-------------|-------------|
+
+| AI Brain CEO Command Center V2 | ChatGPT-1 | 2026-07-23 | 15_AI_Brain/Integration/V2 |
 
 ## Done
 
