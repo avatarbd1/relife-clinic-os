@@ -101,3 +101,9 @@ MENU_SALARY = "💰 স্যালারি"
 MENU_MY_SALARY = "💰 আমার স্যালারি"
 MENU_ALL_SALARIES = "📊 সব স্যালারি"
 MENU_GENERATE_PAYROLL = "📥 পেওয়েল তৈরি"
+
+# Salary Menu Items
+MENU_SALARY = "💰 স্যালারি"
+MENU_MY_SALARY = "💰 আমার স্যালারি"
+MENU_ALL_SALARIES = "📊 সব স্যালারি"
+MENU_GENERATE_PAYROLL = "📥 পেওয়েল তৈরি"

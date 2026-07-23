@@ -921,3 +921,37 @@ def update_salary_status(staff_name, month, year, status):
 def calculate_net_salary(base, bonus=0, deduction=0):
     """Calculate net salary"""
     return base + bonus - deduction
+
+# ============ SALARY SYSTEM ============
+def get_salary_sheet():
+    return get_sheet(SHEET_SALARY)
+
+def get_all_salaries(month=None, year=None):
+    sheet = get_salary_sheet()
+    records = sheet.get_all_records()
+    if month and year:
+        records = [r for r in records if r.get('Month') == month and r.get('Year') == year]
+    return records
+
+def get_staff_salary(staff_name, month=None, year=None):
+    records = get_all_salaries(month, year)
+    return [r for r in records if r.get('Name') == staff_name]
+
+def add_salary_record(data):
+    sheet = get_salary_sheet()
+    headers = sheet.row_values(1)
+    row = [data.get(h, '') for h in headers]
+    sheet.append_row(row)
+    return True
+
+def update_salary_status(staff_name, month, year, status):
+    sheet = get_salary_sheet()
+    records = sheet.get_all_records()
+    for idx, record in enumerate(records, start=2):
+        if record.get('Name') == staff_name and record.get('Month') == month and record.get('Year') == year:
+            sheet.update_cell(idx, 9, status)
+            return True
+    return False
+
+def calculate_net_salary(base, bonus=0, deduction=0):
+    return base + bonus - deduction

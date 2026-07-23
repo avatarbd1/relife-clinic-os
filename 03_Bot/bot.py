@@ -2736,3 +2736,110 @@ def handle_salary(update, context):
 # Add this to your existing message handler
 # Example: if text == MENU_SALARY: salary_menu(update, context)
 # (Assuming you have a main handler that processes menu clicks)
+
+# ============ SALARY COMMANDS ============
+def salary_menu(update, context):
+    keyboard = [
+        ['💰 My Salary', '📊 All Salaries'],
+        ['📅 Monthly Payroll', '📥 Generate Payroll'],
+        ['🔙 Back to Main']
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    update.message.reply_text(
+        "💰 *Salary System*\n\nSelect an option:",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+def my_salary(update, context):
+    user = update.message.from_user
+    staff_name = user.username or user.first_name
+    from datetime import datetime
+    current_month = datetime.now().strftime('%B')
+    current_year = str(datetime.now().year)
+    records = get_staff_salary(staff_name, current_month, current_year)
+    if not records:
+        update.message.reply_text(f"❌ No salary record found for {staff_name} this month.")
+        return
+    record = records[0]
+    msg = f"💰 *Salary Details - {staff_name}*\n\n"
+    msg += f"📅 Month: {record.get('Month')} {record.get('Year')}\n"
+    msg += f"💵 Base Salary: ৳{record.get('Base Salary', 0)}\n"
+    msg += f"🎁 Bonus: ৳{record.get('Bonus', 0)}\n"
+    msg += f"📉 Deduction: ৳{record.get('Deduction', 0)}\n"
+    msg += f"✅ Net Pay: ৳{record.get('Net Pay', 0)}\n"
+    msg += f"📌 Status: {record.get('Status', 'Pending')}"
+    update.message.reply_text(msg, parse_mode='Markdown')
+
+def all_salaries(update, context):
+    user_role = get_user_role(update.message.from_user.id)
+    if user_role not in [Role.OWNER, Role.MANAGER]:
+        update.message.reply_text("❌ You don't have permission.")
+        return
+    from datetime import datetime
+    current_month = datetime.now().strftime('%B')
+    current_year = str(datetime.now().year)
+    records = get_all_salaries(current_month, current_year)
+    if not records:
+        update.message.reply_text(f"❌ No records for {current_month} {current_year}")
+        return
+    msg = f"📊 *Payroll - {current_month} {current_year}*\n\n"
+    total = 0
+    for r in records[:20]:
+        msg += f"👤 {r.get('Name')}: ৳{r.get('Net Pay', 0)} ({r.get('Status', 'Pending')})\n"
+        total += int(r.get('Net Pay', 0))
+    msg += f"\n💰 *Total: ৳{total}*"
+    update.message.reply_text(msg, parse_mode='Markdown')
+
+def generate_payroll(update, context):
+    user_role = get_user_role(update.message.from_user.id)
+    if user_role != Role.OWNER:
+        update.message.reply_text("❌ Only Owner can generate payroll.")
+        return
+    from datetime import datetime
+    current_month = datetime.now().strftime('%B')
+    current_year = str(datetime.now().year)
+    staff_sheet = get_sheet(SHEET_STAFF)
+    staff_data = staff_sheet.get_all_records()
+    count = 0
+    for staff in staff_data:
+        name = staff.get('Name')
+        base = int(staff.get('Salary', 0))
+        existing = get_staff_salary(name, current_month, current_year)
+        if existing:
+            continue
+        bonus = int(staff.get('Bonus', 0))
+        deduction = int(staff.get('Deduction', 0))
+        net = calculate_net_salary(base, bonus, deduction)
+        add_salary_record({
+            'Staff ID': staff.get('ID', ''),
+            'Name': name,
+            'Role': staff.get('Role', ''),
+            'Base Salary': base,
+            'Bonus': bonus,
+            'Deduction': deduction,
+            'Net Pay': net,
+            'Month': current_month,
+            'Year': current_year,
+            'Status': 'Generated'
+        })
+        count += 1
+    update.message.reply_text(
+        f"✅ Payroll Generated!\n📅 {current_month} {current_year}\n👥 {count} records added.",
+        parse_mode='Markdown'
+    )
+
+def handle_salary(update, context):
+    text = update.message.text
+    if text == '💰 My Salary':
+        my_salary(update, context)
+    elif text == '📊 All Salaries':
+        all_salaries(update, context)
+    elif text == '📅 Monthly Payroll':
+        all_salaries(update, context)
+    elif text == '📥 Generate Payroll':
+        generate_payroll(update, context)
+    elif text == '🔙 Back to Main':
+        show_main_menu(update, context)
+    else:
+        update.message.reply_text("Please select a valid option.")
