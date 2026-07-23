@@ -46,6 +46,7 @@ from config import bd_now
 import sheets
 import roles
 import calendar_helper
+import staff_ai_query
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -112,6 +113,7 @@ _ALL_MENU_ITEMS = [
     roles.MENU_TREATMENT_HISTORY,
     roles.MENU_PATIENT_LIST,
     roles.MENU_DAILY_REGISTER,
+    roles.MENU_STAFF_AI_QUERY,
 ]
 _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 
@@ -125,6 +127,8 @@ _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
     TPLAN_MANUAL,
     TPLAN_CONFIRM,
 ) = range(29, 37)
+
+(STAFFAI_QUESTION,) = range(37, 38)
 
 MACHINE_LIST = [
     "Hot Pack", "Cold Pack",
@@ -2332,6 +2336,40 @@ async def date_report_day_selected(update, context):
     await query.edit_message_text(text, reply_markup=calendar_helper.build_calendar(year, month))
 
 
+async def staffai_start(update, context):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return ConversationHandler.END
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_STAFF_AI_QUERY):
+        return ConversationHandler.END
+    await update.message.reply_text(
+        "\U0001F916 কী জানতে চাও? সাধারণ ভাষায় লেখো (যেমন: \"গত সপ্তাহে income কত হয়েছে?\")।\n"
+        "বাতিল করতে /cancel লেখো।"
+    )
+    return STAFFAI_QUESTION
+
+
+async def staffai_receive(update, context):
+    staff = context.user_data.get("staff", {})
+    question = update.message.text.strip()
+    await update.message.reply_text("\U0001F914 খুঁজছি...")
+    answer = staff_ai_query.answer_staff_query(question)
+    await update.message.reply_text(
+        answer,
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
+    return ConversationHandler.END
+
+
+async def staffai_cancel(update, context):
+    staff = context.user_data.get("staff", {})
+    await update.message.reply_text(
+        "\u274c বাতিল করা হলো।",
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
+    return ConversationHandler.END
+
+
 def main():
     app = Application.builder().token(config.BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -2559,6 +2597,23 @@ def main():
         fallbacks=[CommandHandler("cancel", thist_cancel)],
     )
     app.add_handler(thist_conv)
+
+    staffai_conv = ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_STAFF_AI_QUERY}$"), staffai_start)
+        ],
+        states={
+            STAFFAI_QUESTION: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), staffai_receive)
+            ],
+        },
+        fallbacks=[
+            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
+            CommandHandler("cancel", staffai_cancel),
+            CommandHandler("start", _restart_via_start),
+        ],
+    )
+    app.add_handler(staffai_conv)
 
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_HOME}$"), go_home))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), unknown_menu))
