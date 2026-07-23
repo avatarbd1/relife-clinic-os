@@ -15,7 +15,7 @@ HANDOVER.md এবং TASK_QUEUE.md-এ ব্যবহার হবে — আ�
 |------------|----------|-----------------------------------|-----------|
 | Claude-1   | Claude   |                                    |           |
 | Claude-2   | Claude   |                                    |           |
-| Claude-3   | Claude   |                                    |           |
+| Claude-3   | Claude   | 16_ClinicOS_CLI                    | Active    |
 | Claude-4   | Claude   |                                    |           |
 | Claude-5   | Claude   |                                    |           |
 | Claude-6   | Claude   |                                    |           |

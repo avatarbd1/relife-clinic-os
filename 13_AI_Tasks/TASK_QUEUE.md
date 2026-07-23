@@ -30,6 +30,7 @@
 | Patient Action Panel auto-attach (Patch 1) | Claude-1 | (আগের তারিখ) | 03_Bot/bot.py |
 | Search-result keyboard merge + cancel buttons (Patch 2) | Claude-1 | (আগের তারিখ) | 03_Bot/bot.py |
 | AI Workspace setup (Constitution/Master Prompt/Registry/Handover) | Claude-1 | 2026-07-23 | 11_AIOS, 12_Handover |
+| Relife Clinic CLI tool (Termux dev-ops CLI: task manager, code runner, backup, git sync) | Claude-3 | 2026-07-23 | 16_ClinicOS_CLI |
 
 ## Brain Activation Test Task
 
