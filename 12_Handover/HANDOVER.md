@@ -18,3 +18,9 @@
 1. এই ফাইল পড়ুন
 2. শুধু ~/relife-clinic-os ফোল্ডারে কাজ করুন, কোনো duplicate-এ না
 3. কাজ শেষে এই ফাইলের "এখন যা কাজ চলছে" আপডেট করে দিন
+
+## 2026-07-24 — Home folder cleanup (Termux)
+- Removed duplicate/dead code copies: old `~/clinic-bot` folder, `~/archive_2026-07`, stray zips, patch scripts, diff/structure txt files.
+- Before deletion, backed up `.env` and `credentials.json` from old `~/clinic-bot` to `~/clinic-bot-env-backup/`.
+- Only one code folder remains: `~/relife-clinic-os`, synced with GitHub (`avatarbd1/relife-clinic-os`) and auto-deploying to Render.
+- Note: `~/credentials.json` still sits directly in home root — unclear which project it belongs to, needs checking.
