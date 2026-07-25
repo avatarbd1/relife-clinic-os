@@ -5,6 +5,7 @@
 - সোর্স ফোল্ডার: ~/relife-clinic-os (এটাই একমাত্র লাইভ কপি)
 
 ## এখন যা কাজ চলছে
+BrainOS Step 3: Brain-AIOS sync (link 15_BrainOS to 11_AIOS) - IN-PROGRESS
 - (এখানে এক লাইনে লিখুন — যেমন: "staff_ai_query.py-তে OpenRouter fallback যোগ হচ্ছে")
 
 ## জানা বাগ
