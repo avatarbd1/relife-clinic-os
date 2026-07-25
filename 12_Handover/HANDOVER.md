@@ -66,3 +66,27 @@ BrainOS Step 4: BRAIN_DISPATCHER execution loop - DONE. Step 5 (Decision Engine 
 - Cleaned up duplicate/confusing "Step 8" numbering in BRAIN_STATE.md (Provider Router+Registry integration vs. Auto-logging pipeline were both labeled Step 8).
 - Action needed on your side (Termux): run `python3 15_AI_Brain/Control/self_healing_bridge.py` once for real (with your real API keys in the environment) so BRAIN_STATE.md's Self-Healing Monitor section reflects an actual production check, not just the sandbox test.
 - Next: Step 10/10 - Full autonomous loop test. dispatcher_bridge.py currently only runs one hardcoded test task per invocation (`Step 7 Bridge Integration Test`); it does not yet loop over real BRAIN_QUEUE entries automatically. That real loop (pick next CRITICAL task → decision → route → execute → log → update state/queue/handover → repeat) is what Step 10 needs to prove out. Also still open: Step 8b Auto-logging pipeline (currently just piggybacks on bridge writes, no dedicated module) and Gemini/Groq/OpenRouter key rotation status should be re-verified live.
+
+## 2026-07-26 — Step 10/10 BUILT: Full autonomous loop (needs one real-keys run to fully close)
+- Extended task_router_bridge.py (not recreated): added get_active_queue_rows(), set_queue_row_status(), move_queue_row(), get_lock_token()/set_lock_token(), log_memory(). These parse/update the real "## Active Queue" table in BRAIN_QUEUE.md and the Lock Token field in BRAIN_STATE.md.
+- Rewrote dispatcher_bridge.py's main() to actually implement BRAIN_DISPATCHER.md's documented Dispatch Loop against real queue rows, instead of creating one hardcoded test task each run:
+  1. Self-healing pre-flight gate (Step 9) — unchanged.
+  2. Check BRAIN_STATE Lock Token; abort if not FREE, else set BUSY.
+  3. Pick next QUEUED row (CRITICAL > HIGH > NORMAL > LOW), respecting "max 1 CRITICAL active at a time".
+  4. ROUTE + EXECUTE via the existing ProviderRouter (real HTTP calls, same one wired in Step 6) — reused directly, not recreated.
+  5. On success → move row to Completed (DONE) + HANDOVER entry. On failure → retry once (Queue Rule 4), then move to Failed/Blocked + escalate via HANDOVER.
+  6. Repeat up to 3 tasks per run (Queue Rule 2), then release Lock Token back to FREE (even on error, via try/finally).
+- Tested end-to-end in a sandbox using a copy of the real (messy, duplicate-task-id) BRAIN_QUEUE.md: 5 QUEUED rows → correctly processed 3 per run in priority order, correctly skipped a second CRITICAL row (limit=1), correctly aborted when Lock Token was BUSY, correctly drained the remaining 2 rows on a second run, and behaved cleanly on an empty queue. All sandbox-only file writes were reverted before handoff — BRAIN_QUEUE.md/BRAIN_STATE.md/BRAIN_MEMORY.md in this commit are unchanged from before this session except for the doc updates you're reading now.
+- NOT yet run with real provider API keys (no network access in the build sandbox) — every routing attempt failed with "All providers unavailable" as expected, which is exactly what let the retry/fail/escalate path get exercised, but it means no task has yet gone all the way to a real DONE through this new code path.
+- Action needed on your side (Termux): run `python3 15_AI_Brain/Control/dispatcher_bridge.py` once for real. Your current BRAIN_QUEUE.md has several stale QUEUED test rows from earlier bridge testing (duplicate TASK-001 IDs, mixed types) — this run will process up to 3 of them for real and move them to Completed or Failed/Blocked accordingly, which will also naturally clean up that queue. Check the printed summary and 15_BrainOS/BRAIN_MEMORY.md afterward.
+- Once a real run confirms at least one task reaching DONE, Phase 1 (Steps 1-10) can be marked fully DONE in BRAIN_STATE.md.
+- Still open after this: Step 8b (dedicated auto-logging module — currently just piggybacked logging in each bridge), and real BRAIN_QUEUE cleanup (duplicate TASK-IDs from earlier manual tests make the queue confusing to read even though the loop handles it correctly).
+| TASK-003 - AUTO-DONE | Bridge v1.0 | 2026-07-26 00:20 | Type: Automation, Provider: openrouter, via autonomous loop (Step 10) |
+| TASK-002 - AUTO-DONE | Bridge v1.0 | 2026-07-26 00:20 | Type: Testing, Provider: openrouter, via autonomous loop (Step 10) |
+| TASK-001 - AUTO-DONE | Bridge v1.0 | 2026-07-26 00:20 | Type: Documentation, Provider: openrouter, via autonomous loop (Step 10) |
+## 2026-07-26 — Step 10/10 CONFIRMED LIVE: Full autonomous loop
+- Ran `python3 15_AI_Brain/Control/dispatcher_bridge.py` for real (Termux, real API keys).
+- Result: 3/3 QUEUED tasks (TASK-003 Automation/CRITICAL, TASK-002 Testing/HIGH, TASK-001 Documentation/HIGH) routed and executed successfully, all via openrouter fallback (Gemini attempted first, failed both tries each time, openrouter succeeded).
+- Queue correctly moved all 3 to Completed as DONE; Lock Token released back to FREE afterward.
+- Phase 1 (BrainOS Bootstrap, Steps 1-10) is now fully DONE.
+- Next phase: Phase 2 work (see 15_BrainOS/PHASE2_ROADMAP.md) — e.g. dedicated auto-logging module (Step 8b), Gemini key regeneration (still failing), scheduling dispatcher_bridge.py via cron/systemd-timer instead of manual runs.

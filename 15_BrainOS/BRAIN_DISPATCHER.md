@@ -37,6 +37,6 @@ BrainOS main execution loop. Reads BRAIN_QUEUE, analyzes via Decision Engine, ro
 - Output: BRAIN_MEMORY.md, HANDOVER.md
 
 ## Current Status
-State: MANUAL MODE (no autonomous loop yet)
-Reason: BrainOS bootstrap phase - human dispatches via Termux
-Auto-mode target: After Phase 1 Step 10 completes
+State: AUTONOMOUS LOOP BUILT (Step 10) — needs one real-keys run to fully confirm
+Reason: dispatcher_bridge.py now implements this loop against real BRAIN_QUEUE rows (sandbox-tested); run manually via Termux until a scheduled/cron trigger is set up
+Auto-mode target: cron/systemd-timer wrapper around dispatcher_bridge.py, once a real run confirms a task reaching DONE
