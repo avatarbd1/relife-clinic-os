@@ -1,0 +1,9 @@
+{
+  "task_id": "GATE-TEST-NORMAL",
+  "target_path": "15_AI_Brain/Outputs/GATE-TEST-NORMAL.md",
+  "content": "টেস্ট কনটেন্ট — এটা approve হওয়া উচিত।",
+  "status": "APPROVED",
+  "blocked": false,
+  "created_at": "2026-07-25T20:38:15.791071",
+  "approved_at": "2026-07-25T20:38:15.792979"
+}

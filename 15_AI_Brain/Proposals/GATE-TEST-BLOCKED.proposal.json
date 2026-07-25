@@ -1,0 +1,9 @@
+{
+  "task_id": "GATE-TEST-BLOCKED",
+  "target_path": "03_Bot/should_never_write.py",
+  "content": "এটা 03_Bot এ যাওয়ার কথা — ব্লক হওয়া উচিত।",
+  "status": "REJECTED",
+  "blocked": true,
+  "created_at": "2026-07-25T20:38:15.791862",
+  "rejected_at": "2026-07-25T20:38:15.793535"
+}
