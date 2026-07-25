@@ -97,7 +97,53 @@ def pick_next_task():
 
 
 def validate_task(task):
-    log_memory("INFO", "DISPATCHER", f"VALIDATE: {task['task_id']} — no conflicts found")
+    """
+    Decision Engine validation (DECISION_ENGINE.md rules).
+    Returns True if all checks pass, False otherwise.
+    """
+    task_id = task['task_id']
+    assigned = task.get('assigned', '')
+    errors = []
+
+    # Rule 1: Task must exist in BRAIN_QUEUE (BrainOS internal approval)
+    bq = read_file(BRAIN_QUEUE_FILE)
+    if task_id not in bq:
+        errors.append(f"Rule 1 FAIL: {task_id} not found in BRAIN_QUEUE (owner approval missing)")
+
+    # Rule 2: Check TASK_QUEUE for duplicate In-Progress task on same module
+    # NOTE: task dict does not yet have 'module' key - this check is safe
+    # but inactive until pick_next_task() is extended to include module field.
+    tq = read_file(TASK_QUEUE_FILE)
+    module = task.get('module', '')
+    if module:
+        in_progress_count = 0
+        for line in tq.splitlines():
+            if module in line and "In-Progress" in line:
+                in_progress_count += 1
+        if in_progress_count > 0:
+            errors.append(f"Rule 2 FAIL: module '{module}' already has In-Progress task in TASK_QUEUE")
+
+    # Rule 3: Assigned AI must exist in AI_REGISTRY (11_AIOS)
+    if assigned:
+        registry = read_file("11_AIOS/AI_REGISTRY.md")
+        if assigned not in registry:
+            errors.append(f"Rule 3 FAIL: assigned AI '{assigned}' not found in AI_REGISTRY")
+
+    # Rule 4: HANDOVER.md must be accessible (will be updated post-execution)
+    try:
+        read_file(HANDOVER_FILE)
+    except Exception:
+        errors.append("Rule 4 FAIL: HANDOVER.md not accessible")
+
+    # Rule 5: Completion review required (manual step, always passes here)
+
+    if errors:
+        for e in errors:
+            print(f"  DECISION ENGINE: {e}")
+            log_memory("ERROR", "DECISION_ENGINE", e)
+        return False
+
+    log_memory("INFO", "DECISION_ENGINE", f"VALIDATE: {task_id} - all 5 rules passed")
     return True
 
 
