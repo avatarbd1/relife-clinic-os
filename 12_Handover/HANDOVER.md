@@ -5,7 +5,7 @@
 - সোর্স ফোল্ডার: ~/relife-clinic-os (এটাই একমাত্র লাইভ কপি)
 
 ## এখন যা কাজ চলছে
-BrainOS Step 4: BRAIN_DISPATCHER execution loop - IN-PROGRESS
+BrainOS Step 4: BRAIN_DISPATCHER execution loop - DONE. Step 5 (Decision Engine integration) not yet started.
 - (এখানে এক লাইনে লিখুন — যেমন: "staff_ai_query.py-তে OpenRouter fallback যোগ হচ্ছে")
 
 ## জানা বাগ
@@ -25,3 +25,5 @@ BrainOS Step 4: BRAIN_DISPATCHER execution loop - IN-PROGRESS
 - Before deletion, backed up `.env` and `credentials.json` from old `~/clinic-bot` to `~/clinic-bot-env-backup/`.
 - Only one code folder remains: `~/relife-clinic-os`, synced with GitHub (`avatarbd1/relife-clinic-os`) and auto-deploying to Render.
 - Note: `~/credentials.json` still sits directly in home root — unclear which project it belongs to, needs checking.
+
+| BOOT-001 completed by dispatcher.py | DeepSeek-1 | 2026-07-25 15:07 | 15_BrainOS/ |

@@ -8,7 +8,7 @@ BrainOS centralized task queue. TASK_ROUTER.py takes tasks from here, PROVIDER_R
 
 | TASK_ID | Type | Priority | Status | Assigned | Created |
 |---------|------|----------|--------|----------|---------|
-| BOOT-001 | Bootstrap | CRITICAL | IN-PROGRESS | DeepSeek (user) | 2026-07-25 |
+| BOOT-001 | Bootstrap | CRITICAL | DONE | DeepSeek (user) | 2026-07-25 |
 
 ## Completed
 (empty)
