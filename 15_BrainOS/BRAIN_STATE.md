@@ -22,3 +22,10 @@ Step 7: Task Router-BrainOS bridge - PENDING
 Step 8: Auto-logging pipeline - PENDING
 Step 9: Self-healing monitor - PENDING
 Step 10: Full autonomous loop test - PENDING
+
+## Step 6 Blocker (2026-07-25)
+All 3 provider API keys currently invalid:
+- GEMINI_API_KEY: 400 API_KEY_INVALID
+- GROQ_API_KEY: 401 invalid_api_key
+- OPENROUTER_API_KEY: 401 User not found
+Live test cannot proceed until at least one key is regenerated and verified.
