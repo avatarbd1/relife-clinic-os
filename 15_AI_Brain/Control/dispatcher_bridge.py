@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.join(REPO_ROOT, "15_AI_Brain"))
 sys.path.insert(0, os.path.join(REPO_ROOT, "15_AI_Brain", "Control"))
 
 from task_router_bridge import TaskRouterBridge
+from self_healing_bridge import SelfHealingBridge
 from datetime import datetime
 
 def main():
@@ -19,7 +20,24 @@ def main():
     print("BRAIN DISPATCHER + TASK ROUTER BRIDGE")
     print("Step 7/10: Task Router-BrainOS Bridge")
     print("=" * 50)
-    
+
+    # Step 0 (Step 9/10): self-healing pre-flight gate — abort dispatch
+    # if required BrainOS structure/keys are missing. Read-only check,
+    # never touches 03_Bot/.
+    print("\n🩺 Running self-healing pre-flight check...")
+    healing = SelfHealingBridge()
+    healthy, health_result = healing.preflight()
+    if healthy:
+        print("   ✅ Pre-flight check passed — proceeding with dispatch.")
+    else:
+        print("   ⚠️ Pre-flight check found issues — dispatch aborted.")
+        if health_result["missing_required"]:
+            print(f"      Missing required: {health_result['missing_required']}")
+        if health_result["missing_keys"]:
+            print(f"      Missing keys: {health_result['missing_keys']}")
+        print("   See 15_AI_Brain/Monitor/HEALTH_REPORT.md for details.")
+        return
+
     bridge = TaskRouterBridge()
     
     # Sync existing tasks

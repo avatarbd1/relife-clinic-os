@@ -5,6 +5,7 @@
 BrainOS main execution loop. Reads BRAIN_QUEUE, analyzes via Decision Engine, routes via TaskRouter, executes via ProviderRouter.
 
 ## Dispatch Loop (v1.0)
+0. HEALTH CHECK -> self_healing_bridge.py pre-flight gate; abort dispatch if unhealthy (added Step 9/10, 2026-07-25)
 1. READ BRAIN_STATE -> check LOCK_TOKEN
 2. READ BRAIN_QUEUE -> pick next CRITICAL task
 3. VALIDATE -> check BRAIN_REGISTRY for conflicts
