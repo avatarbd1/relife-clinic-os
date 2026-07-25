@@ -35,3 +35,22 @@ BrainOS Step 4: BRAIN_DISPATCHER execution loop - DONE. Step 5 (Decision Engine 
 - 15_AI_Brain/Control/provider_router.py confirmed unused duplicate — left in place, not deleted.
 - Rotated GROQ_API_KEY and OPENROUTER_API_KEY (old ones were invalid/placeholder-like). Cleaned duplicate export lines from ~/.bashrc.
 - Next: Step 7/10 - Task Router-BrainOS bridge (not started). Also: GEMINI_API_KEY still needs regeneration before Gemini can be used live.
+
+| TASK-001 - CREATED | Bridge v1.0 | 2026-07-25 19:52 | Type: Documentation, Provider: openrouter |
+## 2026-07-25 — Step 7/10 DONE: Task Router-BrainOS Bridge
+- Created 15_AI_Brain/Control/task_router_bridge.py: Extends TASK_ROUTER.py with BrainOS persistence
+- Bridge reads/writes BRAIN_QUEUE.md, BRAIN_STATE.md, HANDOVER.md automatically
+- Created dispatcher_bridge.py: Main entry point combining dispatcher + bridge
+- Tested: Task creation → provider routing → BrainOS persistence flow working
+- Next: Step 8/10 - Full Provider Router integration with AI Registry
+
+## 2026-07-25 — Step 8/10 DONE: Provider Router + AI Registry Integration
+- Created 15_AI_Brain/Core/registry_provider_bridge.py: Connects ProviderRouter to AI_REGISTRY.md
+- Registry-aware routing: validates providers before task assignment
+- Auto-syncs registry status with actual API key availability
+- Provider health reporting added
+- Patched task_router_bridge.py with registry awareness (backward compatible)
+- Next: Step 9/10 - Self-healing monitor
+
+| TASK-001 - CREATED | Bridge v1.0 | 2026-07-25 19:57 | Type: Documentation, Provider: openrouter |
+| TASK-001 - CREATED | Bridge v1.0 | 2026-07-25 19:57 | Type: Planning, Provider: openrouter |
