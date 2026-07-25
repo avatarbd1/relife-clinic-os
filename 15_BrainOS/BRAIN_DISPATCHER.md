@@ -22,6 +22,12 @@ BrainOS main execution loop. Reads BRAIN_QUEUE, analyzes via Decision Engine, ro
 - On failure: log to BRAIN_MEMORY, mark FAILED in BRAIN_QUEUE
 - On success: mark DONE, update HANDOVER
 
+## AIOS Bridge (11_AIOS)
+- MASTER_PROMPT.md: AI onboarding rules enforced at dispatch Step 0
+- AI_CONSTITUTION.md: Safety rules checked at dispatch Step 3 (VALIDATE)
+- AI_REGISTRY.md: Worker IDs resolved at dispatch Step 5 (ROUTE)
+- ONBOARDING_MESSAGE.md: New AI session init linked to BRAIN_DISPATCHER
+
 ## Integration Points
 - Input: BRAIN_QUEUE.md
 - Analysis: 15_AI_Brain/Decision/DECISION_ENGINE.md

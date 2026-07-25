@@ -19,6 +19,19 @@ BrainOS internal component tracker. Separate from AI_REGISTRY (11_AIOS) which tr
 | BRAIN_REGISTRY | 15_BrainOS/BRAIN_REGISTRY.md | Active | v1.0 |
 | BRAIN_DISPATCHER | 15_BrainOS/BRAIN_DISPATCHER.md | Active | v1.0 |
 | BRAIN_MEMORY | 15_BrainOS/BRAIN_MEMORY.md | Active | v1.0 |
+| MASTER_PROMPT | 11_AIOS/MASTER_PROMPT.md | Active | v1.0 |
+| AI_CONSTITUTION | 11_AIOS/AI_CONSTITUTION.md | Active | v1.0 |
+| AI_REGISTRY | 11_AIOS/AI_REGISTRY.md | Active | v1.0 |
 
 ## Dependency Tree
-AI_BRAIN.md (root) -> 15_BrainOS/ -> STATE, QUEUE, REGISTRY, DISPATCHER, MEMORY
+AI_BRAIN.md (root)
+  ├── 11_AIOS/ (AI worker rules)
+  │     ├── MASTER_PROMPT.md
+  │     ├── AI_CONSTITUTION.md
+  │     └── AI_REGISTRY.md
+  └── 15_BrainOS/ (operational layer)
+        ├── BRAIN_STATE.md
+        ├── BRAIN_QUEUE.md
+        ├── BRAIN_REGISTRY.md
+        ├── BRAIN_DISPATCHER.md
+        └── BRAIN_MEMORY.md
