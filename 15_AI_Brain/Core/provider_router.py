@@ -1,4 +1,5 @@
 import os
+import requests
 import time
 import json
 import logging
@@ -106,10 +107,20 @@ class ProviderRouter:
     
     def _call_provider(self, provider: str, task_id: str) -> Tuple[bool, any]:
         try:
-            if provider == "groq" and task_id.startswith("TASK-"):
+            if provider == "gemini":
+                api_key = self.PROVIDERS.get("gemini", {}).get("api_key")
+                if not api_key:
+                    return False, "Gemini API key not set"
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+                payload = {"contents": [{"parts": [{"text": "Say OK"}]}]}
+                resp = requests.post(url, json=payload, timeout=15)
+                if resp.status_code != 200:
+                    return False, f"Gemini API error {resp.status_code}: {resp.text[:200]}"
+                data = resp.json()
+                text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                return True, {"result": text.strip()}
+            elif provider == "groq" and task_id.startswith("TASK-"):
                 return True, {"result": f"Groq executed {task_id}"}
-            elif provider == "gemini":
-                return True, {"result": f"Gemini executed {task_id}"}
             elif provider == "openrouter":
                 return True, {"result": f"OpenRouter executed {task_id}"}
             else:

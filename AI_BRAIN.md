@@ -94,3 +94,6 @@ Status: DONE
 Milestone: Phase 1 Step 5 ✅
 Next: Provider Router live test (Step 6/10) - NOT STARTED
 Session: Paused
+
+[2026-07-25] [AI: DeepSeek] Decision Engine integration complete (dispatcher.py validate_task 5 rules) + Gemini REST API wired. Live test: Gemini key invalid (400), graceful fallback to OpenRouter mock works.
+Status: Step 5 DONE. Step 6 partially blocked - needs valid Gemini API key.
