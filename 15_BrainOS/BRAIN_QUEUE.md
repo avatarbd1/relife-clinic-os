@@ -9,6 +9,9 @@ BrainOS centralized task queue. TASK_ROUTER.py takes tasks from here, PROVIDER_R
 | TASK_ID | Type | Priority | Status | Assigned | Created |
 |---------|------|----------|--------|----------|---------|
 
+| TASK-003 | Automation | CRITICAL | QUEUED | openrouter | 2026-07-25 20:22 |
+| TASK-002 | Testing | HIGH | QUEUED | openrouter | 2026-07-25 20:22 |
+| TASK-001 | Documentation | NORMAL | QUEUED | openrouter | 2026-07-25 20:22 |
 | TASK-001 | Planning | CRITICAL | QUEUED | openrouter | 2026-07-25 19:57 |
 | TASK-001 | Documentation | HIGH | QUEUED | openrouter | 2026-07-25 19:57 |
 ## Completed
