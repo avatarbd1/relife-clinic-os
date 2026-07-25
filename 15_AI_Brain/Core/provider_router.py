@@ -119,10 +119,32 @@ class ProviderRouter:
                 data = resp.json()
                 text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
                 return True, {"result": text.strip()}
-            elif provider == "groq" and task_id.startswith("TASK-"):
-                return True, {"result": f"Groq executed {task_id}"}
+            elif provider == "groq":
+                api_key = self.PROVIDERS.get("groq", {}).get("api_key")
+                if not api_key:
+                    return False, "Groq API key not set"
+                url = "https://api.groq.com/openai/v1/chat/completions"
+                headers = {"Authorization": f"Bearer {api_key}"}
+                payload = {"model": "openai/gpt-oss-20b", "messages": [{"role": "user", "content": "Say OK"}]}
+                resp = requests.post(url, headers=headers, json=payload, timeout=15)
+                if resp.status_code != 200:
+                    return False, f"Groq API error {resp.status_code}: {resp.text[:200]}"
+                data = resp.json()
+                text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                return True, {"result": text.strip()}
             elif provider == "openrouter":
-                return True, {"result": f"OpenRouter executed {task_id}"}
+                api_key = self.PROVIDERS.get("openrouter", {}).get("api_key")
+                if not api_key:
+                    return False, "OpenRouter API key not set"
+                url = "https://openrouter.ai/api/v1/chat/completions"
+                headers = {"Authorization": f"Bearer {api_key}"}
+                payload = {"model": "openai/gpt-oss-20b", "messages": [{"role": "user", "content": "Say OK"}]}
+                resp = requests.post(url, headers=headers, json=payload, timeout=15)
+                if resp.status_code != 200:
+                    return False, f"OpenRouter API error {resp.status_code}: {resp.text[:200]}"
+                data = resp.json()
+                text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                return True, {"result": text.strip()}
             else:
                 return False, "Unknown provider"
         except Exception as e:
