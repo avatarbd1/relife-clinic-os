@@ -8,11 +8,13 @@ BrainOS centralized task queue. TASK_ROUTER.py takes tasks from here, PROVIDER_R
 
 | TASK_ID | Type | Priority | Status | Assigned | Created |
 |---------|------|----------|--------|----------|---------|
-| BOOT-001 | Bootstrap | CRITICAL | DONE | DeepSeek (user) | 2026-07-25 |
-| TASK-002 | Python Coding | CRITICAL | DONE | Claude-1 | 2026-07-25 |
 
+| TASK-001 | Planning | CRITICAL | QUEUED | openrouter | 2026-07-25 19:57 |
+| TASK-001 | Documentation | HIGH | QUEUED | openrouter | 2026-07-25 19:57 |
 ## Completed
-(empty)
+| TASK-004 | Registry Integration | CRITICAL | DONE | openrouter | 2026-07-25 19:54 |
+| TASK-003 | Bridge Integration | CRITICAL | DONE | openrouter | 2026-07-25 19:52 |
+
 
 ## Failed / Blocked
 (empty)
@@ -22,3 +24,6 @@ BrainOS centralized task queue. TASK_ROUTER.py takes tasks from here, PROVIDER_R
 2. Max 3 concurrent tasks total
 3. Same module = no parallel tasks
 4. Failed tasks auto-retry 1x, then escalate to HANDOVER
+| BOOT-001 | Bootstrap | CRITICAL | DONE | DeepSeek (user) | 2026-07-25 |
+| TASK-001 | Documentation | CRITICAL | QUEUED | openrouter | 2026-07-25 19:52 |
+| TASK-002 | Python Coding | CRITICAL | DONE | Claude-1 | 2026-07-25 |

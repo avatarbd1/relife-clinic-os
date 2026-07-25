@@ -32,3 +32,11 @@ HANDOVER.md এবং TASK_QUEUE.md-এ ব্যবহার হবে — আ�
 | Grok-1     | Grok     |                                    |           |
 | Genspark-1 | Genspark |                                    |           |
 | Copilot-1  | Copilot  |                                    |           |
+
+
+## Usage Log
+| Timestamp | Provider | Status | Source |
+|-----------|----------|--------|--------|
+| 2026-07-25 19:54:40 | openrouter | ✅ SUCCESS | Bridge v1.0 |
+| 2026-07-25 19:57:21 | groq | ✅ SUCCESS | Bridge v1.0 |
+| 2026-07-25 19:57:27 | openrouter | ✅ SUCCESS | Bridge v1.0 |

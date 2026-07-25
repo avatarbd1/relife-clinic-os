@@ -62,3 +62,15 @@ Keep last 500 entries. Archive older to 15_AI_Brain/Knowledge/LESSONS_LEARNED.md
 [2026-07-25 15:23:01] [INFO] [DISPATCHER] ROUTE result: PROVIDER_ASSIGNED
 [2026-07-25 15:23:10] [WARN] [DISPATCHER] EXECUTE SKIPPED: TASK-TEST — user said no
 [2026-07-25 15:23:10] [WARN] [DISPATCHER] === DISPATCHER FINISHED (skipped) ===
+[2026-07-25 19:52:00] [INFO] [BRIDGE] Task TASK-001 created and persisted to BrainOS
+[2026-07-25 19:52:08] [INFO] [BRIDGE] Task TASK-001 created and persisted to BrainOS
+[2026-07-25 19:54:40] [INFO] [REGISTRY_SYNC] Provider status mismatch detected:
+  gemini: registry=False, actual=True
+  groq: registry=False, actual=True
+  openrouter: registry=False, actual=True
+[2026-07-25 19:57:20] [INFO] [BRIDGE] Task TASK-001 created and persisted to BrainOS
+[2026-07-25 19:57:21] [INFO] [REGISTRY_SYNC] Provider status mismatch detected:
+  gemini: registry=False, actual=True
+  groq: registry=False, actual=True
+  openrouter: registry=False, actual=True
+[2026-07-25 19:57:27] [INFO] [BRIDGE] Task TASK-001 created and persisted to BrainOS
