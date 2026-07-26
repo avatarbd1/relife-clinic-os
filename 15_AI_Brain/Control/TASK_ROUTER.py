@@ -1,4 +1,6 @@
 import sys
+import os
+import re
 import json
 from datetime import datetime
 sys.path.append('/home/relife-clinic-os')
@@ -14,7 +16,16 @@ class TaskRouter:
         
     def create_task(self, task_type: str, description: str, priority: str = "normal"):
         """Create a new task and assign provider"""
-        task_id = f"TASK-{len(self.task_queue)+1:03d}"
+        _bq_path = "15_BrainOS/BRAIN_QUEUE.md"
+        _max_num = 0
+        if os.path.exists(_bq_path):
+            with open(_bq_path, 'r') as _f:
+                _qc = _f.read()
+            for _m in re.finditer(r'TASK-(\d+)', _qc):
+                _n = int(_m.group(1))
+                if _n > _max_num:
+                    _max_num = _n
+        task_id = f"TASK-{_max_num + 1:03d}"
         
         # Get provider
         result = self.provider_router.route(task_id, task_type, priority)

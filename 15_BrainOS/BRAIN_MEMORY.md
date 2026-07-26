@@ -84,3 +84,13 @@ Keep last 500 entries. Archive older to 15_AI_Brain/Knowledge/LESSONS_LEARNED.md
 [2026-07-26 00:20:23] [INFO] [AUTO_LOOP] EXECUTE SUCCESS: TASK-002 -> openrouter (attempts=2, fallback=True)
 [2026-07-26 00:20:23] [INFO] [AUTO_LOOP] DISPATCH: TASK-001 (Documentation, HIGH) -> IN-PROGRESS
 [2026-07-26 00:20:30] [INFO] [AUTO_LOOP] EXECUTE SUCCESS: TASK-001 -> openrouter (attempts=2, fallback=True)
+[2026-07-26 09:40:57] [WARN] [SELF_HEALING] Pre-flight check: ISSUES_FOUND — missing keys: GROQ_API_KEY, OPENROUTER_API_KEY
+[2026-07-26 09:43:11] [INFO] [SELF_HEALING] Pre-flight check: PASS
+[2026-07-26 09:43:18] [INFO] [AUTO_LOOP] DISPATCH: TASK-001 (Planning, CRITICAL) -> IN-PROGRESS
+[2026-07-26 09:44:03] [INFO] [AUTO_LOOP] EXECUTE SUCCESS: TASK-001 -> openrouter (time=45410ms, valid=True)
+[2026-07-26 09:44:09] [INFO] [AUTO_LOOP] DISPATCH: TASK-001 (Documentation, NORMAL) -> IN-PROGRESS
+[2026-07-26 09:44:44] [INFO] [AUTO_LOOP] EXECUTE SUCCESS: TASK-001 -> openrouter (time=34594ms, valid=True)
+[2026-07-26 09:47:03] [INFO] [SELF_HEALING] Pre-flight check: PASS
+[2026-07-26 09:53:39] [INFO] [BRIDGE] Task TASK-001 created and persisted to BrainOS
+[2026-07-26 09:56:13] [INFO] [BRIDGE] Task TASK-001 created and persisted to BrainOS
+[2026-07-26 10:15:42] [INFO] [BRIDGE] Task TASK-005 created and persisted to BrainOS
