@@ -36,3 +36,14 @@ if not os.path.exists(GOOGLE_CREDENTIALS_PATH):
 def bd_now():
     from datetime import datetime, timezone, timedelta
     return datetime.now(timezone(timedelta(hours=6)))
+
+# ---- Google Sheet Tab Names ----
+SHEET_PATIENTS = "02_Patients"
+SHEET_ATTENDANCE = "03_Attendance"
+SHEET_APPOINTMENTS = "04_Appointments"
+SHEET_TREATMENTS = "05_Treatments"
+SHEET_PAYMENTS = "06_Payments"
+SHEET_STAFF = "08_Staff"
+SHEET_PACKAGES = "11_Packages"
+SHEET_TREATMENT_PLANS = "12_Treatment_Plans"
+SHEET_REPORTS = "14_Reports"
