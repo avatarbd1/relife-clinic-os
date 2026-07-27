@@ -47,6 +47,7 @@ import sheets
 import roles
 import calendar_helper
 import staff_ai_query
+import ai_helper
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -966,6 +967,38 @@ async def pay_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def pay_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.message.text.strip()
+
+    ai_data = ai_helper.parse_register_entry(query)
+    if ai_data:
+        ai_results = sheets.search_patients(ai_data["name"])
+        if len(ai_results) == 1:
+            patient = ai_results[0]
+            context.user_data.setdefault("payment", {})
+            context.user_data["payment"]["Patient_ID"] = patient.get("Patient_ID", "")
+            context.user_data["payment"]["Patient_Name"] = patient.get("Full_Name", "")
+            context.user_data["payment"]["Department"] = patient.get("Department", "")
+            context.user_data["payment"]["Sessions"] = ai_data["sessions"]
+            context.user_data["payment"]["Amount"] = ai_data["amount"]
+            await update.message.reply_text(
+                f"🤖 AI বুঝেছে: {patient.get('Full_Name','')} ({patient.get('Patient_ID','')}) — "
+                f"সেশন {ai_data['sessions']}, টাকা {ai_data['amount']:.0f}\n\n"
+                "Payment Method বেছে নাও:",
+                reply_markup=_payment_method_keyboard(),
+            )
+            return PAY_METHOD
+        elif len(ai_results) > 1:
+            context.user_data["pay_search_results"] = {
+                p.get("Patient_ID", "").strip(): p for p in ai_results[:10]
+            }
+            context.user_data["_ai_prefill"] = {
+                "amount": ai_data["amount"], "sessions": ai_data["sessions"]
+            }
+            await update.message.reply_text(
+                f"🤖 '{ai_data['name']}' নামে একাধিক মিল পাওয়া গেছে — সঠিক রোগী বেছে নাও:",
+                reply_markup=_patient_search_buttons(ai_results[:10], "paysel_", "paysearchback"),
+            )
+            return PAY_SELECT
+
     results = sheets.search_patients(query)
     if not results:
         await update.message.reply_text(
@@ -998,9 +1031,22 @@ async def pay_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     context.user_data.setdefault("payment", {})["Patient_ID"] = patient.get("Patient_ID", "")
     context.user_data["payment"]["Patient_Name"] = patient.get("Full_Name", "")
     context.user_data["payment"]["Department"] = patient.get("Department", "")
-    context.user_data["payment"]["Sessions"] = 1
     context.user_data.pop("pay_search_results", None)
 
+    ai_prefill = context.user_data.pop("_ai_prefill", None)
+    if ai_prefill:
+        context.user_data["payment"]["Sessions"] = ai_prefill["sessions"]
+        context.user_data["payment"]["Amount"] = ai_prefill["amount"]
+        await query.edit_message_text(
+            f"🤖 রোগী: {patient.get('Full_Name','')} ({patient.get('Patient_ID','')}) — "
+            f"সেশন {ai_prefill['sessions']}, টাকা {ai_prefill['amount']:.0f}"
+        )
+        await query.message.reply_text(
+            "Payment Method বেছে নাও:", reply_markup=_payment_method_keyboard()
+        )
+        return PAY_METHOD
+
+    context.user_data["payment"]["Sessions"] = 1
     await query.edit_message_text(
         _register_amount_prompt_text(patient.get("Full_Name", ""), patient.get("Patient_ID", ""), 1),
         reply_markup=_register_amount_keyboard(1),
