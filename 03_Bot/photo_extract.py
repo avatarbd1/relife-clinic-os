@@ -7,6 +7,7 @@ Environment variable লাগবে: GROQ_API_KEY
 import os
 import json
 import base64
+import re
 import requests
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
@@ -50,7 +51,11 @@ def extract_from_photo(image_bytes: bytes) -> dict | None:
     resp = requests.post(GROQ_URL, headers=headers, json=payload, timeout=30)
     resp.raise_for_status()
     text = resp.json()["choices"][0]["message"]["content"].strip()
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
     text = text.replace("```json", "").replace("```", "").strip()
+    match = re.search(r"\{.*\}", text, flags=re.DOTALL)
+    if match:
+        text = match.group(0)
     try:
         return json.loads(text)
     except json.JSONDecodeError:
