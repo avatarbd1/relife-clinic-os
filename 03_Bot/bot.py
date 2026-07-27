@@ -47,6 +47,7 @@ import sheets
 import roles
 import calendar_helper
 import staff_ai_query
+import photo_extract
 import ai_helper
 
 logging.basicConfig(
@@ -70,6 +71,8 @@ logger = logging.getLogger(__name__)
     APT_THERAPIST,
     APT_CONFIRM,
 ) = range(13)
+
+REG_PHOTO_CHOICE, REG_PHOTO_WAIT, REG_PHOTO_CONFIRM = range(90, 93)
 
 (
     PAY_SEARCH,
@@ -402,8 +405,116 @@ async def reg_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
     context.user_data["new_patient"] = {}
+    choice_kb = ReplyKeyboardMarkup(
+        [["📷 Photo/Report দিয়ে", "✍️ নিজে লিখব"]],
+        resize_keyboard=True, one_time_keyboard=True,
+    )
+    await update.message.reply_text(
+        "নতুন রোগী রেজিস্ট্রেশন — কীভাবে শুরু করবে?", reply_markup=choice_kb
+    )
+    return REG_PHOTO_CHOICE
+
+
+async def _reg_resume_after_prefill(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    p = context.user_data.setdefault("new_patient", {})
+    if not p.get("Full_Name"):
+        await update.message.reply_text(
+            "নতুন রোগীর পূর্ণ নাম লেখো:", reply_markup=ReplyKeyboardRemove()
+        )
+        return REG_NAME
+    if not p.get("Phone"):
+        await update.message.reply_text(
+            "ফোন নম্বর লেখো:", reply_markup=ReplyKeyboardRemove()
+        )
+        return REG_PHONE
+    existing = sheets.find_patient_by_phone(p["Phone"])
+    if existing:
+        dup_keyboard = ReplyKeyboardMarkup(
+            [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
+        )
+        await update.message.reply_text(
+            "⚠️ এই ফোন নম্বরে ইতিমধ্যে রোগী আছে:\n"
+            f"নাম: {existing.get('Full_Name')}\n"
+            f"Patient ID: {existing.get('Patient_ID')}\n\n"
+            "তবুও কি নতুন করে রেজিস্ট্রেশন করবে?",
+            reply_markup=dup_keyboard,
+        )
+        return REG_PHONE_DUP
+    if not p.get("Address"):
+        await update.message.reply_text("ঠিকানা লেখো:", reply_markup=ReplyKeyboardRemove())
+        return REG_ADDRESS
+    await update.message.reply_text(
+        "সমস্যা/বয়স/অন্য কিছু থাকলে এক লাইনে লেখো (না থাকলে - দাও):",
+        reply_markup=_skip_keyboard(),
+    )
+    return REG_NOTE
+
+
+async def reg_photo_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    if text.startswith("📷"):
+        await update.message.reply_text(
+            "রোগীর report/prescription/x-ray-এর ছবিটা পাঠাও:",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return REG_PHOTO_WAIT
     await update.message.reply_text(
         "নতুন রোগীর পূর্ণ নাম লেখো:", reply_markup=ReplyKeyboardRemove()
+    )
+    return REG_NAME
+
+
+async def reg_photo_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    photo = update.message.photo[-1]
+    tg_file = await photo.get_file()
+    image_bytes = bytes(await tg_file.download_as_bytearray())
+    await update.message.reply_text("⏳ ছবিটা পড়া হচ্ছে...")
+    try:
+        extracted = photo_extract.extract_from_photo(image_bytes)
+    except Exception:
+        logger.exception("photo_extract failed")
+        extracted = None
+
+    field_map = {
+        "full_name": "Full_Name",
+        "age": "Age",
+        "phone": "Phone",
+        "address": "Address",
+        "gender": "Gender",
+    }
+    p = context.user_data.setdefault("new_patient", {})
+    found_lines = []
+    if extracted:
+        for src_key, dst_key in field_map.items():
+            val = extracted.get(src_key)
+            if val:
+                p[dst_key] = str(val).strip()
+                found_lines.append(f"{dst_key}: {p[dst_key]}")
+
+    if not found_lines:
+        await update.message.reply_text(
+            "⚠️ ছবি থেকে তথ্য পড়া যায়নি। নিজে লিখতে হবে।\nনতুন রোগীর পূর্ণ নাম লেখো:",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return REG_NAME
+
+    summary = "📋 ছবি থেকে এই তথ্য পাওয়া গেছে:\n\n" + "\n".join(found_lines)
+    summary += "\n\nঠিক আছে?"
+    confirm_kb = ReplyKeyboardMarkup(
+        [["হ্যাঁ, ঠিক আছে", "না, নিজে লিখব"]],
+        resize_keyboard=True, one_time_keyboard=True,
+    )
+    await update.message.reply_text(summary, reply_markup=confirm_kb)
+    return REG_PHOTO_CONFIRM
+
+
+async def reg_photo_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    if text.startswith("হ্যাঁ"):
+        return await _reg_resume_after_prefill(update, context)
+    context.user_data["new_patient"] = {}
+    await update.message.reply_text(
+        "ঠিক আছে, নতুন করে নাম লেখো:", reply_markup=ReplyKeyboardRemove()
     )
     return REG_NAME
 
@@ -2463,6 +2574,9 @@ def main():
             MessageHandler(filters.Regex(f"^{roles.MENU_PATIENT_REG}$"), reg_start)
         ],
         states={
+            REG_PHOTO_CHOICE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_photo_choice)],
+            REG_PHOTO_WAIT: [MessageHandler(filters.PHOTO, reg_photo_receive)],
+            REG_PHOTO_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_photo_confirm)],
             REG_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_name)],
             REG_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_phone)],
             REG_PHONE_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_phone_confirm)],
