@@ -894,6 +894,11 @@ async def apt_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             row.pop("Dates", None)
             appointment_id = sheets.add_appointment(row, created_by=staff.get("Full_Name", "Unknown"))
             ids.append(appointment_id)
+        if ids and a.get("Patient_ID") and a.get("Therapist"):
+            try:
+                sheets.update_patient_therapist(a["Patient_ID"], a["Therapist"])
+            except Exception:
+                logger.exception("apt_confirm: রোগীর সাথে থেরাপিস্ট assign করতে ব্যর্থ হয়েছে")
         if len(ids) > 1:
             msg = f"✅ {len(ids)}টা অ্যাপয়েন্টমেন্ট বুক হয়েছে!\nAppointment IDs: {', '.join(ids)}"
         else:

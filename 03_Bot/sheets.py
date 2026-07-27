@@ -613,6 +613,18 @@ def update_next_visit(patient_id: str, next_visit_date: str) -> bool:
     return True
 
 
+def update_patient_therapist(patient_id: str, therapist_name: str) -> bool:
+    """02_Patients শীটে Therapist কলাম (কলাম ১৬) আপডেট করে।
+    অ্যাপয়েন্টমেন্ট বুক করার সময় বাছাই করা থেরাপিস্ট রোগীর সাথে assign হয়ে যায়,
+    যাতে 'আমার রোগী / সেশন' মেনুতে সেই থেরাপিস্টের নামে রোগীটা দেখা যায়।"""
+    ws = _worksheet(config.SHEET_PATIENTS)
+    cell = ws.find(patient_id.strip())
+    if cell is None:
+        return False
+    ws.update_cell(cell.row, 16, therapist_name)
+    return True
+
+
 def get_last_treatment_note_for_patient(patient_id: str) -> dict | None:
     """
     রোগীর সবচেয়ে সাম্প্রতিক ট্রিটমেন্ট নোট ফেরত দেয় (থাকলে), না থাকলে None।
