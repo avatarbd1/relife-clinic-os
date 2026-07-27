@@ -530,21 +530,6 @@ async def reg_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def reg_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     phone = update.message.text.strip()
-    context.user_data["_phone_pending"] = phone
-    await update.message.reply_text("ফোন নম্বরটা আবার লেখো (নিশ্চিত করার জন্য):")
-    return REG_PHONE_CONFIRM
-
-
-async def reg_phone_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    typed_again = update.message.text.strip()
-    pending = context.user_data.get("_phone_pending", "")
-    if typed_again != pending:
-        await update.message.reply_text(
-            "⚠️ দুইবার লেখা নম্বর মেলেনি। আবার প্রথম থেকে ফোন নম্বর লেখো:"
-        )
-        return REG_PHONE
-
-    phone = pending
     context.user_data["new_patient"]["Phone"] = phone
     existing = sheets.find_patient_by_phone(phone)
     if existing:
@@ -2582,7 +2567,6 @@ def main():
             REG_PHOTO_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_photo_confirm)],
             REG_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_name)],
             REG_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_phone)],
-            REG_PHONE_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_phone_confirm)],
             REG_PHONE_DUP: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_phone_dup_confirm)],
             REG_ADDRESS: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_address)],
             REG_NOTE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_note)],
