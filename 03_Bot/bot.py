@@ -415,6 +415,18 @@ async def reg_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return REG_PHOTO_CHOICE
 
 
+async def _reg_ask_address_or_note(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    p = context.user_data.get("new_patient", {})
+    if not p.get("Address"):
+        await update.message.reply_text("ঠিকানা লেখো:", reply_markup=ReplyKeyboardRemove())
+        return REG_ADDRESS
+    await update.message.reply_text(
+        "সমস্যা/বয়স/অন্য কিছু থাকলে এক লাইনে লেখো (না থাকলে - দাও):",
+        reply_markup=_skip_keyboard(),
+    )
+    return REG_NOTE
+
+
 async def _reg_resume_after_prefill(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     p = context.user_data.setdefault("new_patient", {})
     if not p.get("Full_Name"):
@@ -544,16 +556,14 @@ async def reg_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=dup_keyboard,
         )
         return REG_PHONE_DUP
-    await update.message.reply_text("ঠিকানা লেখো:", reply_markup=ReplyKeyboardRemove())
-    return REG_ADDRESS
+    return await _reg_ask_address_or_note(update, context)
 
 
 async def reg_phone_dup_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip().lower()
     staff = context.user_data.get("staff", {})
     if text in ("হ্যাঁ", "yes", "y", "হা", "ha"):
-        await update.message.reply_text("ঠিকানা লেখো:", reply_markup=ReplyKeyboardRemove())
-        return REG_ADDRESS
+        return await _reg_ask_address_or_note(update, context)
     context.user_data.pop("new_patient", None)
     await update.message.reply_text(
         "❌ ডুপ্লিকেট এড়াতে রেজিস্ট্রেশন বাতিল করা হয়েছে।",
