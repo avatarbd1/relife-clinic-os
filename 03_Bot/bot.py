@@ -469,11 +469,13 @@ async def reg_photo_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tg_file = await photo.get_file()
     image_bytes = bytes(await tg_file.download_as_bytearray())
     await update.message.reply_text("⏳ ছবিটা পড়া হচ্ছে...")
+    debug_error = None
     try:
         extracted = photo_extract.extract_from_photo(image_bytes)
-    except Exception:
+    except Exception as e:
         logger.exception("photo_extract failed")
         extracted = None
+        debug_error = f"{type(e).__name__}: {e}"
 
     field_map = {
         "full_name": "Full_Name",
@@ -492,8 +494,9 @@ async def reg_photo_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 found_lines.append(f"{dst_key}: {p[dst_key]}")
 
     if not found_lines:
+        debug_line = f"\n\n🔧 Debug: {debug_error}" if debug_error else ""
         await update.message.reply_text(
-            "⚠️ ছবি থেকে তথ্য পড়া যায়নি। নিজে লিখতে হবে।\nনতুন রোগীর পূর্ণ নাম লেখো:",
+            f"⚠️ ছবি থেকে তথ্য পড়া যায়নি। নিজে লিখতে হবে।{debug_line}\nনতুন রোগীর পূর্ণ নাম লেখো:",
             reply_markup=ReplyKeyboardRemove(),
         )
         return REG_NAME
