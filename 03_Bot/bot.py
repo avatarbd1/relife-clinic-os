@@ -601,6 +601,12 @@ async def reg_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"✅ রোগী রেজিস্ট্রেশন সম্পন্ন! Patient ID: {patient_id}",
             reply_markup=_menu_keyboard(staff.get("Role", "")),
         )
+        new_patient_row = sheets.get_patient_by_id(patient_id)
+        if new_patient_row:
+            await update.message.reply_text(
+                _patient_card_text(new_patient_row),
+                reply_markup=_patient_card_keyboard(patient_id),
+            )
     else:
         await update.message.reply_text(
             "❌ বাতিল করা হয়েছে।",
