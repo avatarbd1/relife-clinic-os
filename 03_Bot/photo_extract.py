@@ -54,4 +54,4 @@ def extract_from_photo(image_bytes: bytes) -> dict | None:
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        return None
+        raise RuntimeError(f"JSON parse failed, raw model output: {text[:300]}")
