@@ -3055,7 +3055,9 @@ async def plist_action_viewfiles(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     await query.answer()
     patient_id = query.data.replace("plistact_viewfiles_", "")
-    staff = context.user_data.get("staff", {})
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
     patient = sheets.get_patient_by_id(patient_id)
     if not patient:
         await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
@@ -3089,7 +3091,9 @@ async def plist_action_getfile(update: Update, context: ContextTypes.DEFAULT_TYP
     query = update.callback_query
     await query.answer()
     report_id = query.data.replace("plistact_getfile_", "")
-    staff = context.user_data.get("staff", {})
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
     record = sheets.get_report_by_id(report_id)
     if not record:
         await query.message.reply_text("❌ ফাইল পাওয়া যায়নি।")
