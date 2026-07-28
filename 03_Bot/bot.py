@@ -295,11 +295,6 @@ def _therapist_today_queue(staff: dict) -> list[dict]:
         patient_id = str(appt.get("Patient_ID", "")).strip()
         patient = sheets.get_patient_by_id(patient_id) or {"Patient_ID": patient_id, "Full_Name": appt.get("Patient_Name", "")}
         patient_therapist = str(patient.get("Therapist", "")).strip()
-        if therapist_name and appt_therapist and appt_therapist != therapist_name:
-            continue
-        if therapist_name and not appt_therapist and patient_therapist and patient_therapist != therapist_name:
-            continue
-
         notes = sheets.get_treatment_notes_for_patient(patient_id)
         plan = sheets.get_active_plan_for_patient(patient_id) or sheets.get_last_plan_for_patient(patient_id)
         last_note = notes[-1] if notes else {}
@@ -3083,9 +3078,7 @@ async def plist_action_viewfiles(update: Update, context: ContextTypes.DEFAULT_T
         await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
         return
     role = staff.get("Role", "").strip()
-    allowed = role in ("Owner", "Manager") or (
-        role == "Therapist" and _therapist_has_access_to_patient(staff.get("Full_Name", ""), patient)
-    )
+    allowed = role in ("Owner", "Manager", "Therapist")
     if not allowed:
         await query.edit_message_text("⛔ এই রোগীর ফাইল দেখার অনুমতি তোমার নেই।")
         return
@@ -3120,11 +3113,7 @@ async def plist_action_getfile(update: Update, context: ContextTypes.DEFAULT_TYP
         return
     patient = sheets.get_patient_by_id(record.get("Patient_ID", ""))
     role = staff.get("Role", "").strip()
-    allowed = patient and (
-        role in ("Owner", "Manager") or (
-            role == "Therapist" and _therapist_has_access_to_patient(staff.get("Full_Name", ""), patient)
-        )
-    )
+    allowed = patient and role in ("Owner", "Manager", "Therapist")
     if not allowed:
         await query.message.reply_text("⛔ এই ফাইল দেখার অনুমতি তোমার নেই।")
         return
