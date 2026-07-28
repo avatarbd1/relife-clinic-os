@@ -10,25 +10,44 @@ import re
 
 import time
 
-def safe_get_all_records(ws, _retries: int = 2):
+_records_cache = {}  # {worksheet_title: (timestamp, records)}
+_RECORDS_CACHE_TTL = 2.0  # সেকেন্ড — একই ড্যাশবোর্ড রেন্ডারের মধ্যে বারবার একই শীট না পড়ার জন্য
+
+
+def safe_get_all_records(ws, _retries: int = 2, _use_cache: bool = True):
     """get_all_records()-এর নিরাপদ ভার্সন — sheet-এ শুধু header বা কোনো row না থাকলে crash না করে খালি list রিটার্ন করে।
     Google Sheets rate-limit/temporary error হলে ১-২ বার retry করে, যাতে দ্রুত পরপর ক্লিকে
-    ভুল করে 'কিছুই নেই' না দেখায়।"""
+    ভুল করে 'কিছুই নেই' না দেখায়। কয়েক সেকেন্ডের জন্য ফলাফল ক্যাশে রাখে যাতে একই Dashboard
+    রেন্ডারের মধ্যে (যেখানে অনেক রোগীর জন্য বারবার একই শীট পড়া লাগে) API কল কম হয় এবং দ্রুত হয়।"""
+    cache_key = ws.title
+    if _use_cache and cache_key in _records_cache:
+        ts, cached = _records_cache[cache_key]
+        if time.time() - ts < _RECORDS_CACHE_TTL:
+            return cached
     try:
         if ws.row_count < 2:
-            return []
-        first_row = ws.row_values(1)
-        if not first_row:
-            return []
-        return ws.get_all_records()
+            result = []
+        else:
+            first_row = ws.row_values(1)
+            result = [] if not first_row else ws.get_all_records()
+        _records_cache[cache_key] = (time.time(), result)
+        return result
     except gspread.exceptions.APIError as e:
         status = getattr(getattr(e, "response", None), "status_code", None)
         if _retries > 0 and status in (429, 500, 503):
             time.sleep(1.5)
-            return safe_get_all_records(ws, _retries - 1)
+            return safe_get_all_records(ws, _retries - 1, _use_cache)
         return []
     except Exception:
         return []
+
+
+def _invalidate_cache(ws) -> None:
+    """কোনো শীটে write (append/update) হওয়ার পর সেই শীটের cache মুছে দেয়, যাতে সাথে সাথে
+    করা পরবর্তী read পুরনো (stale) ডেটা না দেখায়।"""
+    _records_cache.pop(ws.title, None)
+
+
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
@@ -423,6 +442,7 @@ def update_appointment_status(appointment_id: str, status: str) -> bool:
     if cell is None:
         return False
     ws.update_cell(cell.row, 8, status)
+    _invalidate_cache(ws)
     return True
 
 
@@ -686,6 +706,7 @@ def add_treatment_note(data: dict, created_by: str) -> str:
             payload.get("Machines", ""),
         ]
         ws.append_row(row, value_input_option="RAW")
+    _invalidate_cache(ws)
     return treatment_id
 
 
@@ -748,6 +769,7 @@ def add_treatment_plan(data: dict, created_by: str) -> str:
         "Active",
     ]
     ws.append_row(row, value_input_option="RAW")
+    _invalidate_cache(ws)
     return plan_id
 
 
@@ -796,6 +818,7 @@ def increment_plan_session(patient_id: str) -> bool:
     ws.update_cell(row_number, 6, done)   # Sessions_Done কলাম F
     if total and done >= total:
         ws.update_cell(row_number, 12, "Completed")  # Status কলাম L
+    _invalidate_cache(ws)
     return True
 
 
