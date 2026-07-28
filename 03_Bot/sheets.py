@@ -366,6 +366,7 @@ def attendance_check_out(staff_id: str, date_str: str) -> dict | None:
 
     try:
         check_in = datetime.strptime(f"{date_str} {record.get('Check_In','')}", "%Y-%m-%d %I:%M %p")
+        check_in = check_in.replace(tzinfo=now.tzinfo)
     except ValueError:
         check_in = now
 
