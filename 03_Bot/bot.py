@@ -364,8 +364,12 @@ def _pt_dashboard_text(staff: dict) -> str:
 
 def _pt_dashboard_keyboard(staff: dict) -> InlineKeyboardMarkup:
     buttons = []
+    seen_history_patient_ids = set()
     for item in _therapist_today_queue(staff)[:12]:
         if item["status"] in ("Completed", "Missed Appointment"):
+            if item["patient_id"] in seen_history_patient_ids:
+                continue
+            seen_history_patient_ids.add(item["patient_id"])
             buttons.append([
                 InlineKeyboardButton(
                     f"📜 {item['name']} — History",
