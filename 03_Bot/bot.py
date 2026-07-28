@@ -3051,6 +3051,26 @@ async def report_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+def _therapist_has_access_to_patient(therapist_name: str, patient: dict) -> bool:
+    """
+    Therapist-এর এই patient-এ অ্যাক্সেস আছে কিনা চেক করে।
+    শুধু patient রেকর্ডের Therapist কলাম না দেখে, patient-এর
+    appointment history-তেও এই therapist-এর নামে কোনো অ্যাপয়েন্টমেন্ট
+    আছে কিনা দেখা হয়।
+    """
+    if roles.is_therapist_owner_of_patient(therapist_name, patient):
+        return True
+    patient_id = str(patient.get("Patient_ID", "")).strip()
+    if not patient_id:
+        return False
+    therapist_name = therapist_name.strip()
+    appts = sheets.get_appointments_for_patient(patient_id)
+    return any(
+        str(a.get("Therapist", "")).strip() == therapist_name
+        for a in appts
+    )
+
+
 async def plist_action_viewfiles(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -3064,7 +3084,7 @@ async def plist_action_viewfiles(update: Update, context: ContextTypes.DEFAULT_T
         return
     role = staff.get("Role", "").strip()
     allowed = role in ("Owner", "Manager") or (
-        role == "Therapist" and roles.is_therapist_owner_of_patient(staff.get("Full_Name", ""), patient)
+        role == "Therapist" and _therapist_has_access_to_patient(staff.get("Full_Name", ""), patient)
     )
     if not allowed:
         await query.edit_message_text("⛔ এই রোগীর ফাইল দেখার অনুমতি তোমার নেই।")
@@ -3102,7 +3122,7 @@ async def plist_action_getfile(update: Update, context: ContextTypes.DEFAULT_TYP
     role = staff.get("Role", "").strip()
     allowed = patient and (
         role in ("Owner", "Manager") or (
-            role == "Therapist" and roles.is_therapist_owner_of_patient(staff.get("Full_Name", ""), patient)
+            role == "Therapist" and _therapist_has_access_to_patient(staff.get("Full_Name", ""), patient)
         )
     )
     if not allowed:
