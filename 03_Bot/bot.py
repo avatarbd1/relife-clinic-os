@@ -97,7 +97,7 @@ REG_PHOTO_CHOICE, REG_PHOTO_WAIT, REG_PHOTO_CONFIRM = range(90, 93)
 ) = range(19, 29)
 
 PAY_METHODS = ["Cash", "bKash", "Nagad", "Card"]
-THERAPIST_NAMES = ["Nipa", "Saiful"]
+THERAPIST_NAMES_FALLBACK = ["Nipa", "Saiful"]
 
 BN_WEEKDAYS = ["সোম", "মঙ্গল", "বুধ", "বৃহঃ", "শুক্র", "শনি", "রবি"]
 
@@ -836,9 +836,16 @@ def _time_keyboard() -> InlineKeyboardMarkup:
 
 
 def _therapist_keyboard() -> InlineKeyboardMarkup:
+    try:
+        names = sheets.get_active_therapist_names()
+    except Exception:
+        logger.exception("get_active_therapist_names ব্যর্থ হয়েছে, fallback ব্যবহার হচ্ছে")
+        names = []
+    if not names:
+        names = THERAPIST_NAMES_FALLBACK
     buttons = [
         [InlineKeyboardButton(name, callback_data=f"aptther_{name}")]
-        for name in THERAPIST_NAMES
+        for name in names
     ]
     buttons.append([InlineKeyboardButton("⬅️ আগের ধাপ", callback_data="aptback_time")])
     return InlineKeyboardMarkup(buttons)

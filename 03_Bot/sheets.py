@@ -55,6 +55,19 @@ def _worksheet(name: str):
     return _get_spreadsheet().worksheet(name)
 
 
+def get_active_therapist_names() -> list[str]:
+    ws = _worksheet(config.SHEET_STAFF)
+    records = safe_get_all_records(ws)
+    names = []
+    for row in records:
+        role = str(row.get("Role", "")).strip().lower()
+        status = str(row.get("Status", "")).strip().lower()
+        name = str(row.get("Full_Name", "")).strip()
+        if role == "therapist" and status == "active" and name and name not in names:
+            names.append(name)
+    return names
+
+
 def get_staff_by_telegram_id(telegram_id: int) -> dict | None:
     ws = _worksheet(config.SHEET_STAFF)
     records = safe_get_all_records(ws)
