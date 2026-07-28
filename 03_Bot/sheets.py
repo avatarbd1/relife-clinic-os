@@ -315,7 +315,7 @@ def attendance_check_in(staff: dict) -> str:
     time_str = now.strftime("%I:%M %p")
     attendance_id = _next_attendance_id(ws)
 
-    shift_start = now.replace(hour=9, minute=0, second=0, microsecond=0)
+    shift_start = now.replace(hour=8, minute=45, second=0, microsecond=0)
     late_min = max(0, int((now - shift_start).total_seconds() // 60))
     status = "Late" if late_min > 15 else "Present"
 
@@ -360,6 +360,7 @@ def attendance_check_out(staff_id: str, date_str: str) -> dict | None:
     record = get_today_attendance(staff_id, date_str)
     if not record:
         return None
+    ws = _worksheet(config.SHEET_ATTENDANCE)
     now = bd_now()
     time_str = now.strftime("%I:%M %p")
 
@@ -381,7 +382,18 @@ def attendance_check_out(staff_id: str, date_str: str) -> dict | None:
             pass
 
     working_hours = round(total_minutes / 60, 2)
-    overtime = round(max(0, working_hours - 8), 2)
+
+    shift_end = now.replace(hour=19, minute=45, second=0, microsecond=0)
+    raw_overtime_min = max(0, (now - shift_end).total_seconds() / 60)
+
+    late_cell = ws.cell(record["_row_number"], 11).value
+    try:
+        late_min = float(late_cell) if late_cell not in (None, "") else 0
+    except (TypeError, ValueError):
+        late_min = 0
+
+    overtime_min = max(0, raw_overtime_min - late_min)
+    overtime = round(overtime_min / 60, 2)
 
     _update_attendance_cell(record["_row_number"], 9, time_str)
     _update_attendance_cell(record["_row_number"], 10, working_hours)
