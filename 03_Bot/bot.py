@@ -496,7 +496,7 @@ async def pt_dashboard_history_callback(update: Update, context: ContextTypes.DE
     await query.answer()
     patient_id = query.data.replace("ptdashhist_", "", 1)
     history = _build_full_history_text(patient_id) or "কোনো history পাওয়া যায়নি।"
-    await query.message.reply_text(history)
+    await query.message.reply_text(history, reply_markup=_therapist_patient_action_keyboard(patient_id))
 
 
 async def pt_dashboard_receive_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2756,6 +2756,20 @@ def _patient_card_text(patient: dict) -> str:
         f"✅ জমা হয়েছে: {paid}\n"
         f"⏳ বাকি: {due}"
     )
+
+
+def _therapist_patient_action_keyboard(patient_id: str) -> InlineKeyboardMarkup:
+    """থেরাপিস্ট ড্যাশবোর্ড থেকে History দেখার পর — পেমেন্ট বাদে বাকি অ্যাকশন বাটন।"""
+    buttons = [
+        [
+            InlineKeyboardButton("📅 অ্যাপয়েন্টমেন্ট", callback_data=f"plistact_apt_{patient_id}"),
+            InlineKeyboardButton("📝 ট্রিটমেন্ট নোট", callback_data=f"plistact_treat_{patient_id}"),
+        ],
+        [InlineKeyboardButton("📎 রিপোর্ট", callback_data=f"plistact_report_{patient_id}")],
+        [InlineKeyboardButton("👁️ ফাইল দেখুন", callback_data=f"plistact_viewfiles_{patient_id}")],
+        [InlineKeyboardButton("🔄 Dashboard-এ ফিরুন", callback_data="ptdash_refresh")],
+    ]
+    return InlineKeyboardMarkup(buttons)
 
 
 def _patient_card_keyboard(patient_id: str) -> InlineKeyboardMarkup:
