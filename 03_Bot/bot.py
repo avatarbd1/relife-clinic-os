@@ -1046,15 +1046,48 @@ async def reg_photo_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return REG_PHOTO_CONFIRM
 
 
+_AFFIRMATIVE_WORDS = {
+    "হ্যাঁ", "হ্যা", "হুম", "হু", "হবে", "ঠিক", "ঠিক আছে",
+    "yes", "ha", "haa", "hu", "hum", "hocche", "thik", "thik ache", "ok", "okay", "sure",
+}
+_NEGATIVE_WORDS = {
+    "না", "না,", "no", "na", "nah", "nije likhbo", "নিজে লিখব",
+}
+
+
+def _is_affirmative(text: str) -> bool:
+    norm = text.strip().lower().rstrip(".!,।")
+    if norm.startswith("হ্যাঁ") or norm.startswith("হ্যা"):
+        return True
+    return norm in _AFFIRMATIVE_WORDS
+
+
+def _is_negative(text: str) -> bool:
+    norm = text.strip().lower().rstrip(".!,।")
+    if norm.startswith("না"):
+        return True
+    return norm in _NEGATIVE_WORDS
+
+
 async def reg_photo_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
-    if text.startswith("হ্যাঁ"):
+    if _is_affirmative(text):
         return await _reg_resume_after_prefill(update, context)
-    context.user_data["new_patient"] = {}
-    await update.message.reply_text(
-        "ঠিক আছে, নতুন করে নাম লেখো:", reply_markup=ReplyKeyboardRemove()
+    if _is_negative(text):
+        context.user_data["new_patient"] = {}
+        await update.message.reply_text(
+            "ঠিক আছে, নতুন করে নাম লেখো:", reply_markup=ReplyKeyboardRemove()
+        )
+        return REG_NAME
+    confirm_kb = ReplyKeyboardMarkup(
+        [["হ্যাঁ, ঠিক আছে", "না, নিজে লিখব"]],
+        resize_keyboard=True, one_time_keyboard=True,
     )
-    return REG_NAME
+    await update.message.reply_text(
+        "বুঝতে পারিনি 🙏 নিচের বাটনে ট্যাপ করো (\"হ্যাঁ, ঠিক আছে\" বা \"না, নিজে লিখব\"):",
+        reply_markup=confirm_kb,
+    )
+    return REG_PHOTO_CONFIRM
 
 
 async def reg_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
