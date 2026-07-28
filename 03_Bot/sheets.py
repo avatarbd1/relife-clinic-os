@@ -42,6 +42,7 @@ SCOPES = [
 
 _client = None
 _spreadsheet = None
+_worksheet_cache = {}
 
 
 def _get_client():
@@ -62,7 +63,9 @@ def _get_spreadsheet():
 
 
 def _worksheet(name: str):
-    return _get_spreadsheet().worksheet(name)
+    if name not in _worksheet_cache:
+        _worksheet_cache[name] = _get_spreadsheet().worksheet(name)
+    return _worksheet_cache[name]
 
 
 def get_active_therapist_names() -> list[str]:

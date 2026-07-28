@@ -3326,6 +3326,20 @@ def main():
 
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_HOME}$"), go_home))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), unknown_menu))
+
+    async def _global_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+        logger.exception("Unhandled error", exc_info=context.error)
+        try:
+            if isinstance(update, Update) and update.effective_message:
+                await update.effective_message.reply_text(
+                    "⚠️ সাময়িক সমস্যা হয়েছে (সম্ভবত Google Sheets সাময়িক ব্যস্ত)। "
+                    "কয়েক সেকেন্ড পর আবার চেষ্টা করো।"
+                )
+        except Exception:
+            logger.exception("error handler নিজেই ব্যর্থ হয়েছে")
+
+    app.add_error_handler(_global_error_handler)
+
     logger.info("Relife Clinic OS Bot চালু হচ্ছে...")
     _start_health_server()
 
