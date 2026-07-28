@@ -49,6 +49,7 @@ import calendar_helper
 import staff_ai_query
 import photo_extract
 import ai_helper
+import assessment_defs
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -133,6 +134,8 @@ _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 ) = range(29, 37)
 
 (STAFFAI_QUESTION,) = range(37, 38)
+
+TPLAN_CATEGORY, TPLAN_TESTS = range(200, 202)
 
 MACHINE_LIST = [
     "Hot Pack", "Cold Pack",
@@ -2069,6 +2072,101 @@ async def treat_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ---------- ট্রিটমেন্ট প্ল্যান (কোর্সের জন্য একবার লেখা হয়) ----------
 
+def _category_keyboard() -> InlineKeyboardMarkup:
+    buttons = [
+        [InlineKeyboardButton(assessment_defs.ASSESSMENT_CATEGORIES[k]["label"], callback_data=f"tpcat_{k}")]
+        for k in assessment_defs.CATEGORY_ORDER
+    ]
+    return InlineKeyboardMarkup(buttons)
+
+
+async def _assessment_advance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """assessment queue থেকে পরের টেস্ট পাঠায়; queue শেষ হলে সেভ করে পুরনো Diagnosis ধাপে চলে যায়।"""
+    send = update.message.reply_text if update.message else update.callback_query.message.reply_text
+    queue = context.user_data.get("assessment_queue", [])
+
+    if not queue:
+        t = context.user_data.get("tplan", {})
+        category = context.user_data.get("assessment_category", "")
+        answers = context.user_data.get("assessment_answers", {})
+        staff = context.user_data.get("staff", {})
+        try:
+            sheets.add_assessment(
+                t.get("Patient_ID", ""), category, answers,
+                created_by=staff.get("Full_Name", "Unknown"),
+            )
+        except Exception:
+            logger.exception("_assessment_advance: assessment সেভ করতে ব্যর্থ হয়েছে")
+        context.user_data.pop("assessment_queue", None)
+        context.user_data.pop("assessment_current", None)
+        context.user_data.pop("assessment_answers", None)
+        context.user_data.pop("assessment_category", None)
+
+        prev = context.user_data.get("tplan_prev", {})
+        prev_diag = prev.get("Diagnosis", "")
+        hint = f" (আগেরটা: {prev_diag} — একই রাখতে - দাও)" if prev_diag else ""
+        await send(
+            f"✅ প্রাথমিক মূল্যায়ন সম্পন্ন হয়েছে।\n\nসমস্যা/পর্যবেক্ষণ (Diagnosis) লেখো{hint}:",
+            reply_markup=_skip_keyboard() if prev_diag else ReplyKeyboardRemove(),
+        )
+        return TPLAN_DIAGNOSIS
+
+    test = queue.pop(0)
+    context.user_data["assessment_queue"] = queue
+    context.user_data["assessment_current"] = test
+    if test["type"] == "buttons":
+        buttons = [
+            [InlineKeyboardButton(opt, callback_data=f"atest_{test['key']}__{opt}")]
+            for opt in test["options"]
+        ]
+        await send(test["label"], reply_markup=InlineKeyboardMarkup(buttons))
+    else:
+        await send(test["label"], reply_markup=ReplyKeyboardRemove())
+    return TPLAN_TESTS
+
+
+async def tplan_category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Chief Complaint ক্যাটাগরি বাছাই করলে সেই category-র টেস্ট-queue তৈরি করে assessment শুরু করে।"""
+    query = update.callback_query
+    await query.answer()
+    key = query.data.replace("tpcat_", "", 1)
+    category = assessment_defs.ASSESSMENT_CATEGORIES.get(key)
+    if not category:
+        return TPLAN_CATEGORY
+    context.user_data["assessment_category"] = key
+    context.user_data["assessment_queue"] = list(category["tests"])
+    context.user_data["assessment_answers"] = {}
+    await query.edit_message_text(
+        f"✅ ক্যাটাগরি বাছাই হয়েছে: {category['label']}\n\nপ্রাথমিক মূল্যায়ন শুরু হচ্ছে..."
+    )
+    return await _assessment_advance(update, context)
+
+
+async def atest_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """assessment-এর বাটন-ভিত্তিক টেস্টের উত্তর রেকর্ড করে পরের টেস্টে যায়।"""
+    query = update.callback_query
+    await query.answer()
+    payload = query.data.replace("atest_", "", 1)
+    key, _, value = payload.partition("__")
+    current = context.user_data.get("assessment_current")
+    if not current or current.get("key") != key:
+        return TPLAN_TESTS
+    answers = context.user_data.setdefault("assessment_answers", {})
+    answers[key] = value
+    await query.edit_message_text(f"{current['label']}\n➡️ {value}")
+    return await _assessment_advance(update, context)
+
+
+async def atest_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """assessment-এর টেক্সট-ভিত্তিক টেস্টের উত্তর রেকর্ড করে পরের টেস্টে যায়।"""
+    current = context.user_data.get("assessment_current")
+    if not current or current.get("type") != "text":
+        return TPLAN_TESTS
+    answers = context.user_data.setdefault("assessment_answers", {})
+    answers[current["key"]] = update.message.text.strip()
+    return await _assessment_advance(update, context)
+
+
 async def tplan_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
     if staff is None:
@@ -2137,17 +2235,14 @@ async def tplan_select_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     last_plan = sheets.get_last_plan_for_patient(patient_id)
     context.user_data["tplan_prev"] = last_plan or {}
-    prev_diag = (last_plan or {}).get("Diagnosis", "")
-    hint = f" (আগেরটা: {prev_diag} — একই রাখতে - দাও)" if prev_diag else ""
-
     await query.edit_message_text(
-        f"{warn}✅ রোগী বাছাই হয়েছে: {patient.get('Full_Name')} ({patient_id})"
+        f"{warn}✅ রোগী বাছাই হলো: {patient.get('Full_Name')} ({patient_id})"
     )
     await query.message.reply_text(
-        f"সমস্যা/পর্যবেক্ষণ (Diagnosis) লেখো{hint}:",
-        reply_markup=_skip_keyboard() if prev_diag else ReplyKeyboardRemove(),
+        "Chief Complaint অনুযায়ী ক্যাটাগরি বাছাই করো — এর ভিত্তিতে প্রাথমিক মূল্যায়ন (assessment) নেওয়া হবে:",
+        reply_markup=_category_keyboard(),
     )
-    return TPLAN_DIAGNOSIS
+    return TPLAN_CATEGORY
 
 
 async def tplan_diagnosis(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3287,6 +3382,13 @@ def main():
             TPLAN_SELECT: [
                 CallbackQueryHandler(tplan_select_callback, pattern="^tplansel_"),
                 CallbackQueryHandler(_tplan_search_cancel, pattern="^tplansearchback$"),
+            ],
+            TPLAN_CATEGORY: [
+                CallbackQueryHandler(tplan_category_callback, pattern="^tpcat_"),
+            ],
+            TPLAN_TESTS: [
+                CallbackQueryHandler(atest_callback, pattern="^atest_"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), atest_text_receive),
             ],
             TPLAN_DIAGNOSIS: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_diagnosis)],
             TPLAN_TOTAL: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_total)],

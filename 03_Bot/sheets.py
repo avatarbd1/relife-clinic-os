@@ -5,6 +5,7 @@ Google Sheets-কে ডেটাবেস হিসেবে ব্যবহা
 এতে ভবিষ্যতে ডেটাবেস বদলাতে হলে (যেমন Postgres-এ migrate) শুধু এই ফাইলটাই বদলালেই হবে।
 """
 
+import json
 import gspread
 import re
 
@@ -745,6 +746,53 @@ def _next_plan_id(ws) -> str:
                 pass
     next_num = (max(numbers) + 1) if numbers else 1
     return f"PL{next_num:04d}"
+
+
+def _next_assessment_id(ws) -> str:
+    ids = ws.col_values(1)[1:]
+    numbers = []
+    for v in ids:
+        if v.startswith("AS"):
+            try:
+                numbers.append(int(v[2:]))
+            except ValueError:
+                pass
+    next_num = (max(numbers) + 1) if numbers else 1
+    return f"AS{next_num:04d}"
+
+
+def add_assessment(patient_id: str, category: str, test_data: dict, created_by: str) -> str:
+    """10_Assessments শীটে প্রাথমিক মূল্যায়নের ফলাফল সেভ করে (টেস্ট-রেছাল্ট JSON আকারে,
+    কারণ প্রতিটা category-র টেস্ট আলাদা — আলাদা কলাম বানালে শীট এলোমেলো হয়ে যেত)."""
+    ws = _worksheet(config.SHEET_ASSESSMENTS)
+    assessment_id = _next_assessment_id(ws)
+    now = bd_now()
+    row = [
+        assessment_id,
+        patient_id,
+        category,
+        json.dumps(test_data, ensure_ascii=False),
+        created_by,
+        now.strftime("%Y-%m-%d %I:%M %p"),
+    ]
+    ws.append_row(row, value_input_option="RAW")
+    return assessment_id
+
+
+def get_assessments_for_patient(patient_id: str) -> list[dict]:
+    """একজন রোগীর সব প্রাথমিক মূল্যায়ন রেকর্ড ফেরত দেয় (নতুন থেকে পুরনো), Test_Data ডিকোড করে।"""
+    ws = _worksheet(config.SHEET_ASSESSMENTS)
+    records = safe_get_all_records(ws)
+    out = []
+    for r in records:
+        if str(r.get("Patient_ID", "")).strip() == patient_id.strip():
+            r = dict(r)
+            try:
+                r["Test_Data"] = json.loads(r.get("Test_Data", "") or "{}")
+            except (json.JSONDecodeError, TypeError):
+                r["Test_Data"] = {}
+            out.append(r)
+    return list(reversed(out))
 
 
 def add_treatment_plan(data: dict, created_by: str) -> str:
