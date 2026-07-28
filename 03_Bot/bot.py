@@ -897,11 +897,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"স্বাগতম, {name}! ({role})\nনিচের মেনু থেকে বেছে নাও 👇",
         reply_markup=_menu_keyboard(role),
     )
-    if role == roles.Role.THERAPIST.value:
-        await update.message.reply_text(
-            _pt_dashboard_text(staff),
-            reply_markup=_pt_dashboard_keyboard(staff),
-        )
 
 
 async def go_home(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -914,11 +909,6 @@ async def go_home(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"স্বাগতম, {name}! ({role})\nনিচের মেনু থেকে বেছে নাও 👇",
         reply_markup=_menu_keyboard(role),
     )
-    if role == roles.Role.THERAPIST.value:
-        await update.message.reply_text(
-            _pt_dashboard_text(staff),
-            reply_markup=_pt_dashboard_keyboard(staff),
-        )
 
 
 async def my_patients(update: Update, context: ContextTypes.DEFAULT_TYPE):
