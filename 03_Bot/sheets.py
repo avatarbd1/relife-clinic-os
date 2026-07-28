@@ -8,8 +8,12 @@ Google Sheets-কে ডেটাবেস হিসেবে ব্যবহা
 import gspread
 import re
 
-def safe_get_all_records(ws):
-    """get_all_records()-এর নিরাপদ ভার্সন — sheet-এ শুধু header বা কোনো row না থাকলে crash না করে খালি list রিটার্ন করে।"""
+import time
+
+def safe_get_all_records(ws, _retries: int = 2):
+    """get_all_records()-এর নিরাপদ ভার্সন — sheet-এ শুধু header বা কোনো row না থাকলে crash না করে খালি list রিটার্ন করে।
+    Google Sheets rate-limit/temporary error হলে ১-২ বার retry করে, যাতে দ্রুত পরপর ক্লিকে
+    ভুল করে 'কিছুই নেই' না দেখায়।"""
     try:
         if ws.row_count < 2:
             return []
@@ -17,6 +21,12 @@ def safe_get_all_records(ws):
         if not first_row:
             return []
         return ws.get_all_records()
+    except gspread.exceptions.APIError as e:
+        status = getattr(getattr(e, "response", None), "status_code", None)
+        if _retries > 0 and status in (429, 500, 503):
+            time.sleep(1.5)
+            return safe_get_all_records(ws, _retries - 1)
+        return []
     except Exception:
         return []
 from google.oauth2.service_account import Credentials
