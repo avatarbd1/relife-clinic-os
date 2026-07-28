@@ -6,6 +6,7 @@ Google Sheets-কে ডেটাবেস হিসেবে ব্যবহা
 """
 
 import gspread
+import re
 
 def safe_get_all_records(ws):
     """get_all_records()-এর নিরাপদ ভার্সন — sheet-এ শুধু header বা কোনো row না থাকলে crash না করে খালি list রিটার্ন করে।"""
@@ -576,30 +577,89 @@ def _next_treatment_id(ws) -> str:
     return f"TR{next_num:04d}"
 
 
+def _normalize_header(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", str(name or "").lower())
+
+
+def _sheet_value_for_header(header: str, data: dict) -> str:
+    if header in data:
+        return data.get(header, "")
+
+    norm = _normalize_header(header)
+    remarks = data.get("Remarks", "")
+    treatment_given = data.get("Treatment_Given", "")
+    synonyms = {
+        "treatmentid": data.get("Treatment_ID", ""),
+        "date": data.get("Date", ""),
+        "patientid": data.get("Patient_ID", ""),
+        "patientname": data.get("Patient_Name", ""),
+        "diagnosis": data.get("Diagnosis", ""),
+        "subjective": data.get("SOAP_Subjective", data.get("Subjective", data.get("Diagnosis", ""))),
+        "objective": data.get("SOAP_Objective", data.get("Objective", treatment_given)),
+        "assessment": data.get("SOAP_Assessment", data.get("Assessment", "")),
+        "plan": data.get("SOAP_Plan", data.get("Plan", "")),
+        "treatmentgiven": treatment_given,
+        "exercise": data.get("Exercise", ""),
+        "electrotherapy": data.get("Electrotherapy", ""),
+        "manualtherapy": data.get("Manual_Therapy", ""),
+        "sessionno": data.get("Session_No", ""),
+        "createdby": data.get("Created_By", created_by if (created_by := data.get("_created_by", "")) else data.get("Created_By", "")),
+        "therapist": data.get("Created_By", data.get("Therapist", "")),
+        "remarks": remarks,
+        "note": data.get("Clinical_Note", remarks or treatment_given),
+        "notes": data.get("Clinical_Note", remarks or treatment_given),
+        "machines": data.get("Machines", ""),
+        "planid": data.get("Plan_ID", ""),
+        "protocolday": data.get("Protocol_Day", data.get("Session_No", "")),
+        "pain": data.get("Pain", ""),
+        "rom": data.get("ROM", ""),
+        "mmt": data.get("MMT", ""),
+        "specialtest": data.get("Special_Test", ""),
+        "electrosetting": data.get("Electro_Setting", ""),
+        "homeexercise": data.get("Home_Exercise", ""),
+        "voicenote": data.get("Voice_Note", ""),
+        "photo": data.get("Photo", ""),
+        "video": data.get("Video", ""),
+    }
+    return synonyms.get(norm, data.get(header, ""))
+
+
 def add_treatment_note(data: dict, created_by: str) -> str:
     """
-    05_Treatments শীটে নতুন ট্রিটমেন্ট নোট যোগ করে (SOAP-স্টাইল)।
-    Diagnosis = Subjective, Treatment_Given = Objective/Assessment,
-    Exercise / Electrotherapy / Manual_Therapy = চিকিৎসা পরিকল্পনা (Plan)।
+    05_Treatments শীটে নতুন ট্রিটমেন্ট নোট যোগ করে।
+    শীটের হেডার অনুযায়ী ডাইনামিক্যালি row build করে যাতে নতুন clinical
+    field (যেমন Machines, Pain, ROM, MMT, SOAP) থাকলেও সেগুলো সেভ হয়।
     """
     ws = _worksheet(config.SHEET_TREATMENTS)
     treatment_id = _next_treatment_id(ws)
-    row = [
-        treatment_id,
-        bd_now().strftime("%Y-%m-%d"),
-        data.get("Patient_ID", ""),
-        data.get("Patient_Name", ""),
-        data.get("Diagnosis", ""),
-        data.get("Treatment_Given", ""),
-        data.get("Exercise", ""),
-        data.get("Electrotherapy", ""),
-        data.get("Manual_Therapy", ""),
-        data.get("Session_No", ""),
-        created_by,
-        data.get("Remarks", ""),
-        data.get("Plan_ID", ""),
-    ]
-    ws.append_row(row, value_input_option="RAW")
+    payload = dict(data)
+    payload.setdefault("Treatment_ID", treatment_id)
+    payload.setdefault("Date", bd_now().strftime("%Y-%m-%d"))
+    payload.setdefault("Created_By", created_by)
+    payload.setdefault("_created_by", created_by)
+
+    headers = ws.row_values(1)
+    if headers:
+        row = [_sheet_value_for_header(header, payload) for header in headers]
+        ws.append_row(row, value_input_option="RAW")
+    else:
+        row = [
+            treatment_id,
+            payload.get("Date", ""),
+            payload.get("Patient_ID", ""),
+            payload.get("Patient_Name", ""),
+            payload.get("Diagnosis", ""),
+            payload.get("Treatment_Given", ""),
+            payload.get("Exercise", ""),
+            payload.get("Electrotherapy", ""),
+            payload.get("Manual_Therapy", ""),
+            payload.get("Session_No", ""),
+            created_by,
+            payload.get("Remarks", ""),
+            payload.get("Plan_ID", ""),
+            payload.get("Machines", ""),
+        ]
+        ws.append_row(row, value_input_option="RAW")
     return treatment_id
 
 
@@ -610,18 +670,6 @@ def update_next_visit(patient_id: str, next_visit_date: str) -> bool:
     if cell is None:
         return False
     ws.update_cell(cell.row, 19, next_visit_date)
-    return True
-
-
-def update_patient_therapist(patient_id: str, therapist_name: str) -> bool:
-    """02_Patients শীটে Therapist কলাম (কলাম ১৬) আপডেট করে।
-    অ্যাপয়েন্টমেন্ট বুক করার সময় বাছাই করা থেরাপিস্ট রোগীর সাথে assign হয়ে যায়,
-    যাতে 'আমার রোগী / সেশন' মেনুতে সেই থেরাপিস্টের নামে রোগীটা দেখা যায়।"""
-    ws = _worksheet(config.SHEET_PATIENTS)
-    cell = ws.find(patient_id.strip())
-    if cell is None:
-        return False
-    ws.update_cell(cell.row, 16, therapist_name)
     return True
 
 

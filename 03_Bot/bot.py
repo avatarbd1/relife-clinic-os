@@ -72,7 +72,7 @@ logger = logging.getLogger(__name__)
     APT_CONFIRM,
 ) = range(13)
 
-REG_PHOTO_CHOICE, REG_PHOTO_WAIT, REG_PHOTO_CONFIRM, REG_MISSING = range(90, 94)
+REG_PHOTO_CHOICE, REG_PHOTO_WAIT, REG_PHOTO_CONFIRM = range(90, 93)
 
 (
     PAY_SEARCH,
@@ -175,6 +175,528 @@ async def _cancel_on_menu_press(update: Update, context: ContextTypes.DEFAULT_TY
 def _menu_keyboard(role_str: str) -> ReplyKeyboardMarkup:
     rows = roles.get_menu_rows_for_role(role_str)
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
+
+
+def _safe_int(value, default: int = 0) -> int:
+    try:
+        return int(float(str(value).strip()))
+    except (TypeError, ValueError):
+        return default
+
+
+def _parse_date(date_str: str | None):
+    text = str(date_str or "").strip()
+    if not text:
+        return None
+    for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(text[:10], fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _extract_metric(note: dict | None, key: str) -> str:
+    if not note:
+        return ""
+    direct = str(note.get(key, "") or "").strip()
+    if direct:
+        return direct
+    blob = "\n".join(
+        str(note.get(k, "") or "")
+        for k in ("Remarks", "Note", "Notes", "Treatment_Given", "Assessment")
+    )
+    m = re.search(rf"{re.escape(key)}\s*[:=-]\s*([^|;\n]+)", blob, re.I)
+    return m.group(1).strip() if m else ""
+
+
+def _extract_numeric(value: str | None):
+    m = re.search(r"-?\d+(?:\.\d+)?", str(value or ""))
+    return float(m.group(0)) if m else None
+
+
+def _normalize_appt_status(status: str) -> str:
+    value = str(status or "").strip().lower()
+    if value in ("scheduled", "waiting", "pending"):
+        return "Waiting"
+    if value in ("in treatment", "intreatment", "ongoing"):
+        return "In Treatment"
+    if value in ("completed", "done"):
+        return "Completed"
+    if value in ("no-show", "noshow", "missed", "absent"):
+        return "Missed Appointment"
+    return status or "Waiting"
+
+
+def _build_progress_percent(plan: dict | None, notes: list[dict]) -> int:
+    if plan:
+        total = _safe_int(plan.get("Total_Sessions", 0), 0)
+        done = _safe_int(plan.get("Sessions_Done", 0), 0)
+        if total > 0:
+            return max(0, min(100, int((done / total) * 100)))
+    return max(0, min(95, len(notes) * 12))
+
+
+def _reassessment_due(plan: dict | None, notes: list[dict]) -> bool:
+    today = bd_now().date()
+    visit_due = False
+    if plan:
+        done = _safe_int(plan.get("Sessions_Done", 0), 0)
+        visit_due = done > 0 and done % 7 == 0
+    if notes:
+        last_date = _parse_date(notes[-1].get("Date", ""))
+        if last_date and (today - last_date).days >= 14:
+            return True
+    return visit_due
+
+
+def _ai_summary_for_patient(plan: dict | None, notes: list[dict]) -> tuple[str, str]:
+    reassess = _reassessment_due(plan, notes)
+    if reassess:
+        return (
+            "⚠️ Reassessment required — 7 visits/14 days threshold reached.",
+            "High",
+        )
+
+    if len(notes) >= 4:
+        recent = notes[-4:]
+        pain_values = [
+            _extract_numeric(_extract_metric(n, "Pain"))
+            for n in recent
+            if _extract_numeric(_extract_metric(n, "Pain")) is not None
+        ]
+        if len(pain_values) >= 2:
+            if pain_values[-1] < pain_values[0]:
+                return ("Pain improving — continue current protocol.", "High")
+            if pain_values[-1] >= pain_values[0]:
+                return ("Possible plateau — review exercise progression.", "Medium")
+
+    if notes:
+        return ("Follow-up stable — continue protocol if no change reported.", "Medium")
+    return ("New treatment cycle — monitor pain, ROM and function from visit 1.", "Medium")
+
+
+def _patient_last_visit(notes: list[dict], patient: dict) -> str:
+    if notes:
+        return str(notes[-1].get("Date", "") or "-")
+    return str(patient.get("Registration_Date", "") or "-")
+
+
+def _therapist_today_queue(staff: dict) -> list[dict]:
+    therapist_name = str(staff.get("Full_Name", "")).strip()
+    today_str = bd_now().strftime("%Y-%m-%d")
+    appointments = sheets.get_appointments_for_date(today_str)
+    items = []
+    for appt in sorted(appointments, key=lambda a: str(a.get("Time", ""))):
+        appt_therapist = str(appt.get("Therapist", "")).strip()
+        patient_id = str(appt.get("Patient_ID", "")).strip()
+        patient = sheets.get_patient_by_id(patient_id) or {"Patient_ID": patient_id, "Full_Name": appt.get("Patient_Name", "")}
+        patient_therapist = str(patient.get("Therapist", "")).strip()
+        if therapist_name and appt_therapist and appt_therapist != therapist_name:
+            continue
+        if therapist_name and not appt_therapist and patient_therapist and patient_therapist != therapist_name:
+            continue
+
+        notes = sheets.get_treatment_notes_for_patient(patient_id)
+        plan = sheets.get_active_plan_for_patient(patient_id) or sheets.get_last_plan_for_patient(patient_id)
+        last_note = notes[-1] if notes else {}
+        status = _normalize_appt_status(appt.get("Status", "Scheduled"))
+        items.append({
+            "appointment_id": str(appt.get("Appointment_ID", "")).strip(),
+            "patient_id": patient_id,
+            "name": patient.get("Full_Name", appt.get("Patient_Name", "Unknown")),
+            "age": patient.get("Age", "-"),
+            "diagnosis": patient.get("Diagnosis") or (plan or {}).get("Diagnosis", "-"),
+            "visit_no": len(notes) + (0 if status == "Completed" else 1),
+            "last_visit": _patient_last_visit(notes, patient),
+            "pain": _extract_metric(last_note, "Pain") or "-",
+            "progress": _build_progress_percent(plan, notes),
+            "status": status,
+            "time": str(appt.get("Time", "")).strip(),
+            "reassessment_due": _reassessment_due(plan, notes),
+        })
+    return items
+
+
+def _pt_dashboard_text(staff: dict) -> str:
+    queue = _therapist_today_queue(staff)
+    waiting = sum(1 for item in queue if item["status"] == "Waiting")
+    in_treatment = sum(1 for item in queue if item["status"] == "In Treatment")
+    completed = sum(1 for item in queue if item["status"] == "Completed")
+    missed = sum(1 for item in queue if item["status"] == "Missed Appointment")
+    reassessment = sum(1 for item in queue if item["reassessment_due"])
+
+    lines = [
+        f"🧑‍⚕️ {staff.get('Full_Name', '')} — Physiotherapist Dashboard",
+        "",
+        f"আজকের রোগী: {len(queue)}",
+        f"Waiting: {waiting}",
+        f"In Treatment: {in_treatment}",
+        f"Completed: {completed}",
+        f"Reassessment Due: {reassessment}",
+        f"Missed Appointment: {missed}",
+        "",
+        "Patient Queue",
+        "--------------------",
+    ]
+
+    if not queue:
+        lines.append("আজ তোমার কোনো queue নেই। নতুন appointment এলে এখানেই দেখাবে।")
+        return "\n".join(lines)
+
+    for idx, item in enumerate(queue[:12], start=1):
+        due = " | Reassessment Due" if item["reassessment_due"] else ""
+        lines.extend([
+            f"{idx}. {item['name']}",
+            f"{item['diagnosis']}",
+            f"Visit {item['visit_no']} | Pain {item['pain']} | Progress {item['progress']}%",
+            f"{item['time']} | {item['status']}{due}",
+            "",
+        ])
+
+    if len(queue) > 12:
+        lines.append(f"... আরও {len(queue) - 12} জন আছে")
+    return "\n".join(lines).strip()
+
+
+def _pt_dashboard_keyboard(staff: dict) -> InlineKeyboardMarkup:
+    buttons = []
+    for item in _therapist_today_queue(staff)[:12]:
+        if item["status"] in ("Completed", "Missed Appointment"):
+            buttons.append([
+                InlineKeyboardButton(
+                    f"📜 {item['name']} — History",
+                    callback_data=f"ptdashhist_{item['patient_id']}",
+                )
+            ])
+        else:
+            buttons.append([
+                InlineKeyboardButton(
+                    f"▶️ Receive {item['name']}",
+                    callback_data=f"ptrecv_{item['appointment_id']}_{item['patient_id']}",
+                )
+            ])
+    buttons.append([InlineKeyboardButton("🔄 Refresh Dashboard", callback_data="ptdash_refresh")])
+    return InlineKeyboardMarkup(buttons)
+
+
+def _pt_workspace_keyboard(patient_id: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("✅ Today's Session Done", callback_data="ptwdone")],
+        [
+            InlineKeyboardButton("＋ Edit", callback_data="ptwedit"),
+            InlineKeyboardButton("📜 History", callback_data=f"ptwhist_{patient_id}"),
+        ],
+        [InlineKeyboardButton("🔄 Back to Dashboard", callback_data="ptwbackdash")],
+    ])
+
+
+def _pt_workspace_text(patient: dict, plan: dict, notes: list[dict], treatment: dict) -> str:
+    last_note = notes[-1] if notes else {}
+    ai_summary, confidence = _ai_summary_for_patient(plan, notes)
+    last_assessment_parts = [
+        f"Pain: {_extract_metric(last_note, 'Pain') or '-'}",
+        f"ROM: {_extract_metric(last_note, 'ROM') or '-'}",
+        f"MMT: {_extract_metric(last_note, 'MMT') or '-'}",
+    ]
+    return (
+        "🟢 ACTIVE TREATMENT\n\n"
+        f"{patient.get('Full_Name', '')} ({patient.get('Patient_ID', '')})\n"
+        f"Age: {patient.get('Age', '-') } | Diagnosis: {treatment.get('Diagnosis') or '-'}\n"
+        f"Visit Number: {treatment.get('Session_No', '-') } | Protocol Day: {treatment.get('Protocol_Day', '-') }\n"
+        f"Last Visit: {_patient_last_visit(notes, patient)}\n\n"
+        "Patient Summary\n"
+        f"• Stage: {'Follow-up' if notes else 'New'}\n"
+        f"• Red Flags: {patient.get('Red_Flags', '-') or '-'}\n"
+        f"• Contraindication: {patient.get('Contraindication', '-') or '-'}\n"
+        f"• MRI/Xray Summary: {patient.get('MRI_Xray_Summary', '-') or '-'}\n"
+        f"• Last Assessment: {', '.join(last_assessment_parts)}\n\n"
+        "Today's Treatment\n"
+        f"✔ Electrotherapy: {treatment.get('Electrotherapy') or '-'}\n"
+        f"✔ Manual Therapy: {treatment.get('Manual_Therapy') or '-'}\n"
+        f"✔ Exercise: {treatment.get('Exercise') or '-'}\n"
+        f"✔ Home Exercise: {treatment.get('Home_Exercise') or '-'}\n"
+        f"✔ Machines: {treatment.get('Machines') or '-'}\n\n"
+        "AI Summary\n"
+        f"{ai_summary}\n"
+        f"Confidence: {confidence}\n\n"
+        "Nothing changed হলে শুধু 'Today's Session Done' চাপলেই হবে।"
+    )
+
+
+def _parse_pt_edit_message(text: str) -> dict:
+    raw = str(text or "").strip()
+    if not raw:
+        return {}
+    updates = {}
+    mapping = {
+        "pain": "Pain",
+        "rom": "ROM",
+        "mmt": "MMT",
+        "specialtest": "Special_Test",
+        "electro": "Electrotherapy",
+        "electrotherapy": "Electrotherapy",
+        "electrosetting": "Electro_Setting",
+        "manual": "Manual_Therapy",
+        "manualtherapy": "Manual_Therapy",
+        "exercise": "Exercise",
+        "homeexercise": "Home_Exercise",
+        "home": "Home_Exercise",
+        "note": "Clinical_Note",
+        "clinicalnote": "Clinical_Note",
+    }
+    for chunk in re.split(r"[\n;]+", raw):
+        if ":" not in chunk:
+            continue
+        key, value = chunk.split(":", 1)
+        norm = re.sub(r"[^a-z]", "", key.lower())
+        target = mapping.get(norm)
+        if target and value.strip():
+            updates[target] = value.strip()
+    if not updates:
+        updates["Clinical_Note"] = raw
+    return updates
+
+
+async def pt_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_MY_PATIENTS):
+        await update.effective_message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    await update.effective_message.reply_text(
+        _pt_dashboard_text(staff),
+        reply_markup=_pt_dashboard_keyboard(staff),
+    )
+
+
+async def pt_dashboard_refresh_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        await query.edit_message_text("❌ স্টাফ প্রোফাইল পাওয়া যায়নি। /start দাও।")
+        return
+    await query.edit_message_text(
+        _pt_dashboard_text(staff),
+        reply_markup=_pt_dashboard_keyboard(staff),
+    )
+
+
+async def pt_dashboard_history_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    patient_id = query.data.replace("ptdashhist_", "", 1)
+    history = _build_full_history_text(patient_id) or "কোনো history পাওয়া যায়নি।"
+    await query.message.reply_text(history)
+
+
+async def pt_dashboard_receive_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    _, appointment_id, patient_id = query.data.split("_", 2)
+    patient = sheets.get_patient_by_id(patient_id)
+    if not patient:
+        await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
+        return ConversationHandler.END
+    plan = sheets.get_active_plan_for_patient(patient_id)
+    if plan is None:
+        await query.edit_message_text(
+            f"⚠️ {patient.get('Full_Name')} ({patient_id})-এর কোনো Active protocol নেই। আগে ট্রিটমেন্ট প্ল্যান তৈরি করো।"
+        )
+        return ConversationHandler.END
+
+    notes = sheets.get_treatment_notes_for_patient(patient_id)
+    last_note = notes[-1] if notes else {}
+    session_no = _safe_int(plan.get("Sessions_Done", 0), 0) + 1
+    treatment = {
+        "Patient_ID": patient_id,
+        "Patient_Name": patient.get("Full_Name", ""),
+        "Plan_ID": plan.get("Plan_ID", ""),
+        "Diagnosis": plan.get("Diagnosis", patient.get("Diagnosis", "")),
+        "Exercise": plan.get("Exercise_Plan", ""),
+        "Electrotherapy": plan.get("Electrotherapy_Plan", ""),
+        "Manual_Therapy": plan.get("Manual_Therapy_Plan", ""),
+        "Home_Exercise": _extract_metric(last_note, "Home_Exercise"),
+        "Machines": str(last_note.get("Machines", "") or "").strip(),
+        "Pain": _extract_metric(last_note, "Pain"),
+        "ROM": _extract_metric(last_note, "ROM"),
+        "MMT": _extract_metric(last_note, "MMT"),
+        "Special_Test": _extract_metric(last_note, "Special_Test"),
+        "Clinical_Note": _extract_metric(last_note, "Clinical_Note") or str(last_note.get("Remarks", "") or "").strip(),
+        "Session_No": session_no,
+        "Protocol_Day": session_no,
+    }
+    if not treatment["Machines"]:
+        treatment["Machines"] = ", ".join(
+            x for x in [treatment.get("Electrotherapy"), treatment.get("Manual_Therapy"), treatment.get("Exercise")] if x
+        )
+
+    context.user_data["pt_treatment"] = treatment
+    context.user_data["pt_patient_id"] = patient_id
+    context.user_data["pt_appointment_id"] = appointment_id
+    if appointment_id:
+        sheets.update_appointment_status(appointment_id, "In Treatment")
+
+    await query.edit_message_text(
+        _pt_workspace_text(patient, plan, notes, treatment),
+        reply_markup=_pt_workspace_keyboard(patient_id),
+    )
+    return "PT_DASH_WORKSPACE"
+
+
+async def pt_dashboard_done_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    treatment = context.user_data.get("pt_treatment")
+    patient_id = context.user_data.get("pt_patient_id", "")
+    if staff is None or not treatment or not patient_id:
+        await query.edit_message_text("❌ Session context পাওয়া যায়নি। আবার dashboard থেকে শুরু করো।")
+        return ConversationHandler.END
+
+    patient = sheets.get_patient_by_id(patient_id) or {"Full_Name": treatment.get("Patient_Name", "")}
+    plan = sheets.get_active_plan_for_patient(patient_id) or sheets.get_last_plan_for_patient(patient_id) or {}
+    notes = sheets.get_treatment_notes_for_patient(patient_id)
+    ai_summary, _ = _ai_summary_for_patient(plan, notes)
+
+    treatment.setdefault("Machines", ", ".join(
+        x for x in [treatment.get("Electrotherapy"), treatment.get("Manual_Therapy"), treatment.get("Exercise")] if x
+    ))
+    treatment["Treatment_Given"] = "; ".join([
+        part for part in [
+            f"Electrotherapy: {treatment.get('Electrotherapy')}" if treatment.get("Electrotherapy") else "",
+            f"Manual: {treatment.get('Manual_Therapy')}" if treatment.get("Manual_Therapy") else "",
+            f"Exercise: {treatment.get('Exercise')}" if treatment.get("Exercise") else "",
+            f"Machines: {treatment.get('Machines')}" if treatment.get("Machines") else "",
+        ] if part
+    ]) or "Same treatment protocol continued."
+    treatment["SOAP_Subjective"] = f"Pain: {treatment.get('Pain') or 'same as previous visit'}"
+    treatment["SOAP_Objective"] = ", ".join([
+        f"ROM: {treatment.get('ROM') or '-'}",
+        f"MMT: {treatment.get('MMT') or '-'}",
+        f"Special Test: {treatment.get('Special_Test') or '-'}",
+    ])
+    treatment["SOAP_Assessment"] = ai_summary
+    treatment["SOAP_Plan"] = ", ".join(
+        x for x in [treatment.get("Electrotherapy"), treatment.get("Manual_Therapy"), treatment.get("Exercise"), treatment.get("Home_Exercise")] if x
+    )
+    remarks = [
+        f"Pain: {treatment.get('Pain')}" if treatment.get("Pain") else "",
+        f"ROM: {treatment.get('ROM')}" if treatment.get("ROM") else "",
+        f"MMT: {treatment.get('MMT')}" if treatment.get("MMT") else "",
+        f"Special_Test: {treatment.get('Special_Test')}" if treatment.get("Special_Test") else "",
+        f"Home_Exercise: {treatment.get('Home_Exercise')}" if treatment.get("Home_Exercise") else "",
+        f"Clinical_Note: {treatment.get('Clinical_Note')}" if treatment.get("Clinical_Note") else "",
+        f"AI: {ai_summary}",
+    ]
+    treatment["Remarks"] = " | ".join(x for x in remarks if x)
+
+    try:
+        treatment_id = sheets.add_treatment_note(treatment, created_by=staff.get("Full_Name", "Unknown"))
+        sheets.increment_plan_session(patient_id)
+        appointment_id = context.user_data.get("pt_appointment_id", "")
+        if appointment_id:
+            sheets.update_appointment_status(appointment_id, "Completed")
+        await query.edit_message_text(
+            f"✅ Session Completed\n\n"
+            f"রোগী: {patient.get('Full_Name', treatment.get('Patient_Name', ''))} ({patient_id})\n"
+            f"Visit: {treatment.get('Session_No', '-')} | Protocol Day: {treatment.get('Protocol_Day', '-')}\n"
+            f"Treatment ID: {treatment_id}\n"
+            "Dashboard updated — next patient ready."
+        )
+    except Exception as e:
+        logger.exception("pt_dashboard_done_callback ব্যর্থ হয়েছে")
+        await query.edit_message_text(f"❌ সেভ করতে সমস্যা হয়েছে।\nError: {e}")
+        return ConversationHandler.END
+
+    context.user_data.pop("pt_treatment", None)
+    context.user_data.pop("pt_patient_id", None)
+    context.user_data.pop("pt_appointment_id", None)
+    await query.message.reply_text(
+        _pt_dashboard_text(staff),
+        reply_markup=_pt_dashboard_keyboard(staff),
+    )
+    return ConversationHandler.END
+
+
+async def pt_dashboard_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    treatment = context.user_data.get("pt_treatment", {})
+    prompt = (
+        "✏️ Edit Mode\n\n"
+        "যা বদলেছে শুধু সেটাই পাঠাও। কিছুই mandatory না।\n\n"
+        "Example:\n"
+        "Pain: 4/10\nROM: improved\nMMT: 4/5\nExercise: progressed core\nNote: tolerated well\n\n"
+        f"Current Pain: {treatment.get('Pain') or '-'} | ROM: {treatment.get('ROM') or '-'} | MMT: {treatment.get('MMT') or '-'}"
+    )
+    markup = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Workspace", callback_data="ptwback")]])
+    await query.edit_message_text(prompt, reply_markup=markup)
+    return "PT_DASH_EDIT"
+
+
+async def pt_dashboard_edit_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    treatment = context.user_data.get("pt_treatment")
+    patient_id = context.user_data.get("pt_patient_id", "")
+    if not treatment or not patient_id:
+        await update.message.reply_text("❌ Edit session মেয়াদ শেষ হয়েছে। আবার dashboard থেকে শুরু করো।")
+        return ConversationHandler.END
+
+    treatment.update(_parse_pt_edit_message(update.message.text))
+    patient = sheets.get_patient_by_id(patient_id) or {"Patient_ID": patient_id, "Full_Name": treatment.get("Patient_Name", "")}
+    plan = sheets.get_active_plan_for_patient(patient_id) or sheets.get_last_plan_for_patient(patient_id) or {}
+    notes = sheets.get_treatment_notes_for_patient(patient_id)
+    await update.message.reply_text(
+        _pt_workspace_text(patient, plan, notes, treatment),
+        reply_markup=_pt_workspace_keyboard(patient_id),
+    )
+    return "PT_DASH_WORKSPACE"
+
+
+async def pt_dashboard_edit_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    treatment = context.user_data.get("pt_treatment")
+    patient_id = context.user_data.get("pt_patient_id", "")
+    if not treatment or not patient_id:
+        await query.edit_message_text("❌ Session মেয়াদ শেষ হয়েছে।")
+        return ConversationHandler.END
+    patient = sheets.get_patient_by_id(patient_id) or {"Patient_ID": patient_id, "Full_Name": treatment.get("Patient_Name", "")}
+    plan = sheets.get_active_plan_for_patient(patient_id) or sheets.get_last_plan_for_patient(patient_id) or {}
+    notes = sheets.get_treatment_notes_for_patient(patient_id)
+    await query.edit_message_text(
+        _pt_workspace_text(patient, plan, notes, treatment),
+        reply_markup=_pt_workspace_keyboard(patient_id),
+    )
+    return "PT_DASH_WORKSPACE"
+
+
+async def pt_dashboard_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        await query.edit_message_text("❌ স্টাফ প্রোফাইল পাওয়া যায়নি।")
+        return ConversationHandler.END
+    context.user_data.pop("pt_treatment", None)
+    context.user_data.pop("pt_patient_id", None)
+    context.user_data.pop("pt_appointment_id", None)
+    await query.edit_message_text(
+        _pt_dashboard_text(staff),
+        reply_markup=_pt_dashboard_keyboard(staff),
+    )
+    return ConversationHandler.END
+
+
+async def pt_workspace_history_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    patient_id = query.data.replace("ptwhist_", "", 1)
+    history = _build_full_history_text(patient_id) or "কোনো history পাওয়া যায়নি।"
+    await query.message.reply_text(history)
+    return "PT_DASH_WORKSPACE"
 
 
 def _recent_patient_buttons(prefix: str, limit: int = 8) -> InlineKeyboardMarkup | None:
@@ -361,6 +883,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"স্বাগতম, {name}! ({role})\nনিচের মেনু থেকে বেছে নাও 👇",
         reply_markup=_menu_keyboard(role),
     )
+    if role == roles.Role.THERAPIST.value:
+        await update.message.reply_text(
+            _pt_dashboard_text(staff),
+            reply_markup=_pt_dashboard_keyboard(staff),
+        )
 
 
 async def go_home(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -373,26 +900,15 @@ async def go_home(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"স্বাগতম, {name}! ({role})\nনিচের মেনু থেকে বেছে নাও 👇",
         reply_markup=_menu_keyboard(role),
     )
+    if role == roles.Role.THERAPIST.value:
+        await update.message.reply_text(
+            _pt_dashboard_text(staff),
+            reply_markup=_pt_dashboard_keyboard(staff),
+        )
 
 
 async def my_patients(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
-    if staff is None:
-        return
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_MY_PATIENTS):
-        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
-        return
-    patients = sheets.get_patients_for_therapist(staff.get("Full_Name", ""))
-    if not patients:
-        await update.message.reply_text("তোমার নামে এখনো কোনো assigned patient নেই।")
-        return
-    lines = ["🧑‍⚕️ তোমার Assigned Patients:\n"]
-    for p in patients:
-        lines.append(
-            f"• {p.get('Patient_ID')} — {p.get('Full_Name')} "
-            f"| {p.get('Diagnosis', 'N/A')} | পরবর্তী ভিজিট: {p.get('Next_Visit', 'N/A')}"
-        )
-    await update.message.reply_text("\n".join(lines))
+    await pt_dashboard(update, context)
 
 
 # ---------- রোগী রেজিস্ট্রেশন ----------
@@ -415,86 +931,51 @@ async def reg_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return REG_PHOTO_CHOICE
 
 
-REG_REQUIRED_FIELDS = [
-    ("Full_Name", "নাম"),
-    ("Phone", "ফোন নম্বর"),
-    ("Address", "ঠিকানা"),
-    ("Age", "বয়স"),
-]
-REG_FIELD_EXAMPLES = {
-    "Full_Name": "রহিম উদ্দিন",
-    "Phone": "01712345678",
-    "Address": "ঢাকা",
-    "Age": "৩৫",
-}
-
-
-def _reg_missing_fields(p: dict):
-    return [(k, label) for k, label in REG_REQUIRED_FIELDS if not str(p.get(k, "")).strip()]
-
-
-async def _reg_collect_missing_or_continue(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    p = context.user_data.setdefault("new_patient", {})
-    missing = _reg_missing_fields(p)
-    if missing:
-        context.user_data["reg_missing_fields"] = [k for k, _ in missing]
-        labels = ", ".join(label for _, label in missing)
-        example = ", ".join(REG_FIELD_EXAMPLES[k] for k, _ in missing)
-        await update.message.reply_text(
-            f"এই তথ্যগুলো একলাইনে লেখো: {labels}\n\nযেমন: {example}",
-            reply_markup=ReplyKeyboardRemove(),
-        )
-        return REG_MISSING
-    return await _reg_after_fields_complete(update, context)
-
-
-async def _reg_after_fields_complete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def _reg_ask_address_or_note(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     p = context.user_data.get("new_patient", {})
-    phone = str(p.get("Phone", "")).strip()
-    if phone and not context.user_data.get("reg_dup_checked"):
-        existing = sheets.find_patient_by_phone(phone)
-        if existing:
-            context.user_data["reg_dup_checked"] = True
-            dup_keyboard = ReplyKeyboardMarkup(
-                [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
-            )
-            await update.message.reply_text(
-                "⚠️ এই ফোন নম্বরে ইতিমধ্যে রোগী আছে:\n"
-                f"নাম: {existing.get('Full_Name')}\n"
-                f"Patient ID: {existing.get('Patient_ID')}\n\n"
-                "তবুও কি নতুন করে রেজিস্ট্রেশন করবে?",
-                reply_markup=dup_keyboard,
-            )
-            return REG_PHONE_DUP
+    if not p.get("Address"):
+        await update.message.reply_text("ঠিকানা লেখো:", reply_markup=ReplyKeyboardRemove())
+        return REG_ADDRESS
     await update.message.reply_text(
-        "সমস্যা/অন্য কিছু থাকলে লেখো (না থাকলে - দাও):",
+        "সমস্যা/বয়স/অন্য কিছু থাকলে এক লাইনে লেখো (না থাকলে - দাও):",
         reply_markup=_skip_keyboard(),
     )
     return REG_NOTE
 
 
-async def reg_missing_receive(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    text = update.message.text.strip()
-    keys = context.user_data.get("reg_missing_fields", [])
-    if not keys:
-        return await _reg_collect_missing_or_continue(update, context)
-    if "," in text:
-        parts = [x.strip() for x in text.split(",") if x.strip()]
-    else:
-        parts = text.split()
-    if len(parts) != len(keys):
-        label_map = dict(REG_REQUIRED_FIELDS)
-        labels = ", ".join(label_map[k] for k in keys)
-        await update.message.reply_text(
-            f"⚠️ {len(keys)}টা তথ্য দরকার ছিল, পাওয়া গেছে {len(parts)}টা।\n"
-            f"আবার একলাইনে লেখো: {labels}"
-        )
-        return REG_MISSING
+async def _reg_resume_after_prefill(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     p = context.user_data.setdefault("new_patient", {})
-    for k, v in zip(keys, parts):
-        p[k] = v
-    context.user_data.pop("reg_missing_fields", None)
-    return await _reg_collect_missing_or_continue(update, context)
+    if not p.get("Full_Name"):
+        await update.message.reply_text(
+            "নতুন রোগীর পূর্ণ নাম লেখো:", reply_markup=ReplyKeyboardRemove()
+        )
+        return REG_NAME
+    if not p.get("Phone"):
+        await update.message.reply_text(
+            "ফোন নম্বর লেখো:", reply_markup=ReplyKeyboardRemove()
+        )
+        return REG_PHONE
+    existing = sheets.find_patient_by_phone(p["Phone"])
+    if existing:
+        dup_keyboard = ReplyKeyboardMarkup(
+            [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
+        )
+        await update.message.reply_text(
+            "⚠️ এই ফোন নম্বরে ইতিমধ্যে রোগী আছে:\n"
+            f"নাম: {existing.get('Full_Name')}\n"
+            f"Patient ID: {existing.get('Patient_ID')}\n\n"
+            "তবুও কি নতুন করে রেজিস্ট্রেশন করবে?",
+            reply_markup=dup_keyboard,
+        )
+        return REG_PHONE_DUP
+    if not p.get("Address"):
+        await update.message.reply_text("ঠিকানা লেখো:", reply_markup=ReplyKeyboardRemove())
+        return REG_ADDRESS
+    await update.message.reply_text(
+        "সমস্যা/বয়স/অন্য কিছু থাকলে এক লাইনে লেখো (না থাকলে - দাও):",
+        reply_markup=_skip_keyboard(),
+    )
+    return REG_NOTE
 
 
 async def reg_photo_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -505,7 +986,10 @@ async def reg_photo_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=ReplyKeyboardRemove(),
         )
         return REG_PHOTO_WAIT
-    return await _reg_collect_missing_or_continue(update, context)
+    await update.message.reply_text(
+        "নতুন রোগীর পূর্ণ নাম লেখো:", reply_markup=ReplyKeyboardRemove()
+    )
+    return REG_NAME
 
 
 async def reg_photo_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -540,9 +1024,10 @@ async def reg_photo_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not found_lines:
         debug_line = f"\n\n🔧 Debug: {debug_error}" if debug_error else ""
         await update.message.reply_text(
-            f"⚠️ ছবি থেকে তথ্য পড়া যায়নি। নিজে লিখতে হবে।{debug_line}",
+            f"⚠️ ছবি থেকে তথ্য পড়া যায়নি। নিজে লিখতে হবে।{debug_line}\nনতুন রোগীর পূর্ণ নাম লেখো:",
+            reply_markup=ReplyKeyboardRemove(),
         )
-        return await _reg_collect_missing_or_continue(update, context)
+        return REG_NAME
 
     summary = "📋 ছবি থেকে এই তথ্য পাওয়া গেছে:\n\n" + "\n".join(found_lines)
     summary += "\n\nঠিক আছে?"
@@ -557,31 +1042,59 @@ async def reg_photo_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def reg_photo_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     if text.startswith("হ্যাঁ"):
-        return await _reg_collect_missing_or_continue(update, context)
+        return await _reg_resume_after_prefill(update, context)
     context.user_data["new_patient"] = {}
     await update.message.reply_text(
-        "ঠিক আছে, নতুন করে তথ্য দাও।", reply_markup=ReplyKeyboardRemove()
+        "ঠিক আছে, নতুন করে নাম লেখো:", reply_markup=ReplyKeyboardRemove()
     )
-    return await _reg_collect_missing_or_continue(update, context)
+    return REG_NAME
+
+
+async def reg_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["new_patient"]["Full_Name"] = update.message.text.strip()
+    await update.message.reply_text("ফোন নম্বর লেখো:")
+    return REG_PHONE
+
+
+async def reg_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    phone = update.message.text.strip()
+    context.user_data["new_patient"]["Phone"] = phone
+    existing = sheets.find_patient_by_phone(phone)
+    if existing:
+        dup_keyboard = ReplyKeyboardMarkup(
+            [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
+        )
+        await update.message.reply_text(
+            "⚠️ এই ফোন নম্বরে ইতিমধ্যে রোগী আছে:\n"
+            f"নাম: {existing.get('Full_Name')}\n"
+            f"Patient ID: {existing.get('Patient_ID')}\n\n"
+            "তবুও কি নতুন করে রেজিস্ট্রেশন করবে?",
+            reply_markup=dup_keyboard,
+        )
+        return REG_PHONE_DUP
+    return await _reg_ask_address_or_note(update, context)
 
 
 async def reg_phone_dup_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip().lower()
     staff = context.user_data.get("staff", {})
     if text in ("হ্যাঁ", "yes", "y", "হা", "ha"):
-        await update.message.reply_text(
-            "সমস্যা/অন্য কিছু থাকলে লেখো (না থাকলে - দাও):",
-            reply_markup=_skip_keyboard(),
-        )
-        return REG_NOTE
+        return await _reg_ask_address_or_note(update, context)
     context.user_data.pop("new_patient", None)
-    context.user_data.pop("reg_dup_checked", None)
-    context.user_data.pop("reg_missing_fields", None)
     await update.message.reply_text(
         "❌ ডুপ্লিকেট এড়াতে রেজিস্ট্রেশন বাতিল করা হয়েছে।",
         reply_markup=_menu_keyboard(staff.get("Role", "")),
     )
     return ConversationHandler.END
+
+
+async def reg_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["new_patient"]["Address"] = update.message.text.strip()
+    await update.message.reply_text(
+        "সমস্যা/বয়স/অন্য কিছু থাকলে এক লাইনে লেখো (না থাকলে - দাও):",
+        reply_markup=_skip_keyboard(),
+    )
+    return REG_NOTE
 
 
 async def reg_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -590,7 +1103,7 @@ async def reg_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
     p = context.user_data["new_patient"]
     summary = (
         "নিচের তথ্য ঠিক আছে কিনা চেক করো:\n\n"
-        f"নাম: {p['Full_Name']}\nবয়স: {p.get('Age', '-')}\nফোন: {p['Phone']}\nঠিকানা: {p['Address']}\n"
+        f"নাম: {p['Full_Name']}\nফোন: {p['Phone']}\nঠিকানা: {p['Address']}\n"
         f"নোট: {p['Diagnosis'] or '-'}\n\n"
         "ঠিক থাকলে নিচের বাটনে ট্যাপ করো।"
     )
@@ -626,22 +1139,20 @@ async def reg_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=_menu_keyboard(staff.get("Role", "")),
         )
     context.user_data.pop("new_patient", None)
-    context.user_data.pop("reg_dup_checked", None)
-    context.user_data.pop("reg_missing_fields", None)
     return ConversationHandler.END
 
 
 async def reg_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff", {})
     context.user_data.pop("new_patient", None)
-    context.user_data.pop("reg_dup_checked", None)
-    context.user_data.pop("reg_missing_fields", None)
     await update.message.reply_text(
         "রেজিস্ট্রেশন বাতিল করা হয়েছে।",
         reply_markup=_menu_keyboard(staff.get("Role", "")),
     )
     return ConversationHandler.END
 
+
+# ---------- অ্যাপয়েন্টমেন্ট বুকিং ----------
 
 async def apt_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
@@ -894,11 +1405,6 @@ async def apt_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             row.pop("Dates", None)
             appointment_id = sheets.add_appointment(row, created_by=staff.get("Full_Name", "Unknown"))
             ids.append(appointment_id)
-        if ids and a.get("Patient_ID") and a.get("Therapist"):
-            try:
-                sheets.update_patient_therapist(a["Patient_ID"], a["Therapist"])
-            except Exception:
-                logger.exception("apt_confirm: রোগীর সাথে থেরাপিস্ট assign করতে ব্যর্থ হয়েছে")
         if len(ids) > 1:
             msg = f"✅ {len(ids)}টা অ্যাপয়েন্টমেন্ট বুক হয়েছে!\nAppointment IDs: {', '.join(ids)}"
         else:
@@ -2003,7 +2509,7 @@ def _build_full_history_text(patient_id: str) -> str | None:
         lines.append("📝 ট্রিটমেন্ট নোট:")
         for t in treatment_notes[-5:]:
             date_str = t.get("Date", "")
-            note_text = t.get("Note", "") or t.get("Notes", "")
+            note_text = t.get("Note", "") or t.get("Notes", "") or t.get("Treatment_Given", "") or t.get("Remarks", "")
             lines.append(f"  • {date_str}: {note_text}")
     else:
         lines.append("📝 কোনো ট্রিটমেন্ট নোট নেই।")
@@ -2569,6 +3075,29 @@ def main():
     app.add_handler(CallbackQueryHandler(plist_action_viewfiles, pattern="^plistact_viewfiles_"))
     app.add_handler(CallbackQueryHandler(plist_action_getfile, pattern="^plistact_getfile_"))
     app.add_handler(CallbackQueryHandler(plist_action_hist, pattern="^plistact_hist_"))
+    app.add_handler(CallbackQueryHandler(pt_dashboard_refresh_callback, pattern="^ptdash_refresh$"))
+    app.add_handler(CallbackQueryHandler(pt_dashboard_history_callback, pattern="^ptdashhist_"))
+    ptdash_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(pt_dashboard_receive_callback, pattern="^ptrecv_")],
+        states={
+            "PT_DASH_WORKSPACE": [
+                CallbackQueryHandler(pt_dashboard_done_callback, pattern="^ptwdone$"),
+                CallbackQueryHandler(pt_dashboard_edit_callback, pattern="^ptwedit$"),
+                CallbackQueryHandler(pt_workspace_history_callback, pattern="^ptwhist_"),
+                CallbackQueryHandler(pt_dashboard_back_callback, pattern="^ptwbackdash$"),
+            ],
+            "PT_DASH_EDIT": [
+                CallbackQueryHandler(pt_dashboard_edit_back_callback, pattern="^ptwback$"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pt_dashboard_edit_message),
+            ],
+        },
+        fallbacks=[
+            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
+            CommandHandler("cancel", treat_cancel),
+            CommandHandler("start", _restart_via_start),
+        ],
+    )
+    app.add_handler(ptdash_conv)
     report_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(plist_action_report, pattern="^plistact_report_")],
         states={
@@ -2591,8 +3120,10 @@ def main():
             REG_PHOTO_CHOICE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_photo_choice)],
             REG_PHOTO_WAIT: [MessageHandler(filters.PHOTO, reg_photo_receive)],
             REG_PHOTO_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_photo_confirm)],
-            REG_MISSING: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_missing_receive)],
+            REG_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_name)],
+            REG_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_phone)],
             REG_PHONE_DUP: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_phone_dup_confirm)],
+            REG_ADDRESS: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_address)],
             REG_NOTE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_note)],
             REG_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_confirm)],
         },
