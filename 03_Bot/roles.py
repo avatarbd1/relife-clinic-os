@@ -26,6 +26,7 @@ MENU_PATIENT_HISTORY = "📜 রোগীর ইতিহাস"
 MENU_PATIENT_LIST = "📋 রোগীর তালিকা"
 MENU_DAILY_REGISTER = "📋 আজকের রেজিস্টার"
 MENU_STAFF_AI_QUERY = "🤖 AI প্রশ্ন করুন"
+MENU_CASE_STUDY = "📚 কেস স্টাডি"
 
 # ---- Role অনুযায়ী মেনু, row আকারে গ্রুপ করা (সম্পর্কিত আইটেম পাশাপাশি) ----
 
@@ -41,6 +42,7 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_DATE_REPORT],
         [MENU_DAILY_REGISTER],
         [MENU_STAFF_AI_QUERY],
+        [MENU_CASE_STUDY],
         [MENU_SETTINGS],
     ],
     Role.RECEPTIONIST: [

@@ -47,6 +47,7 @@ import sheets
 import roles
 import calendar_helper
 import staff_ai_query
+import case_study_ai
 import photo_extract
 import ai_helper
 import assessment_defs
@@ -119,6 +120,7 @@ _ALL_MENU_ITEMS = [
     roles.MENU_PATIENT_LIST,
     roles.MENU_DAILY_REGISTER,
     roles.MENU_STAFF_AI_QUERY,
+    roles.MENU_CASE_STUDY,
 ]
 _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 
@@ -134,6 +136,7 @@ _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 ) = range(29, 37)
 
 (STAFFAI_QUESTION,) = range(37, 38)
+(CASESTUDY_INPUT,) = range(38, 39)
 
 TPLAN_CATEGORY, TPLAN_TESTS = range(200, 202)
 
@@ -3203,6 +3206,41 @@ async def staffai_cancel(update, context):
     return ConversationHandler.END
 
 
+async def casestudy_start(update, context):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return ConversationHandler.END
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_CASE_STUDY):
+        return ConversationHandler.END
+    await update.message.reply_text(
+        "\U0001F4DA আজকের রুগীর কেসটা লেখো (বয়স, ডায়াগনোসিস, উপসর্গ)।\n"
+        "উদাহরণ: \"৫০ বছর বয়সী রুগী, stroke, right side weakness\"\n"
+        "বাতিল করতে /cancel লেখো।"
+    )
+    return CASESTUDY_INPUT
+
+
+async def casestudy_receive(update, context):
+    staff = context.user_data.get("staff", {})
+    case_text = update.message.text.strip()
+    await update.message.reply_text("\U0001F914 কেস বিশ্লেষণ করছি...")
+    answer = case_study_ai.answer_case_study(case_text)
+    await update.message.reply_text(
+        answer,
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
+    return ConversationHandler.END
+
+
+async def casestudy_cancel(update, context):
+    staff = context.user_data.get("staff", {})
+    await update.message.reply_text(
+        "\u274c বাতিল করা হলো।",
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
+    return ConversationHandler.END
+
+
 def main():
     app = Application.builder().token(config.BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -3479,6 +3517,23 @@ def main():
         ],
     )
     app.add_handler(staffai_conv)
+
+    casestudy_conv = ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_CASE_STUDY}$"), casestudy_start)
+        ],
+        states={
+            CASESTUDY_INPUT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), casestudy_receive)
+            ],
+        },
+        fallbacks=[
+            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
+            CommandHandler("cancel", casestudy_cancel),
+            CommandHandler("start", _restart_via_start),
+        ],
+    )
+    app.add_handler(casestudy_conv)
 
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_HOME}$"), go_home))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), unknown_menu))
