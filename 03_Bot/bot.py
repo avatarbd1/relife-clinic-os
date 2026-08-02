@@ -3442,7 +3442,7 @@ async def casestudy_extra_receive(update, context):
     case_text = case_context + (f"\n\nবাড়তি তথ্য: {extra}" if extra else "")
 
     patient_id = context.user_data.get("cs_patient_id", "")
-    images = await _download_report_images(context, patient_id, limit=2)
+    images = await _download_report_images(context, patient_id, limit=4)
     if images:
         await update.message.reply_text("\U0001F50D রিপোর্টের ছবি দেখছি...")
         vision_notes = case_study_ai.analyze_report_images(images)
