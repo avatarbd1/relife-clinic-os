@@ -174,4 +174,7 @@ def analyze_report_images(image_data_list: list) -> str:
         data = resp.json()
         return data["choices"][0]["message"]["content"].strip()
     except Exception as e:
+        import traceback
+        print(f"[case_study_ai] analyze_report_images FAILED: {e}")
+        traceback.print_exc()
         return f"(রিপোর্ট ছবি বিশ্লেষণে সমস্যা হয়েছে, স্কিপ করা হলো: {e})"
