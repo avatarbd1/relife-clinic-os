@@ -1888,6 +1888,11 @@ async def _treat_prepare_for_patient(patient: dict, context: ContextTypes.DEFAUL
     প্ল্যান না থাকলে (None, stop_text) রিটার্ন করে — কলার সাথে সাথে conversation END করবে।
     প্ল্যান থাকলে context.user_data["treatment"]/["treat_selected"] সাজিয়ে
     (selected_machines_set, summary_text) রিটার্ন করে — কলার তখন মেশিন-বাছাই কীবোর্ড দেখাবে।
+
+    Exercise/Electrotherapy/Manual_Therapy আগে সর্বশেষ ট্রিটমেন্ট নোট থেকে নেওয়া হয়
+    (থেরাপিস্ট গতকাল যা এডিট করেছিল সেটাই), শুধু কোনো নোট না থাকলে (session 1) মূল
+    প্ল্যানের মান ফলব্যাক হিসেবে ব্যবহৃত হয়। আগে এই ৩টা সবসময় প্ল্যান থেকেই আসতো,
+    ফলে এডিট করা মান পরদিন হারিয়ে যেত — এই ফিক্স সেটা সমাধান করে।
     """
     patient_id = patient.get("Patient_ID", "")
     plan = sheets.get_active_plan_for_patient(patient_id)
@@ -1899,19 +1904,29 @@ async def _treat_prepare_for_patient(patient: dict, context: ContextTypes.DEFAUL
         return None, stop_text
 
     session_no = int(plan.get("Sessions_Done", 0) or 0) + 1
+
+    last_note = sheets.get_last_treatment_note_for_patient(patient_id)
+
+    exercise = plan.get("Exercise_Plan", "")
+    electro = plan.get("Electrotherapy_Plan", "")
+    manual = plan.get("Manual_Therapy_Plan", "")
+    if last_note:
+        exercise = last_note.get("Exercise", "") or exercise
+        electro = last_note.get("Electrotherapy", "") or electro
+        manual = last_note.get("Manual_Therapy", "") or manual
+
     context.user_data["treatment"] = {
         "Patient_ID": patient_id,
         "Patient_Name": patient.get("Full_Name", ""),
         "Plan_ID": plan.get("Plan_ID", ""),
         "Diagnosis": plan.get("Diagnosis", ""),
         "Treatment_Given": "",
-        "Exercise": plan.get("Exercise_Plan", ""),
-        "Electrotherapy": plan.get("Electrotherapy_Plan", ""),
-        "Manual_Therapy": plan.get("Manual_Therapy_Plan", ""),
+        "Exercise": exercise,
+        "Electrotherapy": electro,
+        "Manual_Therapy": manual,
         "Session_No": session_no,
     }
 
-    last_note = sheets.get_last_treatment_note_for_patient(patient_id)
     prev_machines = []
     if last_note:
         prev_machines = [m.strip() for m in str(last_note.get("Machines", "")).split(",") if m.strip()]
@@ -1922,13 +1937,12 @@ async def _treat_prepare_for_patient(patient: dict, context: ContextTypes.DEFAUL
     summary = (
         f"📋 {patient.get('Full_Name')} ({patient_id}) — সেশন {session_no}/{total}\n\n"
         f"সমস্যা (Diagnosis): {plan.get('Diagnosis') or '-'}\n"
-        f"এক্সারসাইজ: {plan.get('Exercise_Plan') or '-'}\n"
-        f"ইলেক্ট্রোথেরাপি: {plan.get('Electrotherapy_Plan') or '-'}\n"
-        f"ম্যানুয়াল থেরাপি: {plan.get('Manual_Therapy_Plan') or '-'}\n\n"
+        f"এক্সারসাইজ: {exercise or '-'}\n"
+        f"ইলেক্ট্রোথেরাপি: {electro or '-'}\n"
+        f"ম্যানুয়াল থেরাপি: {manual or '-'}\n\n"
         "আজকের এক্সারসাইজ/ইলেক্ট্রোথেরাপি/ম্যানুয়াল থেরাপি কি গতকালের মতোই থাকবে, নাকি এডিট করবে?"
     )
     return selected, summary
-
 
 async def treat_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ট্রিটমেন্ট নোট এন্ট্রি শুরু — রোগী খোঁজা দিয়ে শুরু হয়।"""
