@@ -96,7 +96,7 @@ REG_PHOTO_CHOICE, REG_PHOTO_WAIT, REG_PHOTO_CONFIRM = range(90, 93)
     TREAT_EDIT_ELECTRO,
     TREAT_EDIT_MANUAL,
     TREAT_AI_QUESTION,
-    TREAT_UNUSED6,
+    TREAT_PATIENT_COMMENT,
     TREAT_UNUSED7,
 ) = range(19, 29)
 
@@ -1997,12 +1997,12 @@ async def treat_select_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def treat_confirm_same_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """'✅ গতকালের মতোই' চাপলে Exercise/Electrotherapy/Manual Therapy এবং Machines —
-    সবকিছুই গতকালের মতো রেখে সাথে সাথে সেভ হয়ে যাবে। মেশিন বাছাইয়ের স্ক্রিন আর দেখাবে না।"""
+    সবকিছুই গতকালের মতো রেখে যাবে, তারপর রোগীর আজকের মন্তব্য জিজ্ঞেস করবে।"""
     query = update.callback_query
     await query.answer()
     t = context.user_data.get("treatment", {})
     selected = context.user_data.get("treat_selected", set())
-    return await _treat_save_note(query, context, t, selected)
+    return await _treat_ask_patient_comment(query.edit_message_text, context, t, selected)
 
 
 async def treat_confirm_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2093,27 +2093,46 @@ async def treat_machine_toggle(update: Update, context: ContextTypes.DEFAULT_TYP
     return TREAT_MACHINES
 
 
-async def _treat_save_note(query, context: ContextTypes.DEFAULT_TYPE, t: dict, selected: set):
-    """Machines বসিয়ে, সত্যিকারের Red Flag তথ্য মিসিং থাকলে AI ১টা প্রশ্ন করে (TREAT_AI_QUESTION state-এ যায়),
-    নাহলে সরাসরি সেভ করে দেয়।"""
+async def _treat_ask_patient_comment(reply_func, context: ContextTypes.DEFAULT_TYPE, t: dict, selected: set):
+    """Machines বসিয়ে, সেভের আগে থেরাপিস্টকে রোগীর আজকের মন্তব্য জিজ্ঞেস করে (TREAT_PATIENT_COMMENT state)।"""
     t["Machines"] = ", ".join(MACHINE_LIST[i] for i in sorted(selected))
     context.user_data["treatment"] = t
     context.user_data["treat_selected"] = selected
+    await reply_func(
+        "🗣️ আজকে রোগী কী বললো/মন্তব্য করলো? (ব্যথা কেমন লাগছে, ঘুম কেমন হয়েছে, অন্য কোনো সমস্যা ইত্যাদি — "
+        "যা যা বলেছে সব লিখো)\n\nকিছু না বললে - দাও:"
+    )
+    return TREAT_PATIENT_COMMENT
 
+
+async def treat_patient_comment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """রোগীর মন্তব্য নিয়ে Remarks-এ বসায়, তারপর AI Missing-Info চেক করে সেভ করে।"""
+    text = update.message.text.strip()
+    t = context.user_data.get("treatment", {})
+    selected = context.user_data.get("treat_selected", set())
+    if text != "-":
+        t["Remarks"] = f"[রোগীর মন্তব্য] {text}"
+    context.user_data["treatment"] = t
+    return await _treat_save_note(update.message.reply_text, update.message.reply_text, context, t, selected)
+
+
+async def _treat_save_note(reply_func, menu_reply, context: ContextTypes.DEFAULT_TYPE, t: dict, selected: set):
+    """রোগীর মন্তব্য বিবেচনায় নিয়ে, সত্যিই কিছু মিসিং থাকলে AI ১টা প্রশ্ন করে (TREAT_AI_QUESTION state-এ যায়,
+    আগের মন্তব্যে যা বলা হয়ে গেছে তা নিয়ে duplicate প্রশ্ন করে না), নাহলে সরাসরি সেভ করে দেয়।"""
     try:
-        question = case_study_ai.check_treatment_red_flags(t)
+        question = case_study_ai.check_treatment_missing_info(t)
     except Exception:
-        logger.exception("check_treatment_red_flags ব্যর্থ হয়েছে — প্রশ্ন ছাড়াই এগোনো হচ্ছে")
+        logger.exception("check_treatment_missing_info ব্যর্থ হয়েছে — প্রশ্ন ছাড়াই এগোনো হচ্ছে")
         question = ""
 
     if question:
         context.user_data["treat_ai_question"] = question
-        await query.edit_message_text(
+        await reply_func(
             f"⚠️ {question}\n\n(উত্তর টাইপ করো — না জানলে 'জানি না' লিখো)"
         )
         return TREAT_AI_QUESTION
 
-    return await _treat_do_save(query.edit_message_text, query.message.reply_text, context, t, selected)
+    return await _treat_do_save(reply_func, menu_reply, context, t, selected)
 
 
 async def treat_ai_question_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2159,7 +2178,7 @@ async def treat_machine_done(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await query.answer()
     t = context.user_data.get("treatment", {})
     selected = context.user_data.get("treat_selected", set())
-    return await _treat_save_note(query, context, t, selected)
+    return await _treat_ask_patient_comment(query.edit_message_text, context, t, selected)
 
 
 async def treat_machine_cancel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3773,6 +3792,9 @@ def main():
                 CallbackQueryHandler(treat_machine_done, pattern="^trdone_"),
                 CallbackQueryHandler(treat_back_to_search_callback, pattern="^trback_search$"),
                 CallbackQueryHandler(treat_machine_cancel_callback, pattern="^trcancel_"),
+            ],
+            TREAT_PATIENT_COMMENT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), treat_patient_comment_receive),
             ],
             TREAT_AI_QUESTION: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), treat_ai_question_receive),
