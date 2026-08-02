@@ -1,8 +1,9 @@
+import io
 import os
 import json
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 DRIVE_FOLDER_ID = '15EV0Oo_yoM0Ec3hISIfx9l6mezAMfNv1'
@@ -26,3 +27,18 @@ def upload_file_to_drive(file_path, filename, mime_type='application/octet-strea
         fields='id, webViewLink'
     ).execute()
     return file.get('id'), file.get('webViewLink')
+
+
+def download_file_from_drive(file_id: str) -> bytes | None:
+    """Drive থেকে file_id দিয়ে ফাইলের raw bytes ডাউনলোড করে।"""
+    try:
+        service = get_drive_service()
+        request = service.files().get_media(fileId=file_id)
+        buf = io.BytesIO()
+        downloader = MediaIoBaseDownload(buf, request)
+        done = False
+        while not done:
+            _status, done = downloader.next_chunk()
+        return buf.getvalue()
+    except Exception:
+        return None

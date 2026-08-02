@@ -3409,29 +3409,56 @@ async def casestudy_search_cancel_callback(update, context):
     return ConversationHandler.END
 
 
-async def _download_report_images(context, patient_id: str, limit: int = 2) -> list:
-    """রোগীর সাম্প্রতিক ছবি-রিপোর্ট (X-ray/MRI ইত্যাদি) টেলিগ্রাম থেকে সরাসরি ডাউনলোড করে
-    (Drive-এর দরকার নেই, File_Telegram_ID দিয়েই হয়)। সর্বোচ্চ `limit` টা ছবি নেয়
+def _extract_drive_file_id(drive_link: str) -> str:
+    """Google Drive webViewLink থেকে raw file ID বের করে (যেমন
+    https://drive.google.com/file/d/XXXX/view -> XXXX)।"""
+    if not drive_link:
+        return ""
+    m = re.search(r"/d/([a-zA-Z0-9_-]+)", drive_link)
+    if m:
+        return m.group(1)
+    m = re.search(r"[?&]id=([a-zA-Z0-9_-]+)", drive_link)
+    if m:
+        return m.group(1)
+    return ""
+
+
+async def _download_report_images(context, patient_id: str, limit: int = 4) -> list:
+    """রোগীর সাম্প্রতিক ছবি-রিপোর্ট (X-ray/MRI ইত্যাদি) ডাউনলোড করে।
+    আগে Google Drive থেকে চেষ্টা করে (স্থায়ী, প্রোডাকশনে reliable), Drive লিংক না থাকলে
+    বা ফেইল করলে Telegram file_id দিয়ে ফলব্যাক করে। সর্বোচ্চ `limit` টা ছবি নেয়
     (ফ্রি ভিশন মডেলের রেট-লিমিট বাঁচাতে)।"""
     reports = sheets.get_reports_for_patient(patient_id)
     image_reports = [r for r in reports if str(r.get("File_Type", "")).lower().startswith("image")]
     image_reports = image_reports[-limit:]
     out = []
     for r in image_reports:
-        file_id = r.get("File_Telegram_ID", "")
-        if not file_id:
+        img_bytes = None
+
+        drive_link = r.get("File_Drive_Link", "")
+        drive_file_id = _extract_drive_file_id(drive_link)
+        if drive_file_id:
+            img_bytes = drive_module.download_file_from_drive(drive_file_id)
+
+        if img_bytes is None:
+            file_id = r.get("File_Telegram_ID", "")
+            if file_id:
+                try:
+                    file_obj = await context.bot.get_file(file_id)
+                    file_bytes = await file_obj.download_as_bytearray()
+                    img_bytes = bytes(file_bytes)
+                except Exception:
+                    img_bytes = None
+
+        if img_bytes is None:
             continue
-        try:
-            file_obj = await context.bot.get_file(file_id)
-            file_bytes = await file_obj.download_as_bytearray()
-            b64 = base64.b64encode(bytes(file_bytes)).decode("utf-8")
-            out.append({
-                "base64": b64,
-                "mime_type": r.get("File_Type") or "image/jpeg",
-                "file_name": r.get("File_Name", ""),
-            })
-        except Exception:
-            continue
+
+        b64 = base64.b64encode(img_bytes).decode("utf-8")
+        out.append({
+            "base64": b64,
+            "mime_type": r.get("File_Type") or "image/jpeg",
+            "file_name": r.get("File_Name", ""),
+        })
     return out
 
 
