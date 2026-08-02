@@ -205,7 +205,7 @@ def answer_case_lesson(case_text: str, lesson_number: int) -> str:
     return f"⚠️ AI থেকে উত্তর আনতে সমস্যা হয়েছে: {last_error}"
 
 
-VISION_MODEL = "google/gemma-4-31b-it:free"
+VISION_MODEL = "openai/gpt-4o-mini"
 
 
 def analyze_report_images(image_data_list: list) -> str:
@@ -251,4 +251,6 @@ def analyze_report_images(image_data_list: list) -> str:
         import traceback
         print(f"[case_study_ai] analyze_report_images FAILED: {e}")
         traceback.print_exc()
-        return f"(রিপোর্ট ছবি বিশ্লেষণে সমস্যা হয়েছে, স্কিপ করা হলো: {e})"
+        # raw error message case_text-এ ঢুকিয়ে AI-কে বিভ্রান্ত করা ঠিক না —
+        # তাই শুধু একটা safe, informative note দেওয়া হচ্ছে, technical error না।
+        return "(এই ছবি/রিপোর্ট থেকে এই মুহূর্তে বিশ্লেষণ সম্ভব হয়নি। রোগীর লিখিত/জানানো তথ্যের ভিত্তিতেই এগোনো হচ্ছে।)"
