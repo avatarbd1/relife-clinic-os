@@ -181,7 +181,7 @@ def _machine_keyboard(selected: set) -> InlineKeyboardMarkup:
                 row.append(InlineKeyboardButton(prefix + MACHINE_LIST[j], callback_data=f"trm_{j}"))
         buttons.append(row)
     buttons.append([InlineKeyboardButton("✅ সম্পন্ন — সেভ করো", callback_data="trdone_save")])
-    buttons.append([InlineKeyboardButton("⬅️ আগের ধাপ", callback_data="trback_search")])
+    buttons.append([InlineKeyboardButton("⬅️ আগের ধাপ", callback_data="trback_confirm")])
     buttons.append([InlineKeyboardButton("❌ বাতিল", callback_data="trcancel_")])
     return InlineKeyboardMarkup(buttons)
 
@@ -2260,6 +2260,27 @@ async def treat_back_to_search_callback(update: Update, context: ContextTypes.DE
     return TREAT_SEARCH
 
 
+async def treat_back_to_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """মেশিন-নির্বাচনের ধাপ থেকে '⬅️ আগের ধাপ' চাপলে ঠিক আগের ধাপে (গতকালের মতোই/এডিট করবো)
+    ফিরে যায় — এতক্ষণ যা এক্সারসাইজ/ম্যানুয়াল থেরাপি এডিট বা মেশিন বাছাই করা হয়েছে সব অক্ষত থাকে
+    (patch3: আগে এই বাটন ভুল করে একদম শুরুর 'রোগী খোঁজা' ধাপে নিয়ে যেত)।"""
+    query = update.callback_query
+    await query.answer()
+    t = context.user_data.get("treatment", {})
+    patient_id = t.get("Patient_ID", "")
+    plan = sheets.get_active_plan_for_patient(patient_id)
+    total = plan.get("Total_Sessions", "N/A") if plan else "N/A"
+    summary = (
+        f"📋 {t.get('Patient_Name')} ({patient_id}) — সেশন {t.get('Session_No', '?')}/{total}\n\n"
+        f"সমস্যা (Diagnosis): {t.get('Diagnosis') or '-'}\n"
+        f"এক্সারসাইজ: {t.get('Exercise') or '-'}\n"
+        f"ম্যানুয়াল থেরাপি: {t.get('Manual_Therapy') or '-'}\n\n"
+        "আজকের এক্সারসাইজ/ম্যানুয়াল থেরাপি কি গতকালের মতোই থাকবে, নাকি এডিট করবে?"
+    )
+    await query.edit_message_text(summary, reply_markup=_treat_confirm_keyboard(patient_id))
+    return TREAT_CONFIRM_PLAN
+
+
 async def treat_machine_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -4202,7 +4223,7 @@ def main():
             TREAT_MACHINES: [
                 CallbackQueryHandler(treat_machine_toggle, pattern="^trm_"),
                 CallbackQueryHandler(treat_machine_done, pattern="^trdone_"),
-                CallbackQueryHandler(treat_back_to_search_callback, pattern="^trback_search$"),
+                CallbackQueryHandler(treat_back_to_confirm_callback, pattern="^trback_confirm$"),
                 CallbackQueryHandler(treat_machine_cancel_callback, pattern="^trcancel_"),
             ],
             TREAT_PATIENT_COMMENT: [
