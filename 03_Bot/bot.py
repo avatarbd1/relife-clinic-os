@@ -121,6 +121,10 @@ _ALL_MENU_ITEMS = [
     roles.MENU_TREATMENT_HISTORY,
     roles.MENU_PATIENT_LIST,
     roles.MENU_DAILY_REGISTER,
+    roles.MENU_PATIENT_MGMT,
+    roles.MENU_TREATMENT,
+    roles.MENU_AI_TOOLS,
+    roles.MENU_BACK_MAIN,
     roles.MENU_STAFF_AI_QUERY,
     roles.MENU_CASE_STUDY,
 ]
@@ -1610,6 +1614,45 @@ async def schedule_appointments_callback(update: Update, context: ContextTypes.D
     await today_appointments(update, context)
 
 
+def _submenu_keyboard(labels: list[str]) -> ReplyKeyboardMarkup:
+    rows = [[l] for l in labels] + [[roles.MENU_BACK_MAIN]]
+    return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
+
+
+async def _generic_submenu(update: Update, context: ContextTypes.DEFAULT_TYPE, items_map: dict, title: str):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
+    try:
+        role = roles.Role(staff.get("Role", "").strip())
+    except ValueError:
+        role = None
+    items = items_map.get(role, []) if role else []
+    if not items:
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    await update.message.reply_text(title, reply_markup=_submenu_keyboard(items))
+
+
+async def patient_mgmt_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _generic_submenu(update, context, roles.ROLE_PATIENT_MGMT_ITEMS, "👤 রোগী ব্যবস্থাপনা — কী করতে চাও?")
+
+
+async def treatment_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _generic_submenu(update, context, roles.ROLE_TREATMENT_ITEMS, "📝 ট্রিটমেন্ট — কী করতে চাও?")
+
+
+async def ai_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _generic_submenu(update, context, roles.ROLE_AI_TOOLS_ITEMS, "🤖 AI টুলস — কী করতে চাও?")
+
+
+async def back_to_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
+    await update.message.reply_text("🏠 মূল মেনু", reply_markup=_menu_keyboard(staff.get("Role", "")))
+
+
 async def attendance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
     if staff is None:
@@ -2760,12 +2803,19 @@ def _month_bounds(now):
     return this_month_str, last_month_str
 
 
-def _reports_summary_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([
+def _reports_summary_keyboard(role_str: str = "") -> InlineKeyboardMarkup:
+    rows = [
         [InlineKeyboardButton("\U0001F465 মোট রোগী ও সর্বমোট আদায়", callback_data="rpt_totals")],
         [InlineKeyboardButton("\U0001F4B0 গত মাসের আদায়", callback_data="rpt_lastmonth")],
         [InlineKeyboardButton("\U0001F4C5 তারিখ ভিত্তিক রিপোর্ট", callback_data="rpt_daterep")],
-    ])
+    ]
+    try:
+        role = roles.Role(role_str.strip())
+    except ValueError:
+        role = None
+    if role and roles.MENU_DAILY_REGISTER in roles.ROLE_REPORTS_EXTRA_ITEMS.get(role, []):
+        rows.append([InlineKeyboardButton("\U0001F4CB আজকের রেজিস্টার", callback_data="rpt_todayregister")])
+    return InlineKeyboardMarkup(rows)
 
 
 async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2810,7 +2860,7 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     await update.effective_message.reply_text(
         "\n".join(lines),
-        reply_markup=_reports_summary_keyboard(),
+        reply_markup=_reports_summary_keyboard(staff.get("Role", "")),
     )
     await update.effective_message.reply_text(
         "মেনুতে ফিরতে নিচের কীবোর্ড ব্যবহার করো:",
@@ -2856,6 +2906,13 @@ async def rpt_daterep_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         "\U0001F4C5 তারিখ সিলেক্ট করুন:",
         reply_markup=calendar_helper.build_calendar(today.year, today.month),
     )
+
+
+async def rpt_todayregister_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    text, keyboard = _register_view_text_and_keyboard()
+    await query.message.reply_text(text, reply_markup=keyboard)
 
 async def thist_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
@@ -3946,6 +4003,18 @@ def main():
     app.add_handler(
         MessageHandler(filters.Regex(f"^{roles.MENU_TODAY_SCHEDULE}$"), today_schedule_menu)
     )
+    app.add_handler(
+        MessageHandler(filters.Regex(f"^{roles.MENU_PATIENT_MGMT}$"), patient_mgmt_menu)
+    )
+    app.add_handler(
+        MessageHandler(filters.Regex(f"^{roles.MENU_TREATMENT}$"), treatment_menu)
+    )
+    app.add_handler(
+        MessageHandler(filters.Regex(f"^{roles.MENU_AI_TOOLS}$"), ai_tools_menu)
+    )
+    app.add_handler(
+        MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), back_to_main_menu)
+    )
     app.add_handler(CallbackQueryHandler(schedule_attendance_callback, pattern="^sched_att$"))
     app.add_handler(CallbackQueryHandler(schedule_appointments_callback, pattern="^sched_apt$"))
     app.add_handler(CallbackQueryHandler(attendance_callback, pattern="^att_"))
@@ -4199,6 +4268,7 @@ def main():
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_REPORTS}$"), reports_menu))
     app.add_handler(CallbackQueryHandler(rpt_totals_callback, pattern="^rpt_totals$"))
     app.add_handler(CallbackQueryHandler(rpt_lastmonth_callback, pattern="^rpt_lastmonth$"))
+    app.add_handler(CallbackQueryHandler(rpt_todayregister_callback, pattern="^rpt_todayregister$"))
     app.add_handler(CallbackQueryHandler(rpt_daterep_callback, pattern="^rpt_daterep$"))
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_DATE_REPORT}$"), date_report_menu))
     app.add_handler(CallbackQueryHandler(date_report_calendar_navigate, pattern="^calnav_"))
