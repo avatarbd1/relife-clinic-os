@@ -19,6 +19,7 @@ MENU_TREATMENT_HISTORY = "📜 ট্রিটমেন্ট হিস্ট্
 MENU_PAYMENT = "💳 পেমেন্ট তথ্য"
 MENU_REPORTS = "📊 রিপোর্ট ও অ্যানালিটিক্স"
 MENU_DATE_REPORT = "📅 তারিখ ভিত্তিক রিপোর্ট"
+MENU_TODAY_SCHEDULE = "📋 আজকের শিডিউল"
 MENU_SETTINGS = "⚙️ সেটিংস"
 MENU_ATTENDANCE = "🕐 হাজিরা"
 MENU_TODAY_APPOINTMENTS = "📋 আজকের অ্যাপয়েন্টমেন্ট"
@@ -35,8 +36,8 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_HOME],
         [MENU_PATIENT_REG, MENU_PATIENT_HISTORY],
         [MENU_PATIENT_LIST],
-        [MENU_APPOINTMENT, MENU_TODAY_APPOINTMENTS],
-        [MENU_ATTENDANCE, MENU_TREATMENT_NOTE],
+        [MENU_APPOINTMENT, MENU_TREATMENT_NOTE],
+        [MENU_TODAY_SCHEDULE],
         [MENU_TREATMENT_PLAN, MENU_TREATMENT_HISTORY],
         [MENU_PAYMENT, MENU_REPORTS],
         [MENU_DAILY_REGISTER],
@@ -48,15 +49,15 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_HOME],
         [MENU_PATIENT_REG],
         [MENU_PATIENT_LIST],
-        [MENU_APPOINTMENT, MENU_TODAY_APPOINTMENTS],
-        [MENU_ATTENDANCE],
+        [MENU_APPOINTMENT],
+        [MENU_TODAY_SCHEDULE],
         [MENU_PAYMENT, MENU_REPORTS],
         [MENU_DAILY_REGISTER],
         [MENU_STAFF_AI_QUERY],
     ],
     Role.THERAPIST: [
         [MENU_HOME],
-        [MENU_ATTENDANCE],
+        [MENU_TODAY_SCHEDULE],
         [MENU_MY_PATIENTS],
         [MENU_TREATMENT_NOTE, MENU_TREATMENT_PLAN],
         [MENU_TREATMENT_HISTORY],
@@ -66,13 +67,22 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_HOME],
         [MENU_PATIENT_REG],
         [MENU_PATIENT_LIST],
-        [MENU_APPOINTMENT, MENU_TODAY_APPOINTMENTS],
-        [MENU_ATTENDANCE],
+        [MENU_APPOINTMENT],
+        [MENU_TODAY_SCHEDULE],
         [MENU_TREATMENT_HISTORY],
         [MENU_REPORTS],
         [MENU_DAILY_REGISTER],
         [MENU_STAFF_AI_QUERY],
     ],
+}
+
+
+ROLE_HIDDEN_MENU_ITEMS: dict[Role, list[str]] = {
+    # MENU_TODAY_SCHEDULE বাটনের ভিতরের সাব-বাটন হিসেবে ব্যবহৃত হয় (patch36)।
+    Role.OWNER: [MENU_ATTENDANCE, MENU_TODAY_APPOINTMENTS],
+    Role.RECEPTIONIST: [MENU_ATTENDANCE, MENU_TODAY_APPOINTMENTS],
+    Role.THERAPIST: [MENU_ATTENDANCE],
+    Role.MANAGER: [MENU_ATTENDANCE, MENU_TODAY_APPOINTMENTS],
 }
 
 
@@ -88,7 +98,15 @@ def get_menu_rows_for_role(role_str: str) -> list[list[str]]:
 def get_menu_for_role(role_str: str) -> list[str]:
     """পুরনো কোড যেখানে flat লিস্ট আশা করে, তাদের জন্য backward-compatible।"""
     rows = get_menu_rows_for_role(role_str)
-    return [item for row in rows for item in row]
+    flat = [item for row in rows for item in row]
+    try:
+        role = Role(role_str.strip())
+    except ValueError:
+        return flat
+    # MENU_TODAY_SCHEDULE বাটনের ভিতরে MENU_ATTENDANCE/MENU_TODAY_APPOINTMENTS আড়ালে
+    # ব্যবহৃত হয় — কীবোর্ডে আলাদা বাটন হিসেবে না দেখালেও এই permission গুলো বজায় থাকে (patch36)।
+    flat += ROLE_HIDDEN_MENU_ITEMS.get(role, [])
+    return flat
 
 
 def can_access(role_str: str, menu_item: str) -> bool:

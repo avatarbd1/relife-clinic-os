@@ -1579,6 +1579,37 @@ async def search_patient(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ---------- হাজিরা (স্টাফ) ----------
 
+async def today_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """📋 আজকের শিডিউল — হাজিরা ও আজকের অ্যাপয়েন্টমেন্ট একসাথে একটা সাবমেনুতে (patch36)।"""
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
+    buttons = []
+    if roles.can_access(staff.get("Role", ""), roles.MENU_ATTENDANCE):
+        buttons.append([InlineKeyboardButton("🕐 হাজিরা", callback_data="sched_att")])
+    if roles.can_access(staff.get("Role", ""), roles.MENU_TODAY_APPOINTMENTS):
+        buttons.append([InlineKeyboardButton("📋 আজকের অ্যাপয়েন্টমেন্ট", callback_data="sched_apt")])
+    if not buttons:
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    await update.message.reply_text(
+        "📋 আজকের শিডিউল — কোনটা দেখতে চাও?",
+        reply_markup=InlineKeyboardMarkup(buttons),
+    )
+
+
+async def schedule_attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await attendance_menu(update, context)
+
+
+async def schedule_appointments_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await today_appointments(update, context)
+
+
 async def attendance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
     if staff is None:
@@ -1605,14 +1636,14 @@ async def attendance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         buttons.append([InlineKeyboardButton("🚪 Check Out", callback_data="att_checkout")])
         status_line = f"🔙 Break In: {record.get('Break_In')}"
     else:
-        await update.message.reply_text(
+        await update.effective_message.reply_text(
             f"✅ আজকের হাজিরা সম্পন্ন।\n"
             f"Check In: {record.get('Check_In')}\nCheck Out: {record.get('Check_Out')}\n"
             f"মোট কাজের সময়: {record.get('Working_Hours')} ঘণ্টা"
         )
         return
 
-    await update.message.reply_text(status_line, reply_markup=InlineKeyboardMarkup(buttons))
+    await update.effective_message.reply_text(status_line, reply_markup=InlineKeyboardMarkup(buttons))
 
 
 async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1662,7 +1693,7 @@ async def today_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if a.get("Status", "").strip() == "Scheduled"
     ]
     if not appts:
-        await update.message.reply_text("আজ কোনো পেন্ডিং অ্যাপয়েন্টমেন্ট নেই।")
+        await update.effective_message.reply_text("আজ কোনো পেন্ডিং অ্যাপয়েন্টমেন্ট নেই।")
         return
     for a in appts:
         text = (
@@ -1673,7 +1704,7 @@ async def today_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE)
             InlineKeyboardButton("✅ উপস্থিত", callback_data=f"aptstatus_{a.get('Appointment_ID')}_Completed_{a.get('Patient_ID')}"),
             InlineKeyboardButton("❌ আসেনি", callback_data=f"aptstatus_{a.get('Appointment_ID')}_NoShow_{a.get('Patient_ID')}"),
         ]])
-        await update.message.reply_text(text, reply_markup=buttons)
+        await update.effective_message.reply_text(text, reply_markup=buttons)
 
 
 async def apt_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3912,6 +3943,11 @@ def main():
     app.add_handler(
         MessageHandler(filters.Regex(f"^{roles.MENU_ATTENDANCE}$"), attendance_menu)
     )
+    app.add_handler(
+        MessageHandler(filters.Regex(f"^{roles.MENU_TODAY_SCHEDULE}$"), today_schedule_menu)
+    )
+    app.add_handler(CallbackQueryHandler(schedule_attendance_callback, pattern="^sched_att$"))
+    app.add_handler(CallbackQueryHandler(schedule_appointments_callback, pattern="^sched_apt$"))
     app.add_handler(CallbackQueryHandler(attendance_callback, pattern="^att_"))
     app.add_handler(
         MessageHandler(filters.Regex(f"^{roles.MENU_TODAY_APPOINTMENTS}$"), today_appointments)
