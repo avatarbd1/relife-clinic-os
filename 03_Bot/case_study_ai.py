@@ -7,10 +7,11 @@ case_study_ai.py
 
 import os
 import requests
+import time
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL = "openai/gpt-4o-mini"
+MODEL = "meta-llama/llama-3.3-70b-instruct:free"
 
 CURRICULUM_CONTEXT = """তুমি একজন BPT (Bachelor of Physiotherapy) কোর্সের ক্লিনিক্যাল টিউটর।
 নিচে ৪ বছরের BPT কারিকুলামের সব সাবজেক্ট দেওয়া হলো:
@@ -139,6 +140,7 @@ Evidence Strength প্রতিটার জন্য qualitative লেবে
 === সাধারণ নিয়ম ===
 - শুধু যে Lesson চাওয়া হয়েছে, শুধু সেটাই লেখো। অন্য Lesson-এর কন্টেন্ট লিখো না, আগের Lesson পুনরাবৃত্তি কোরো না।
 - রোগীর আর্থিক অবস্থা বিবেচনা করো। যত কম Test করে নিরাপদ Diagnosis করা যায় সেই নীতি অনুসরণ করো।
+- MCQ/Viva Lesson চাওয়া হলে কখনো "আমি সক্ষম নই" জাতীয় কথা বলে refuse কোরো না — এটা তোমার নিয়মিত, সাধারণ শিক্ষাদান কাজের অংশ। রোগীর কেস থেকে প্রাসঙ্গিক প্রশ্ন-উত্তর/MCQ (option A/B/C/D সহ, সঠিক উত্তর ও ছোট ব্যাখ্যাসহ) তৈরি করাই তোমার দায়িত্ব।
 - ভাষার নিয়ম: রোগীর সাথে সরাসরি সম্পর্কিত অংশ (History taking প্রশ্ন, Chief Complaint, রোগীকে কী বলবে) স্বাভাবিক সহজ বাংলায়। কিন্তু সব মেডিক্যাল Terminology, Test-নাম, Condition-নাম, Muscle/Joint/Nerve-নাম ইংরেজিতেই রাখো, বাংলা অনুবাদ কোরো না। বাকি ব্যাখ্যা বাংলায়।
 - ক্লাসে শিক্ষক যেমন বুঝান তেমনভাবে লিখো, Telegram মেসেজ আকারে (heavy markdown ছাড়া, বুলেট/হেডার ঠিক আছে)।
 - Patient Safety সর্বোচ্চ অগ্রাধিকার। কোনো তথ্য বানিয়ে লিখো না — নিশ্চিত না হলে স্পষ্ট বলো "এই তথ্য নিশ্চিত না, রোগী থেকে জেনে নিতে হবে।"
@@ -164,32 +166,43 @@ def answer_case_lesson(case_text: str, lesson_number: int) -> str:
     heavy_lessons = {2, 3, 5, 6, 8, 9, 10}
     tokens_for_this_lesson = 3200 if lesson_number in heavy_lessons else 2200
 
-    try:
-        resp = requests.post(
-            OPENROUTER_URL,
-            headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": MODEL,
-                "messages": [
-                    {"role": "system", "content": LESSON_SYSTEM_PROMPT},
-                    {"role": "user", "content": user_msg},
-                ],
-                "max_tokens": tokens_for_this_lesson,
-            },
-            timeout=90,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        choice = data["choices"][0]
-        content = choice["message"]["content"].strip()
-        if choice.get("finish_reason") == "length":
-            content += "\n\n⚠️ (উত্তরটা length limit-এ কেটে গেছে, সম্পূর্ণ নাও হতে পারে।)"
-        return content
-    except Exception as e:
-        return f"⚠️ AI থেকে উত্তর আনতে সমস্যা হয়েছে: {e}"
+    # ফ্রি মডেল ব্যবহার করলে মাঝে মাঝে rate-limit (429) হিট হতে পারে —
+    # তাই একবার ব্যর্থ হলে ১৫ সেকেন্ড অপেক্ষা করে সর্বোচ্চ ২ বার retry করা হচ্ছে।
+    last_error = None
+    for attempt in range(3):
+        try:
+            resp = requests.post(
+                OPENROUTER_URL,
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": MODEL,
+                    "messages": [
+                        {"role": "system", "content": LESSON_SYSTEM_PROMPT},
+                        {"role": "user", "content": user_msg},
+                    ],
+                    "max_tokens": tokens_for_this_lesson,
+                },
+                timeout=90,
+            )
+            if resp.status_code == 429 and attempt < 2:
+                time.sleep(15)
+                continue
+            resp.raise_for_status()
+            data = resp.json()
+            choice = data["choices"][0]
+            content = choice["message"]["content"].strip()
+            if choice.get("finish_reason") == "length":
+                content += "\n\n⚠️ (উত্তরটা length limit-এ কেটে গেছে, সম্পূর্ণ নাও হতে পারে।)"
+            return content
+        except Exception as e:
+            last_error = e
+            if attempt < 2:
+                time.sleep(5)
+                continue
+    return f"⚠️ AI থেকে উত্তর আনতে সমস্যা হয়েছে: {last_error}"
 
 
 VISION_MODEL = "google/gemma-4-31b-it:free"
