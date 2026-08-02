@@ -2731,8 +2731,8 @@ def _month_bounds(now):
 
 def _reports_summary_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("\U0001F465 মোট রোগী ও সর্বমোট আয়", callback_data="rpt_totals")],
-        [InlineKeyboardButton("\U0001F4B0 গত মাসের আয়", callback_data="rpt_lastmonth")],
+        [InlineKeyboardButton("\U0001F465 মোট রোগী ও সর্বমোট আদায়", callback_data="rpt_totals")],
+        [InlineKeyboardButton("\U0001F4B0 গত মাসের আদায়", callback_data="rpt_lastmonth")],
         [InlineKeyboardButton("\U0001F4C5 তারিখ ভিত্তিক রিপোর্ট", callback_data="rpt_daterep")],
     ])
 
@@ -2772,8 +2772,8 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "",
         f"\U0001F195 আজকের নতুন রোগী: {today_new_patients}",
         f"\U0001F4C8 এই মাসের ({this_month_str}) নতুন রোগী: {this_month_patients}",
-        f"\U0001F4B0 আজকের আয়: {today_collection:.0f} টাকা",
-        f"\U0001F4B0 এই মাসের ({this_month_str}) আয়: {this_month_collection:.0f} টাকা",
+        f"\U0001F4B0 আজকের আদায়: {today_collection:.0f} টাকা",
+        f"\U0001F4B0 এই মাসের ({this_month_str}) আদায়: {this_month_collection:.0f} টাকা",
         "",
         "\U0001F447 আরও বিস্তারিত দেখতে নিচের বাটন চাপো:",
     ]
@@ -2795,9 +2795,9 @@ async def rpt_totals_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     payments = sheets.get_all_payments()
     total_collection = sum(float(p.get("Amount", 0) or 0) for p in payments)
     text = (
-        "\U0001F465 মোট রোগী ও সর্বমোট আয়\n\n"
+        "\U0001F465 মোট রোগী ও সর্বমোট আদায়\n\n"
         f"\U0001F465 মোট রোগী (সর্বমোট): {total_patients}\n"
-        f"\U0001F4B0 সর্বমোট আয়: {total_collection:.0f} টাকা"
+        f"\U0001F4B0 সর্বমোট আদায়: {total_collection:.0f} টাকা"
     )
     await query.message.reply_text(text)
 
@@ -2813,7 +2813,7 @@ async def rpt_lastmonth_callback(update: Update, context: ContextTypes.DEFAULT_T
         if str(p.get("Date", "")).strip().startswith(last_month_str)
     ]
     last_month_collection = sum(float(p.get("Amount", 0) or 0) for p in last_month_payments)
-    text = f"\U0001F4B0 গত মাসের ({last_month_str}) আয়: {last_month_collection:.0f} টাকা"
+    text = f"\U0001F4B0 গত মাসের ({last_month_str}) আদায়: {last_month_collection:.0f} টাকা"
     await query.message.reply_text(text)
 
 
