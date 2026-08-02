@@ -2712,10 +2712,43 @@ async def thist_date_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     patient_id = str(n.get("Patient_ID", "")).strip()
     context.user_data.pop("thist_notes", None)
     if patient_id:
-        await query.edit_message_text("\n".join(lines), reply_markup=_patient_card_keyboard(patient_id))
+        await query.edit_message_text(
+            "\n".join(lines),
+            reply_markup=_patient_card_keyboard(
+                patient_id,
+                back_callback_data=f"thistback_{patient_id}",
+                back_label="🔙 তারিখের তালিকায় ফিরুন",
+            ),
+        )
     else:
         await query.edit_message_text("\n".join(lines))
     return ConversationHandler.END
+
+
+async def thist_back_to_dates_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Treatment History নোট কার্ড থেকে '🔙 তারিখের তালিকায় ফিরুন' চাপলে এই রোগীর
+    তারিখ-ভিত্তিক ট্রিটমেন্ট নোট তালিকা আবার দেখায় (patch26 — আগে এটা ভুল করে সাধারণ
+    📋 রোগীর তালিকায় নিয়ে যেত)।"""
+    query = update.callback_query
+    await query.answer()
+    patient_id = query.data.replace("thistback_", "", 1)
+    notes = sheets.get_treatment_notes_for_patient(patient_id)
+    if not notes:
+        await query.edit_message_text("এই রোগীর কোনো ট্রিটমেন্ট নোট পাওয়া যায়নি।")
+        return
+    context.user_data["thist_notes"] = {
+        str(n.get("Treatment_ID", "")).strip(): n for n in notes
+    }
+    notes_sorted = sorted(notes, key=lambda n: str(n.get("Date", "")), reverse=True)
+    buttons = []
+    for n in notes_sorted[:15]:
+        tid = str(n.get("Treatment_ID", "")).strip()
+        date_str = n.get("Date", "")
+        buttons.append([InlineKeyboardButton(f"🗓 {date_str} — {tid}", callback_data=f"thdate_{tid}")])
+    await query.edit_message_text(
+        "কোন তারিখের ট্রিটমেন্ট প্ল্যান দেখতে চাও?",
+        reply_markup=InlineKeyboardMarkup(buttons),
+    )
 
 
 async def thist_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2923,7 +2956,15 @@ def _therapist_patient_action_keyboard(patient_id: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
-def _patient_card_keyboard(patient_id: str) -> InlineKeyboardMarkup:
+def _patient_card_keyboard(
+    patient_id: str,
+    back_callback_data: str = "plistact_back",
+    back_label: str = "🔙 তালিকায় ফিরুন",
+) -> InlineKeyboardMarkup:
+    """রোগীর প্রোফাইল/নোট কার্ডের নিচের অ্যাকশন বাটন।
+    সাধারণত '🔙 তালিকায় ফিরুন' বাটন 📋 রোগীর তালিকায় ফিরিয়ে দেয়, কিন্তু Treatment History
+    থেকে খোলা নোট কার্ডে back_callback_data/back_label override করে সেই রোগীর
+    তারিখের তালিকায় ফেরত পাঠানো হয় (patch26)।"""
     buttons = [
         [
             InlineKeyboardButton("💰 পেমেন্ট নিন", callback_data=f"plistact_pay_{patient_id}"),
@@ -2935,7 +2976,7 @@ def _patient_card_keyboard(patient_id: str) -> InlineKeyboardMarkup:
         ],
         [InlineKeyboardButton("📎 রিপোর্ট", callback_data=f"plistact_report_{patient_id}")],
         [InlineKeyboardButton("👁️ ফাইল দেখুন", callback_data=f"plistact_viewfiles_{patient_id}")],
-        [InlineKeyboardButton("🔙 তালিকায় ফিরুন", callback_data="plistact_back")],
+        [InlineKeyboardButton(back_label, callback_data=back_callback_data)],
     ]
     return InlineKeyboardMarkup(buttons)
 
@@ -3888,6 +3929,7 @@ def main():
         fallbacks=[CommandHandler("cancel", thist_cancel)],
     )
     app.add_handler(thist_conv)
+    app.add_handler(CallbackQueryHandler(thist_back_to_dates_callback, pattern="^thistback_"))
 
     staffai_conv = ConversationHandler(
         entry_points=[
