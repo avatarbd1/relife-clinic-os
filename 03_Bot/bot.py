@@ -2955,7 +2955,13 @@ async def tplan_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def _register_amount_keyboard(sessions: int) -> InlineKeyboardMarkup:
-    sess_label = "🔁 ২ সেশন হয়েছে" if sessions == 1 else "🔁 ১ সেশনে ফেরত যাও"
+    # চক্র: ১ → ২ → ০ (শুধু টাকা, সেশন নেই) → আবার ১
+    if sessions == 1:
+        sess_label = "🔁 ২ সেশন হয়েছে"
+    elif sessions == 2:
+        sess_label = "❌ সেশন হয়নি (শুধু টাকা)"
+    else:
+        sess_label = "🔁 ১ সেশনে ফেরত যাও"
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(sess_label, callback_data="regsesstoggle")],
         [
@@ -2966,9 +2972,10 @@ def _register_amount_keyboard(sessions: int) -> InlineKeyboardMarkup:
 
 
 def _register_amount_prompt_text(patient_name: str, patient_id: str, sessions: int) -> str:
+    sess_line = "সেশন: হয়নি (শুধু টাকা জমা)" if sessions == 0 else f"সেশন: {sessions}"
     return (
         f"রোগী: {patient_name} ({patient_id})\n"
-        f"সেশন: {sessions}  (ডিফল্ট ১, আজ ২টা সেশন হলে উপরের বাটনে চাপো)\n\n"
+        f"{sess_line}  (ডিফল্ট ১, টগল করতে উপরের বাটনে চাপো — ১→২→সেশন নেই)\n\n"
         "কত টাকা নেওয়া হলো?"
     )
 
@@ -3019,7 +3026,9 @@ async def reg_session_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE)
     query = update.callback_query
     await query.answer()
     p = context.user_data.get("payment", {})
-    sessions = 2 if p.get("Sessions", 1) == 1 else 1
+    current = p.get("Sessions", 1)
+    cycle = {1: 2, 2: 0, 0: 1}
+    sessions = cycle.get(current, 1)
     context.user_data.setdefault("payment", {})["Sessions"] = sessions
     await query.edit_message_text(
         _register_amount_prompt_text(p.get("Patient_Name", ""), p.get("Patient_ID", ""), sessions),
