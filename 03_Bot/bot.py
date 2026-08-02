@@ -1,4 +1,5 @@
 import os
+import base64
 import time
 # GLOBAL-EVENTLOOP-PATCH-PY314
 import asyncio as _asyncio_p314
@@ -3408,11 +3409,45 @@ async def casestudy_search_cancel_callback(update, context):
     return ConversationHandler.END
 
 
+async def _download_report_images(context, patient_id: str, limit: int = 2) -> list:
+    """রোগীর সাম্প্রতিক ছবি-রিপোর্ট (X-ray/MRI ইত্যাদি) টেলিগ্রাম থেকে সরাসরি ডাউনলোড করে
+    (Drive-এর দরকার নেই, File_Telegram_ID দিয়েই হয়)। সর্বোচ্চ `limit` টা ছবি নেয়
+    (ফ্রি ভিশন মডেলের রেট-লিমিট বাঁচাতে)।"""
+    reports = sheets.get_reports_for_patient(patient_id)
+    image_reports = [r for r in reports if str(r.get("File_Type", "")).lower().startswith("image")]
+    image_reports = image_reports[-limit:]
+    out = []
+    for r in image_reports:
+        file_id = r.get("File_Telegram_ID", "")
+        if not file_id:
+            continue
+        try:
+            file_obj = await context.bot.get_file(file_id)
+            file_bytes = await file_obj.download_as_bytearray()
+            b64 = base64.b64encode(bytes(file_bytes)).decode("utf-8")
+            out.append({
+                "base64": b64,
+                "mime_type": r.get("File_Type") or "image/jpeg",
+                "file_name": r.get("File_Name", ""),
+            })
+        except Exception:
+            continue
+    return out
+
+
 async def casestudy_extra_receive(update, context):
     text = update.message.text.strip()
     case_context = context.user_data.get("cs_case_context", "")
     extra = "" if text in ("না", "না।", "no", "No", "No.") else text
     case_text = case_context + (f"\n\nবাড়তি তথ্য: {extra}" if extra else "")
+
+    patient_id = context.user_data.get("cs_patient_id", "")
+    images = await _download_report_images(context, patient_id, limit=2)
+    if images:
+        await update.message.reply_text("\U0001F50D রিপোর্টের ছবি দেখছি...")
+        vision_notes = case_study_ai.analyze_report_images(images)
+        if vision_notes:
+            case_text += f"\n\nরিপোর্ট ছবি বিশ্লেষণ (AI Vision):\n{vision_notes}"
 
     context.user_data["cs_case_text"] = case_text
     context.user_data["cs_lesson"] = 1

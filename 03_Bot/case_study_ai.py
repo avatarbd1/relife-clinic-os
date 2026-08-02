@@ -129,3 +129,49 @@ def answer_case_lesson(case_text: str, lesson_number: int) -> str:
         return data["choices"][0]["message"]["content"].strip()
     except Exception as e:
         return f"⚠️ AI থেকে উত্তর আনতে সমস্যা হয়েছে: {e}"
+
+
+VISION_MODEL = "google/gemma-4-31b-it:free"
+
+
+def analyze_report_images(image_data_list: list) -> str:
+    """রিপোর্টের ছবি (X-ray/MRI/অন্য রিপোর্ট) বিশ্লেষণ করে সংক্ষিপ্ত ফাইন্ডিংস ফেরত দেয়।
+    image_data_list: [{"base64": str, "mime_type": str, "file_name": str}, ...]
+    ফ্রি ভিশন মডেল ব্যবহার করে (OpenRouter :free) — লিমিটেড রেট, তাই রোগী প্রতি সীমিত ছবি পাঠানো হয়।"""
+    if not OPENROUTER_API_KEY or not image_data_list:
+        return ""
+
+    content = [{
+        "type": "text",
+        "text": (
+            "তুমি একজন Physiotherapy Clinical Tutor। নিচের রিপোর্ট/ইমেজগুলো দেখে "
+            "প্রতিটার জন্য সংক্ষেপে (২-৩ লাইন) কী Finding দেখা যাচ্ছে লিখো। "
+            "নিশ্চিত না হলে স্পষ্ট বলো 'স্পষ্ট বোঝা যাচ্ছে না'। কিছু বানিয়ে লিখো না। "
+            "মেডিক্যাল Terminology ইংরেজিতে রাখো, বাকিটা বাংলায়।"
+        ),
+    }]
+    for img in image_data_list:
+        content.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:{img.get('mime_type', 'image/jpeg')};base64,{img.get('base64', '')}"},
+        })
+
+    try:
+        resp = requests.post(
+            OPENROUTER_URL,
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": VISION_MODEL,
+                "messages": [{"role": "user", "content": content}],
+                "max_tokens": 700,
+            },
+            timeout=45,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return data["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        return f"(রিপোর্ট ছবি বিশ্লেষণে সমস্যা হয়েছে, স্কিপ করা হলো: {e})"
