@@ -146,6 +146,7 @@ _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 (CASESTUDY_LESSON,) = range(39, 40)
 (CASESTUDY_SEARCH, CASESTUDY_EXTRA) = range(40, 42)
 (CASESTUDY_QUESTION,) = range(42, 43)  # আর ব্যবহার হয় না (patch22 revert) — future reuse-এর জন্য number সংরক্ষিত
+(REG_FIELDS,) = range(43, 44)  # রেজিস্ট্রেশনে missing fields একসাথে জিজ্ঞাসার state (patch38)
 
 TPLAN_CATEGORY, TPLAN_TESTS = range(200, 202)
 
@@ -943,6 +944,8 @@ async def reg_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
     context.user_data["new_patient"] = {}
+    context.user_data.pop("new_patient_dup_checked", None)
+    context.user_data.pop("new_patient_missing", None)
     choice_kb = ReplyKeyboardMarkup(
         [["📷 Photo/Report দিয়ে", "✍️ নিজে লিখব"]],
         resize_keyboard=True, one_time_keyboard=True,
@@ -953,48 +956,52 @@ async def reg_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return REG_PHOTO_CHOICE
 
 
-async def _reg_ask_address_or_note(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    p = context.user_data.get("new_patient", {})
-    if not p.get("Address"):
-        await update.message.reply_text("ঠিকানা লেখো:", reply_markup=ReplyKeyboardRemove())
-        return REG_ADDRESS
-    await update.message.reply_text(
-        "সমস্যা/বয়স/অন্য কিছু থাকলে এক লাইনে লেখো (না থাকলে - দাও):",
-        reply_markup=_skip_keyboard(),
-    )
-    return REG_NOTE
+_REG_REQUIRED_ORDER = ["Full_Name", "Phone", "Address", "Age"]
+_REG_FIELD_LABELS = {"Full_Name": "নাম", "Phone": "ফোন", "Address": "ঠিকানা", "Age": "বয়স"}
 
 
-async def _reg_resume_after_prefill(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+def _reg_missing_fields(p: dict) -> list:
+    return [k for k in _REG_REQUIRED_ORDER if not str(p.get(k, "")).strip()]
+
+
+async def _reg_ask_fields_or_continue(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     p = context.user_data.setdefault("new_patient", {})
-    if not p.get("Full_Name"):
-        await update.message.reply_text(
-            "নতুন রোগীর পূর্ণ নাম লেখো:", reply_markup=ReplyKeyboardRemove()
-        )
-        return REG_NAME
-    if not p.get("Phone"):
-        await update.message.reply_text(
-            "ফোন নম্বর লেখো:", reply_markup=ReplyKeyboardRemove()
-        )
-        return REG_PHONE
-    existing = sheets.find_patient_by_phone(p["Phone"])
-    if existing:
-        dup_keyboard = ReplyKeyboardMarkup(
-            [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
-        )
-        await update.message.reply_text(
-            "⚠️ এই ফোন নম্বরে ইতিমধ্যে রোগী আছে:\n"
-            f"নাম: {existing.get('Full_Name')}\n"
-            f"Patient ID: {existing.get('Patient_ID')}\n\n"
-            "তবুও কি নতুন করে রেজিস্ট্রেশন করবে?",
-            reply_markup=dup_keyboard,
-        )
-        return REG_PHONE_DUP
-    if not p.get("Address"):
-        await update.message.reply_text("ঠিকানা লেখো:", reply_markup=ReplyKeyboardRemove())
-        return REG_ADDRESS
+    missing = _reg_missing_fields(p)
+    if missing:
+        context.user_data["new_patient_missing"] = missing
+        labels = [_REG_FIELD_LABELS[k] for k in missing]
+        if len(labels) == 1:
+            prompt = f"{labels[0]} লেখো:"
+        else:
+            prompt = (
+                "নিচের তথ্যগুলো কমা (,) দিয়ে আলাদা করে এই ক্রমে এক লাইনে লেখো:\n\n"
+                f"{', '.join(labels)}"
+            )
+        await update.message.reply_text(prompt, reply_markup=ReplyKeyboardRemove())
+        return REG_FIELDS
+    return await _reg_check_duplicate_then_note(update, context)
+
+
+async def _reg_check_duplicate_then_note(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    p = context.user_data.setdefault("new_patient", {})
+    phone = str(p.get("Phone", "")).strip()
+    if phone and not context.user_data.get("new_patient_dup_checked"):
+        context.user_data["new_patient_dup_checked"] = True
+        existing = sheets.find_patient_by_phone(phone)
+        if existing:
+            dup_keyboard = ReplyKeyboardMarkup(
+                [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
+            )
+            await update.message.reply_text(
+                "⚠️ এই ফোন নম্বরে ইতিমধ্যে রোগী আছে:\n"
+                f"নাম: {existing.get('Full_Name')}\n"
+                f"Patient ID: {existing.get('Patient_ID')}\n\n"
+                "তবুও কি নতুন করে রেজিস্ট্রেশন করবে?",
+                reply_markup=dup_keyboard,
+            )
+            return REG_PHONE_DUP
     await update.message.reply_text(
-        "সমস্যা/বয়স/অন্য কিছু থাকলে এক লাইনে লেখো (না থাকলে - দাও):",
+        "সমস্যা/অন্য কিছু থাকলে এক লাইনে লেখো (না থাকলে - দাও):",
         reply_markup=_skip_keyboard(),
     )
     return REG_NOTE
@@ -1008,10 +1015,7 @@ async def reg_photo_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=ReplyKeyboardRemove(),
         )
         return REG_PHOTO_WAIT
-    await update.message.reply_text(
-        "নতুন রোগীর পূর্ণ নাম লেখো:", reply_markup=ReplyKeyboardRemove()
-    )
-    return REG_NAME
+    return await _reg_ask_fields_or_continue(update, context)
 
 
 async def reg_photo_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1046,10 +1050,9 @@ async def reg_photo_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not found_lines:
         debug_line = f"\n\n🔧 Debug: {debug_error}" if debug_error else ""
         await update.message.reply_text(
-            f"⚠️ ছবি থেকে তথ্য পড়া যায়নি। নিজে লিখতে হবে।{debug_line}\nনতুন রোগীর পূর্ণ নাম লেখো:",
-            reply_markup=ReplyKeyboardRemove(),
+            f"⚠️ ছবি থেকে তথ্য পড়া যায়নি। নিজে লিখতে হবে।{debug_line}"
         )
-        return REG_NAME
+        return await _reg_ask_fields_or_continue(update, context)
 
     summary = "📋 ছবি থেকে এই তথ্য পাওয়া গেছে:\n\n" + "\n".join(found_lines)
     summary += "\n\nঠিক আছে?"
@@ -1087,13 +1090,13 @@ def _is_negative(text: str) -> bool:
 async def reg_photo_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     if _is_affirmative(text):
-        return await _reg_resume_after_prefill(update, context)
+        return await _reg_ask_fields_or_continue(update, context)
     if _is_negative(text):
         context.user_data["new_patient"] = {}
-        await update.message.reply_text(
-            "ঠিক আছে, নতুন করে নাম লেখো:", reply_markup=ReplyKeyboardRemove()
-        )
-        return REG_NAME
+        context.user_data.pop("new_patient_dup_checked", None)
+        context.user_data.pop("new_patient_missing", None)
+        await update.message.reply_text("ঠিক আছে, নতুন করে লেখো।")
+        return await _reg_ask_fields_or_continue(update, context)
     confirm_kb = ReplyKeyboardMarkup(
         [["হ্যাঁ, ঠিক আছে", "না, নিজে লিখব"]],
         resize_keyboard=True, one_time_keyboard=True,
@@ -1105,51 +1108,35 @@ async def reg_photo_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return REG_PHOTO_CONFIRM
 
 
-async def reg_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["new_patient"]["Full_Name"] = update.message.text.strip()
-    await update.message.reply_text("ফোন নম্বর লেখো:")
-    return REG_PHONE
-
-
-async def reg_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    phone = update.message.text.strip()
-    context.user_data["new_patient"]["Phone"] = phone
-    existing = sheets.find_patient_by_phone(phone)
-    if existing:
-        dup_keyboard = ReplyKeyboardMarkup(
-            [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
-        )
+async def reg_fields(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    missing = context.user_data.get("new_patient_missing", [])
+    parts = [x.strip() for x in update.message.text.strip().split(",")]
+    if len(parts) != len(missing) or any(not x for x in parts):
+        labels = [_REG_FIELD_LABELS[k] for k in missing]
         await update.message.reply_text(
-            "⚠️ এই ফোন নম্বরে ইতিমধ্যে রোগী আছে:\n"
-            f"নাম: {existing.get('Full_Name')}\n"
-            f"Patient ID: {existing.get('Patient_ID')}\n\n"
-            "তবুও কি নতুন করে রেজিস্ট্রেশন করবে?",
-            reply_markup=dup_keyboard,
+            f"⚠️ ঠিক {len(missing)}টা তথ্য কমা (,) দিয়ে আলাদা করে দাও, এই ক্রমে: {', '.join(labels)}"
         )
-        return REG_PHONE_DUP
-    return await _reg_ask_address_or_note(update, context)
+        return REG_FIELDS
+    p = context.user_data.setdefault("new_patient", {})
+    for key, val in zip(missing, parts):
+        p[key] = val
+    context.user_data.pop("new_patient_missing", None)
+    return await _reg_check_duplicate_then_note(update, context)
 
 
 async def reg_phone_dup_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip().lower()
     staff = context.user_data.get("staff", {})
     if text in ("হ্যাঁ", "yes", "y", "হা", "ha"):
-        return await _reg_ask_address_or_note(update, context)
+        return await _reg_check_duplicate_then_note(update, context)
     context.user_data.pop("new_patient", None)
+    context.user_data.pop("new_patient_dup_checked", None)
+    context.user_data.pop("new_patient_missing", None)
     await update.message.reply_text(
         "❌ ডুপ্লিকেট এড়াতে রেজিস্ট্রেশন বাতিল করা হয়েছে।",
         reply_markup=_menu_keyboard(staff.get("Role", "")),
     )
     return ConversationHandler.END
-
-
-async def reg_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["new_patient"]["Address"] = update.message.text.strip()
-    await update.message.reply_text(
-        "সমস্যা/বয়স/অন্য কিছু থাকলে এক লাইনে লেখো (না থাকলে - দাও):",
-        reply_markup=_skip_keyboard(),
-    )
-    return REG_NOTE
 
 
 async def reg_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1159,6 +1146,7 @@ async def reg_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
     summary = (
         "নিচের তথ্য ঠিক আছে কিনা চেক করো:\n\n"
         f"নাম: {p['Full_Name']}\nফোন: {p['Phone']}\nঠিকানা: {p['Address']}\n"
+        f"বয়স: {p.get('Age') or '-'}\n"
         f"নোট: {p['Diagnosis'] or '-'}\n\n"
         "ঠিক থাকলে নিচের বাটনে ট্যাপ করো।"
     )
@@ -1194,12 +1182,16 @@ async def reg_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=_menu_keyboard(staff.get("Role", "")),
         )
     context.user_data.pop("new_patient", None)
+    context.user_data.pop("new_patient_dup_checked", None)
+    context.user_data.pop("new_patient_missing", None)
     return ConversationHandler.END
 
 
 async def reg_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff", {})
     context.user_data.pop("new_patient", None)
+    context.user_data.pop("new_patient_dup_checked", None)
+    context.user_data.pop("new_patient_missing", None)
     await update.message.reply_text(
         "রেজিস্ট্রেশন বাতিল করা হয়েছে।",
         reply_markup=_menu_keyboard(staff.get("Role", "")),
@@ -4094,10 +4086,8 @@ def main():
             REG_PHOTO_CHOICE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_photo_choice)],
             REG_PHOTO_WAIT: [MessageHandler(filters.PHOTO, reg_photo_receive)],
             REG_PHOTO_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_photo_confirm)],
-            REG_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_name)],
-            REG_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_phone)],
+            REG_FIELDS: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_fields)],
             REG_PHONE_DUP: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_phone_dup_confirm)],
-            REG_ADDRESS: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_address)],
             REG_NOTE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_note)],
             REG_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_confirm)],
         },
