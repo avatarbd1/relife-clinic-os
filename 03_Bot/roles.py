@@ -32,6 +32,7 @@ MENU_PATIENT_LIST = "📋 রোগীর তালিকা"
 MENU_DAILY_REGISTER = "📋 আজকের রেজিস্টার"
 MENU_STAFF_AI_QUERY = "🤖 AI প্রশ্ন করুন"
 MENU_CASE_STUDY = "📚 কেস স্টাডি"
+MENU_DELETE_ENTRY = "🗑️ আজকের এন্ট্রি মুছুন"
 
 ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
     Role.OWNER: [
@@ -40,6 +41,7 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_APPOINTMENT, MENU_TODAY_SCHEDULE],
         [MENU_TREATMENT],
         [MENU_PAYMENT, MENU_REPORTS],
+        [MENU_DELETE_ENTRY],
         [MENU_AI_TOOLS],
         [MENU_SETTINGS],
     ],
@@ -48,6 +50,7 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_PATIENT_MGMT],
         [MENU_APPOINTMENT, MENU_TODAY_SCHEDULE],
         [MENU_PAYMENT, MENU_REPORTS],
+        [MENU_DELETE_ENTRY],
         [MENU_STAFF_AI_QUERY],
     ],
     Role.THERAPIST: [
@@ -64,6 +67,7 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_APPOINTMENT, MENU_TODAY_SCHEDULE],
         [MENU_TREATMENT],
         [MENU_REPORTS],
+        [MENU_DELETE_ENTRY],
         [MENU_STAFF_AI_QUERY],
     ],
 }
