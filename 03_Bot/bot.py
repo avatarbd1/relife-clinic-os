@@ -137,6 +137,7 @@ _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 
 (STAFFAI_QUESTION,) = range(37, 38)
 (CASESTUDY_INPUT,) = range(38, 39)
+(CASESTUDY_LESSON,) = range(39, 40)
 
 TPLAN_CATEGORY, TPLAN_TESTS = range(200, 202)
 
@@ -3306,13 +3307,40 @@ async def casestudy_start(update, context):
 async def casestudy_receive(update, context):
     staff = context.user_data.get("staff", {})
     case_text = update.message.text.strip()
-    await update.message.reply_text("\U0001F914 কেস বিশ্লেষণ করছি...")
-    answer = case_study_ai.answer_case_study(case_text)
-    await update.message.reply_text(
-        answer,
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
-    )
-    return ConversationHandler.END
+    context.user_data["cs_case_text"] = case_text
+    context.user_data["cs_lesson"] = 1
+    await update.message.reply_text("\U0001F914 কেস বিশ্লেষণ করছি, Lesson 1 তৈরি হচ্ছে...")
+    answer = case_study_ai.answer_case_lesson(case_text, 1)
+    await update.message.reply_text(answer)
+    return CASESTUDY_LESSON
+
+
+async def casestudy_lesson_receive(update, context):
+    staff = context.user_data.get("staff", {})
+    text = update.message.text.strip()
+    case_text = context.user_data.get("cs_case_text", "")
+    lesson = context.user_data.get("cs_lesson", 1)
+
+    if text != "দাও":
+        await update.message.reply_text(
+            "পরবর্তী Lesson দেখতে শুধু 'দাও' লিখুন, অথবা /cancel দিয়ে বাতিল করুন।"
+        )
+        return CASESTUDY_LESSON
+
+    lesson += 1
+    await update.message.reply_text(f"\U0001F914 Lesson {lesson} তৈরি হচ্ছে...")
+    answer = case_study_ai.answer_case_lesson(case_text, lesson)
+    context.user_data["cs_lesson"] = lesson
+
+    if lesson >= len(case_study_ai.LESSON_TITLES):
+        await update.message.reply_text(
+            answer,
+            reply_markup=_menu_keyboard(staff.get("Role", "")),
+        )
+        return ConversationHandler.END
+
+    await update.message.reply_text(answer)
+    return CASESTUDY_LESSON
 
 
 async def casestudy_cancel(update, context):
@@ -3622,6 +3650,9 @@ def main():
         states={
             CASESTUDY_INPUT: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), casestudy_receive)
+            ],
+            CASESTUDY_LESSON: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), casestudy_lesson_receive)
             ],
         },
         fallbacks=[

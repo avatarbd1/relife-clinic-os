@@ -1,64 +1,17 @@
-"""
-case_study_ai.py
-রুগীর লাইভ কেস বর্ণনা থেকে BPT (Bachelor of Physiotherapy) কারিকুলামের
-প্রাসঙ্গিক সাবজেক্ট খুঁজে বের করে, প্রতিটাতে কী observe/practice করতে হবে
-তা বাংলায় বলে দেয়। OpenRouter API ব্যবহার করে (Staff AI Query ফিচারের মতোই)।
-"""
+# -*- coding: utf-8 -*-
+import sys
 
-import os
-import requests
+path1 = "case_study_ai.py"
+with open(path1, "r", encoding="utf-8") as f:
+    src1 = f.read()
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL = "openai/gpt-4o-mini"
+if "def answer_case_lesson" in src1:
+    print("case_study_ai.py: already patched (answer_case_lesson exists) — skip")
+else:
+    if "def answer_case_study(case_text: str) -> str:" not in src1:
+        sys.exit("ABORT: case_study_ai.py — original answer_case_study() function paini.")
 
-CURRICULUM_CONTEXT = """তুমি একজন BPT (Bachelor of Physiotherapy) কোর্সের ক্লিনিক্যাল টিউটর।
-নিচে ৪ বছরের BPT কারিকুলামের সব সাবজেক্ট দেওয়া হলো:
-
-১ম বর্ষ: Anatomy-I, Physiology-I, Biochemistry, Kinesiology, Electrotherapy, Therapeutic Exercise-I, Community Medicine, Psychology
-
-২য় বর্ষ: Anatomy-II, Physiology-II, Pathology & Microbiology-I, Biomechanics, Radiology & Imaging, Orthopedics & Rheumatology, Therapeutic Exercise-II, Electrotherapy & Hydrotherapy, Paediatric, Physiotherapy in Orthopedic, Clinical Practice (Orthopedics), Clinical Practice (Spinal Cord Injury)
-
-৩য় বর্ষ: Pathology & Microbiology-II, Pharmacology-I, Neurology, Cardiopulmonary, General Surgery, Research Methodology, Physiotherapy in Surgical Conditions, Physiotherapy in Cardiopulmonary, Physiotherapy in Neurology and Pediatric, Orthopedic Medicine (MSK Peripheral), Clinical Practice (Cardiopulmonary), Clinical Practice (Neurology)
-
-৪র্থ বর্ষ: Pharmacology-II, Geriatric, Psychiatry, Sports Physiotherapy, Orthopedic Medicine (MSK Spinal), Professional Ethics and Management, Teaching Methodology, Rehabilitation Medicine, Prosthetics & Orthotic, Research Project, Clinical Practice (Paediatric), Clinical Practice (Elective), Clinical Practice (Musculoskeletal)
-
-ব্যবহারকারী একজন BPT স্টুডেন্ট, যে ডিউটিতে থাকা অবস্থায় একটা লাইভ রুগীর কেস দিচ্ছে।
-তোমার কাজ:
-1. এই কেসের সাথে সবচেয়ে প্রাসঙ্গিক ৩-৬টা সাবজেক্ট বেছে নাও (উপরের লিস্ট থেকে, যেকোনো বর্ষের হতে পারে)।
-2. প্রতিটা সাবজেক্টের জন্য ১-২ লাইনে বলো — এই রুগীর মধ্যে কী observe/assess/practice করা উচিত।
-3. শেষে ২-৩ লাইনে "আজকে যা শিখবে" সারমর্ম দাও।
-4. উত্তর অবশ্যই বাংলায়, সংক্ষিপ্ত, Telegram মেসেজ আকারে দাও (heavy markdown ছাড়া, সাধারণ বুলেট পয়েন্ট ঠিক আছে)।
-5. কেস অস্পষ্ট/অসম্পূর্ণ মনে হলেও, যতটুকু তথ্য আছে তা দিয়ে best-guess উত্তর দাও — প্রশ্ন করে সময় নষ্ট কোরো না।"""
-
-
-def answer_case_study(case_text: str) -> str:
-    if not OPENROUTER_API_KEY:
-        return "⚠️ OPENROUTER_API_KEY সেট করা নেই। .env / Render env var চেক করো।"
-
-    try:
-        resp = requests.post(
-            OPENROUTER_URL,
-            headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": MODEL,
-                "messages": [
-                    {"role": "system", "content": CURRICULUM_CONTEXT},
-                    {"role": "user", "content": f"রুগীর কেস: {case_text}"},
-                ],
-                "max_tokens": 700,
-            },
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        return f"⚠️ AI থেকে উত্তর আনতে সমস্যা হয়েছে: {e}"
-
+    addition = r'''
 
 LESSON_TITLES = [
     "Lesson 1: Case Summary, Chief Complaint, History Taking, Red Flags Screening, Clinical Reasoning, Possible Diagnosis, Differential Diagnosis",
@@ -128,3 +81,113 @@ def answer_case_lesson(case_text: str, lesson_number: int) -> str:
         return data["choices"][0]["message"]["content"].strip()
     except Exception as e:
         return f"⚠️ AI থেকে উত্তর আনতে সমস্যা হয়েছে: {e}"
+'''
+    src1 = src1 + addition
+    with open(path1, "w", encoding="utf-8") as f:
+        f.write(src1)
+    print("case_study_ai.py: patched OK")
+
+path2 = "bot.py"
+with open(path2, "r", encoding="utf-8") as f:
+    src2 = f.read()
+
+if "CASESTUDY_LESSON" in src2:
+    print("bot.py: already patched (CASESTUDY_LESSON exists) — skip")
+else:
+    old_state = "(CASESTUDY_INPUT,) = range(38, 39)"
+    c = src2.count(old_state)
+    if c != 1:
+        sys.exit(f"ABORT: bot.py state line — {c} matches found (expected 1). File drift.")
+    src2 = src2.replace(old_state, old_state + "\n(CASESTUDY_LESSON,) = range(39, 40)", 1)
+
+    old_receive = '''async def casestudy_receive(update, context):
+    staff = context.user_data.get("staff", {})
+    case_text = update.message.text.strip()
+    await update.message.reply_text("\U0001F914 কেস বিশ্লেষণ করছি...")
+    answer = case_study_ai.answer_case_study(case_text)
+    await update.message.reply_text(
+        answer,
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
+    return ConversationHandler.END'''
+    c = src2.count(old_receive)
+    if c != 1:
+        sys.exit(f"ABORT: bot.py casestudy_receive() — {c} matches found (expected 1). File drift.")
+
+    new_receive = '''async def casestudy_receive(update, context):
+    staff = context.user_data.get("staff", {})
+    case_text = update.message.text.strip()
+    context.user_data["cs_case_text"] = case_text
+    context.user_data["cs_lesson"] = 1
+    await update.message.reply_text("\U0001F914 কেস বিশ্লেষণ করছি, Lesson 1 তৈরি হচ্ছে...")
+    answer = case_study_ai.answer_case_lesson(case_text, 1)
+    await update.message.reply_text(answer)
+    return CASESTUDY_LESSON
+
+
+async def casestudy_lesson_receive(update, context):
+    staff = context.user_data.get("staff", {})
+    text = update.message.text.strip()
+    case_text = context.user_data.get("cs_case_text", "")
+    lesson = context.user_data.get("cs_lesson", 1)
+
+    if text != "দাও":
+        await update.message.reply_text(
+            "পরবর্তী Lesson দেখতে শুধু 'দাও' লিখুন, অথবা /cancel দিয়ে বাতিল করুন।"
+        )
+        return CASESTUDY_LESSON
+
+    lesson += 1
+    await update.message.reply_text(f"\U0001F914 Lesson {lesson} তৈরি হচ্ছে...")
+    answer = case_study_ai.answer_case_lesson(case_text, lesson)
+    context.user_data["cs_lesson"] = lesson
+
+    if lesson >= len(case_study_ai.LESSON_TITLES):
+        await update.message.reply_text(
+            answer,
+            reply_markup=_menu_keyboard(staff.get("Role", "")),
+        )
+        return ConversationHandler.END
+
+    await update.message.reply_text(answer)
+    return CASESTUDY_LESSON'''
+    src2 = src2.replace(old_receive, new_receive, 1)
+
+    old_states = '''        states={
+            CASESTUDY_INPUT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), casestudy_receive)
+            ],
+        },
+        fallbacks=[
+            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
+            CommandHandler("cancel", casestudy_cancel),
+            CommandHandler("start", _restart_via_start),
+        ],
+    )
+    app.add_handler(casestudy_conv)'''
+    c = src2.count(old_states)
+    if c != 1:
+        sys.exit(f"ABORT: bot.py casestudy_conv states block — {c} matches found (expected 1). File drift.")
+
+    new_states = '''        states={
+            CASESTUDY_INPUT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), casestudy_receive)
+            ],
+            CASESTUDY_LESSON: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), casestudy_lesson_receive)
+            ],
+        },
+        fallbacks=[
+            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
+            CommandHandler("cancel", casestudy_cancel),
+            CommandHandler("start", _restart_via_start),
+        ],
+    )
+    app.add_handler(casestudy_conv)'''
+    src2 = src2.replace(old_states, new_states, 1)
+
+    with open(path2, "w", encoding="utf-8") as f:
+        f.write(src2)
+    print("bot.py: patched OK")
+
+print("DONE")
