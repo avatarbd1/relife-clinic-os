@@ -2861,6 +2861,11 @@ async def thist_patient_callback(update: Update, context: ContextTypes.DEFAULT_T
     context.user_data["thist_notes"] = {
         str(n.get("Treatment_ID", "")).strip(): n for n in notes
     }
+    # সেশন ১→২→৩... নেভিগেশনের জন্য তারিখ অনুযায়ী বাড়ন্ত ক্রমে সাজানো (patch33)
+    notes_asc = sorted(notes, key=lambda n: str(n.get("Date", "")))
+    context.user_data["thist_notes_order"] = [
+        str(n.get("Treatment_ID", "")).strip() for n in notes_asc
+    ]
     notes_sorted = sorted(notes, key=lambda n: str(n.get("Date", "")), reverse=True)
     buttons = []
     for n in notes_sorted[:15]:
@@ -2873,18 +2878,21 @@ async def thist_patient_callback(update: Update, context: ContextTypes.DEFAULT_T
     )
     return "THIST_DATE"
 
-
-async def thist_date_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    tid = query.data.replace("thdate_", "", 1)
+async def _thist_render_note(query, context: ContextTypes.DEFAULT_TYPE, tid: str):
+    """একটা নির্দিষ্ট ট্রিটমেন্ট নোট দেখায়, সাথে সেশন ⬅️আগের/পরের➡️ নেভিগেশন বাটন (patch33)।"""
     notes_map = context.user_data.get("thist_notes", {})
+    order = context.user_data.get("thist_notes_order", [])
     n = notes_map.get(tid)
     if not n:
         await query.edit_message_text("নোট পাওয়া যায়নি।")
-        return ConversationHandler.END
+        return
+    idx = order.index(tid) if tid in order else -1
     lines = [
         f"📝 {n.get('Patient_Name', '')} ({n.get('Patient_ID', '')}) — {n.get('Date', '')}",
+    ]
+    if idx != -1:
+        lines.append(f"সেশন {idx + 1}/{len(order)}")
+    lines += [
         "",
         f"Diagnosis: {n.get('Diagnosis', '') or '-'}",
         f"Treatment Given: {n.get('Treatment_Given', '') or '-'}",
@@ -2894,25 +2902,50 @@ async def thist_date_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         f"Machines: {n.get('Machines', '') or '-'}",
     ]
     patient_id = str(n.get("Patient_ID", "")).strip()
-    context.user_data.pop("thist_notes", None)
+
+    nav_row = []
+    if idx > 0:
+        nav_row.append(InlineKeyboardButton("⬅️ আগের সেশন", callback_data=f"thnav_{idx - 1}"))
+    if idx != -1 and idx < len(order) - 1:
+        nav_row.append(InlineKeyboardButton("পরের সেশন ➡️", callback_data=f"thnav_{idx + 1}"))
+
+    buttons = [nav_row] if nav_row else []
     if patient_id:
-        await query.edit_message_text(
-            "\n".join(lines),
-            reply_markup=_patient_card_keyboard(
-                patient_id,
-                back_callback_data=f"thistback_{patient_id}",
-                back_label="🔙 তারিখের তালিকায় ফিরুন",
-            ),
+        card_kb = _patient_card_keyboard(
+            patient_id,
+            back_callback_data=f"thistback_{patient_id}",
+            back_label="🔙 তারিখের তালিকায় ফিরুন",
         )
+        buttons += card_kb.inline_keyboard
+        await query.edit_message_text("\n".join(lines), reply_markup=InlineKeyboardMarkup(buttons))
     else:
-        await query.edit_message_text("\n".join(lines))
+        markup = InlineKeyboardMarkup(buttons) if buttons else None
+        await query.edit_message_text("\n".join(lines), reply_markup=markup)
+
+
+async def thist_date_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    tid = query.data.replace("thdate_", "", 1)
+    await _thist_render_note(query, context, tid)
     return ConversationHandler.END
+
+
+async def thist_nav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """⬅️ আগের সেশন / পরের সেশন ➡️ বাটন হ্যান্ডেল করে (patch33)।"""
+    query = update.callback_query
+    order = context.user_data.get("thist_notes_order", [])
+    idx = int(query.data.replace("thnav_", "", 1))
+    if idx < 0 or idx >= len(order):
+        await query.answer("আর কোনো সেশন নেই।", show_alert=True)
+        return
+    await query.answer()
+    await _thist_render_note(query, context, order[idx])
 
 
 async def thist_back_to_dates_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Treatment History নোট কার্ড থেকে '🔙 তারিখের তালিকায় ফিরুন' চাপলে এই রোগীর
-    তারিখ-ভিত্তিক ট্রিটমেন্ট নোট তালিকা আবার দেখায় (patch26 — আগে এটা ভুল করে সাধারণ
-    📋 রোগীর তালিকায় নিয়ে যেত)।"""
+    তারিখ-ভিত্তিক ট্রিটমেন্ট নোট তালিকা আবার দেখায়।"""
     query = update.callback_query
     await query.answer()
     patient_id = query.data.replace("thistback_", "", 1)
@@ -2923,6 +2956,10 @@ async def thist_back_to_dates_callback(update: Update, context: ContextTypes.DEF
     context.user_data["thist_notes"] = {
         str(n.get("Treatment_ID", "")).strip(): n for n in notes
     }
+    notes_asc = sorted(notes, key=lambda n: str(n.get("Date", "")))
+    context.user_data["thist_notes_order"] = [
+        str(n.get("Treatment_ID", "")).strip() for n in notes_asc
+    ]
     notes_sorted = sorted(notes, key=lambda n: str(n.get("Date", "")), reverse=True)
     buttons = []
     for n in notes_sorted[:15]:
@@ -2933,7 +2970,6 @@ async def thist_back_to_dates_callback(update: Update, context: ContextTypes.DEF
         "কোন তারিখের ট্রিটমেন্ট প্ল্যান দেখতে চাও?",
         reply_markup=InlineKeyboardMarkup(buttons),
     )
-
 
 async def thist_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.pop("thist_notes", None)
@@ -4167,6 +4203,7 @@ def main():
     # তারিখ সিলেক্ট করার পর conversation END হয়ে যায়, ফলে "🔙 ফিরুন" দিয়ে ফিরে এসে
     # আরেকটা তারিখ চাপলে কোনো handler সেটা ধরত না। গ্লোবালি রেজিস্টার করে ফিক্স (patch30)।
     app.add_handler(CallbackQueryHandler(thist_date_callback, pattern="^thdate_"))
+    app.add_handler(CallbackQueryHandler(thist_nav_callback, pattern="^thnav_"))
     app.add_handler(CallbackQueryHandler(thist_back_to_dates_callback, pattern="^thistback_"))
 
     staffai_conv = ConversationHandler(
