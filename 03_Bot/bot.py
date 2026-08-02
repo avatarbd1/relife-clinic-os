@@ -89,10 +89,10 @@ REG_PHOTO_CHOICE, REG_PHOTO_WAIT, REG_PHOTO_CONFIRM = range(90, 93)
     TREAT_SEARCH,
     TREAT_SELECT,
     TREAT_MACHINES,
-    TREAT_UNUSED1,
-    TREAT_UNUSED2,
-    TREAT_UNUSED3,
-    TREAT_UNUSED4,
+    TREAT_CONFIRM_PLAN,
+    TREAT_EDIT_EXERCISE,
+    TREAT_EDIT_ELECTRO,
+    TREAT_EDIT_MANUAL,
     TREAT_UNUSED5,
     TREAT_UNUSED6,
     TREAT_UNUSED7,
@@ -150,6 +150,15 @@ MACHINE_LIST = [
     "ISTM (Myofascial Release)", "Dry Needling",
     "Wax Bath", "Cupping",
 ]
+
+
+def _treat_confirm_keyboard(patient_id: str) -> InlineKeyboardMarkup:
+    buttons = [
+        [InlineKeyboardButton("✅ গতকালের মতোই", callback_data=f"trsame_{patient_id}")],
+        [InlineKeyboardButton("✏️ এডিট করবো", callback_data=f"tredit_{patient_id}")],
+        [InlineKeyboardButton("⬅️ আগের ধাপ", callback_data="trback_search")],
+    ]
+    return InlineKeyboardMarkup(buttons)
 
 
 def _machine_keyboard(selected: set) -> InlineKeyboardMarkup:
@@ -447,6 +456,8 @@ def _parse_pt_edit_message(text: str) -> dict:
         "exercise": "Exercise",
         "homeexercise": "Home_Exercise",
         "home": "Home_Exercise",
+        "machine": "Machines",
+        "machines": "Machines",
         "note": "Clinical_Note",
         "clinicalnote": "Clinical_Note",
     }
@@ -634,8 +645,8 @@ async def pt_dashboard_edit_callback(update: Update, context: ContextTypes.DEFAU
         "✏️ Edit Mode\n\n"
         "যা বদলেছে শুধু সেটাই পাঠাও। কিছুই mandatory না।\n\n"
         "Example:\n"
-        "Pain: 4/10\nROM: improved\nMMT: 4/5\nExercise: progressed core\nNote: tolerated well\n\n"
-        f"Current Pain: {treatment.get('Pain') or '-'} | ROM: {treatment.get('ROM') or '-'} | MMT: {treatment.get('MMT') or '-'}"
+        "Pain: 4/10\nROM: improved\nMMT: 4/5\nExercise: progressed core\nMachines: Hot Pack, TENS\nNote: tolerated well\n\n"
+        f"Current Pain: {treatment.get('Pain') or '-'} | ROM: {treatment.get('ROM') or '-'} | MMT: {treatment.get('MMT') or '-'} | Machines: {treatment.get('Machines') or '-'}"
     )
     markup = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Workspace", callback_data="ptwback")]])
     await query.edit_message_text(prompt, reply_markup=markup)
@@ -1909,7 +1920,7 @@ async def _treat_prepare_for_patient(patient: dict, context: ContextTypes.DEFAUL
         f"এক্সারসাইজ: {plan.get('Exercise_Plan') or '-'}\n"
         f"ইলেক্ট্রোথেরাপি: {plan.get('Electrotherapy_Plan') or '-'}\n"
         f"ম্যানুয়াল থেরাপি: {plan.get('Manual_Therapy_Plan') or '-'}\n\n"
-        "আজকের মেশিন/মোডালিটি বেছে নাও, তারপর সম্পন্ন চাপো:"
+        "আজকের এক্সারসাইজ/ইলেক্ট্রোথেরাপি/ম্যানুয়াল থেরাপি কি গতকালের মতোই থাকবে, নাকি এডিট করবে?"
     )
     return selected, summary
 
@@ -1975,7 +1986,74 @@ async def treat_select_callback(update: Update, context: ContextTypes.DEFAULT_TY
         await query.edit_message_text(summary)
         return ConversationHandler.END
 
-    await query.edit_message_text(summary, reply_markup=_machine_keyboard(selected))
+    await query.edit_message_text(summary, reply_markup=_treat_confirm_keyboard(patient_id))
+    return TREAT_CONFIRM_PLAN
+
+
+async def treat_confirm_same_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """'✅ গতকালের মতোই' চাপলে Exercise/Electrotherapy/Manual Therapy এবং Machines —
+    সবকিছুই গতকালের মতো রেখে সাথে সাথে সেভ হয়ে যাবে। মেশিন বাছাইয়ের স্ক্রিন আর দেখাবে না।"""
+    query = update.callback_query
+    await query.answer()
+    t = context.user_data.get("treatment", {})
+    selected = context.user_data.get("treat_selected", set())
+    return await _treat_save_note(query, context, t, selected)
+
+
+async def treat_confirm_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """'✏️ এডিট করবো' চাপলে Exercise → Electrotherapy → Manual Therapy একে একে জিজ্ঞেস করা হবে।
+    রিপ্লাইয়ে '-' দিলে আগের (প্ল্যানের) মানটাই থেকে যাবে।"""
+    query = update.callback_query
+    await query.answer()
+    t = context.user_data.get("treatment", {})
+    prev_ex = t.get("Exercise", "")
+    hint = f" (আগেরটা: {prev_ex} — একই রাখতে - দাও)" if prev_ex else " (না থাকলে - দাও)"
+    await query.edit_message_text(f"✏️ আজকের এক্সারসাইজ লেখো{hint}:")
+    return TREAT_EDIT_EXERCISE
+
+
+async def treat_edit_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    t = context.user_data.get("treatment", {})
+    if text != "-":
+        t["Exercise"] = text
+    context.user_data["treatment"] = t
+
+    prev_el = t.get("Electrotherapy", "")
+    hint = f" (আগেরটা: {prev_el} — একই রাখতে - দাও)" if prev_el else " (না থাকলে - দাও)"
+    await update.message.reply_text(f"✏️ আজকের ইলেক্ট্রোথেরাপি লেখো{hint}:")
+    return TREAT_EDIT_ELECTRO
+
+
+async def treat_edit_electro(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    t = context.user_data.get("treatment", {})
+    if text != "-":
+        t["Electrotherapy"] = text
+    context.user_data["treatment"] = t
+
+    prev_man = t.get("Manual_Therapy", "")
+    hint = f" (আগেরটা: {prev_man} — একই রাখতে - দাও)" if prev_man else " (না থাকলে - দাও)"
+    await update.message.reply_text(f"✏️ আজকের ম্যানুয়াল থেরাপি লেখো{hint}:")
+    return TREAT_EDIT_MANUAL
+
+
+async def treat_edit_manual(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    t = context.user_data.get("treatment", {})
+    if text != "-":
+        t["Manual_Therapy"] = text
+    context.user_data["treatment"] = t
+
+    selected = context.user_data.get("treat_selected", set())
+    summary = (
+        f"📋 {t.get('Patient_Name')} ({t.get('Patient_ID')}) — সেশন {t.get('Session_No', '?')}\n\n"
+        f"এক্সারসাইজ: {t.get('Exercise') or '-'}\n"
+        f"ইলেক্ট্রোথেরাপি: {t.get('Electrotherapy') or '-'}\n"
+        f"ম্যানুয়াল থেরাপি: {t.get('Manual_Therapy') or '-'}\n\n"
+        "আজকের মেশিন/মোডালিটি বেছে নাও, তারপর সম্পন্ন চাপো:"
+    )
+    await update.message.reply_text(summary, reply_markup=_machine_keyboard(selected))
     return TREAT_MACHINES
 
 
@@ -2010,12 +2088,9 @@ async def treat_machine_toggle(update: Update, context: ContextTypes.DEFAULT_TYP
     return TREAT_MACHINES
 
 
-async def treat_machine_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+async def _treat_save_note(query, context: ContextTypes.DEFAULT_TYPE, t: dict, selected: set):
+    """t ও selected থেকে Machines বসিয়ে ট্রিটমেন্ট নোট সেভ করে, ফলাফল দেখায়, মেনুতে ফিরিয়ে দেয়।"""
     staff = context.user_data.get("staff", {})
-    t = context.user_data.get("treatment", {})
-    selected = context.user_data.get("treat_selected", set())
     t["Machines"] = ", ".join(MACHINE_LIST[i] for i in sorted(selected))
     patient_id = t.get("Patient_ID", "")
     try:
@@ -2027,7 +2102,7 @@ async def treat_machine_done(update: Update, context: ContextTypes.DEFAULT_TYPE)
             f"মেশিন: {t['Machines'] or '(কিছু বাছাই করা হয়নি)'}"
         )
     except Exception as e:
-        logger.exception("treat_machine_done ব্যর্থ হয়েছে")
+        logger.exception("_treat_save_note ব্যর্থ হয়েছে")
         await query.edit_message_text(f"❌ সেভ করতে সমস্যা হয়েছে।\nError: {e}")
     context.user_data.pop("treatment", None)
     context.user_data.pop("treat_selected", None)
@@ -2035,6 +2110,14 @@ async def treat_machine_done(update: Update, context: ContextTypes.DEFAULT_TYPE)
         "নিচের মেনু থেকে বেছে নাও 👇", reply_markup=_menu_keyboard(staff.get("Role", ""))
     )
     return ConversationHandler.END
+
+
+async def treat_machine_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    t = context.user_data.get("treatment", {})
+    selected = context.user_data.get("treat_selected", set())
+    return await _treat_save_note(query, context, t, selected)
 
 
 async def treat_machine_cancel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2936,8 +3019,8 @@ async def plist_action_treat(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await query.edit_message_text(summary)
         return ConversationHandler.END
 
-    await query.edit_message_text(summary, reply_markup=_machine_keyboard(selected))
-    return TREAT_MACHINES
+    await query.edit_message_text(summary, reply_markup=_treat_confirm_keyboard(patient_id))
+    return TREAT_CONFIRM_PLAN
 
 
 async def plist_action_hist(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3413,6 +3496,20 @@ def main():
             TREAT_SELECT: [
                 CallbackQueryHandler(treat_select_callback, pattern="^treatsel_"),
                 CallbackQueryHandler(_treat_search_cancel, pattern="^treatsearchback$"),
+            ],
+            TREAT_CONFIRM_PLAN: [
+                CallbackQueryHandler(treat_confirm_same_callback, pattern="^trsame_"),
+                CallbackQueryHandler(treat_confirm_edit_callback, pattern="^tredit_"),
+                CallbackQueryHandler(treat_back_to_search_callback, pattern="^trback_search$"),
+            ],
+            TREAT_EDIT_EXERCISE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), treat_edit_exercise),
+            ],
+            TREAT_EDIT_ELECTRO: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), treat_edit_electro),
+            ],
+            TREAT_EDIT_MANUAL: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), treat_edit_manual),
             ],
             TREAT_MACHINES: [
                 CallbackQueryHandler(treat_machine_toggle, pattern="^trm_"),
