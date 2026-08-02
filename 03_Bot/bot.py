@@ -97,7 +97,7 @@ REG_PHOTO_CHOICE, REG_PHOTO_WAIT, REG_PHOTO_CONFIRM = range(90, 93)
     TREAT_EDIT_MANUAL,
     TREAT_AI_QUESTION,
     TREAT_PATIENT_COMMENT,
-    TREAT_UNUSED7,
+    TREAT_PROGRESS_SCORE,
 ) = range(19, 29)
 
 PAY_METHODS = ["Cash", "bKash", "Nagad", "Card"]
@@ -2307,15 +2307,76 @@ async def _treat_ask_patient_comment(reply_func, context: ContextTypes.DEFAULT_T
     return TREAT_PATIENT_COMMENT
 
 
+def _treat_progress_status(patient_id: str) -> tuple:
+    """(due, mandatory, days_since) রিটার্ন করে — শেষবার কবে Pain Score নেওয়া হয়েছিল
+    তার উপর ভিত্তি করে আজ progress check জিজ্ঞাসা করা উচিত কিনা ঠিক করে।
+    ৩ দিনের কম হলে জিজ্ঞাসা করা হয় না, ৩-৬ দিন হলে ঐচ্ছিক (স্কিপ করা যাবে),
+    ৭+ দিন (বা কখনো রেকর্ড না থাকলে) বাধ্যতামূলক (patch: progress tracker)।"""
+    notes = sheets.get_treatment_notes_for_patient(patient_id)
+    scored = [n for n in notes if str(n.get("Pain", "")).strip() != ""]
+    if not scored:
+        return True, False, None
+    scored.sort(key=lambda n: str(n.get("Date", "")))
+    last_date = _parse_date(scored[-1].get("Date", ""))
+    if last_date is None:
+        return True, False, None
+    days_since = (bd_now().date() - last_date).days
+    if days_since < 3:
+        return False, False, days_since
+    return True, days_since >= 7, days_since
+
+
+def _pain_score_keyboard(mandatory: bool) -> InlineKeyboardMarkup:
+    rows = []
+    row = []
+    for i in range(11):
+        row.append(InlineKeyboardButton(str(i), callback_data=f"trpain_{i}"))
+        if len(row) == 4:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+    if not mandatory:
+        rows.append([InlineKeyboardButton("⏭️ এখন স্কিপ করো", callback_data="trpainskip")])
+    return InlineKeyboardMarkup(rows)
+
+
 async def treat_patient_comment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """রোগীর মন্তব্য নিয়ে Remarks-এ বসায়, তারপর AI Missing-Info চেক করে সেভ করে।"""
+    """রোগীর মন্তব্য নিয়ে Remarks-এ বসায়, তারপর প্রয়োজনে Pain Score জিজ্ঞেস করে,
+    তারপর AI Missing-Info চেক করে সেভ করে।"""
     text = update.message.text.strip()
     t = context.user_data.get("treatment", {})
     selected = context.user_data.get("treat_selected", set())
     if text != "-":
         t["Remarks"] = f"[রোগীর মন্তব্য] {text}"
     context.user_data["treatment"] = t
+
+    due, mandatory, _days_since = _treat_progress_status(t.get("Patient_ID", ""))
+    if due:
+        note = "📈 আজ রোগীর ব্যথা ০-১০ স্কেলে কত? (০ = ব্যথা নেই, ১০ = সর্বোচ্চ ব্যথা)\n\n" + (
+            "⚠️ শেষ ৭+ দিন কোনো Pain Score রেকর্ড হয়নি — এবার স্কিপ করা যাবে না।"
+            if mandatory else "প্রতি কয়েকদিনে একবার এটা জিজ্ঞেস করা হয় — চাইলে স্কিপও করা যাবে।"
+        )
+        await update.message.reply_text(note, reply_markup=_pain_score_keyboard(mandatory))
+        return TREAT_PROGRESS_SCORE
+
     return await _treat_save_note(update.message.reply_text, update.message.reply_text, context, t, selected)
+
+
+async def treat_progress_score_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Pain Score বাটন বা স্কিপ বাটনের রেসপন্স নিয়ে t['Pain']-এ বসায়, তারপর সেভ করে।"""
+    query = update.callback_query
+    await query.answer()
+    t = context.user_data.get("treatment", {})
+    selected = context.user_data.get("treat_selected", set())
+    if query.data != "trpainskip":
+        score = query.data.replace("trpain_", "", 1)
+        t["Pain"] = score
+        context.user_data["treatment"] = t
+        await query.edit_message_text(f"✅ Pain Score রেকর্ড হয়েছে: {score}/10")
+    else:
+        await query.edit_message_text("⏭️ Pain Score স্কিপ করা হলো।")
+    return await _treat_save_note(query.message.reply_text, query.message.reply_text, context, t, selected)
 
 
 async def _treat_save_note(reply_func, menu_reply, context: ContextTypes.DEFAULT_TYPE, t: dict, selected: set):
@@ -2927,6 +2988,47 @@ async def rpt_todayregister_callback(update: Update, context: ContextTypes.DEFAU
     text, keyboard = _register_view_text_and_keyboard()
     await query.message.reply_text(text, reply_markup=keyboard)
 
+def _pain_bar(score) -> str:
+    """0-10 Pain Score-কে ইমোজি ব্লক বার আকারে দেখায় (সহজে চোখে স্ক্যান করা যায়)।"""
+    try:
+        n = int(float(score))
+    except (TypeError, ValueError):
+        return "?"
+    n = max(0, min(10, n))
+    return ("🟥" * n) + ("⬜" * (10 - n))
+
+
+async def thist_progress_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """রোগীর Pain Score ট্র্যাকিং — সময়ের সাথে ব্যথা কমছে না বাড়ছে তা লিস্ট + বার-চার্ট আকারে দেখায়।"""
+    query = update.callback_query
+    await query.answer()
+    patient_id = query.data.replace("thistprog_", "", 1)
+    notes = sheets.get_treatment_notes_for_patient(patient_id)
+    scored = [n for n in notes if str(n.get("Pain", "")).strip() != ""]
+    if not scored:
+        await query.message.reply_text(
+            "📈 এই রোগীর জন্য এখনো কোনো Pain Score রেকর্ড করা হয়নি।\n\n"
+            "প্রতি ৩-৭ দিনে ট্রিটমেন্ট নোট সেভ করার সময় বট নিজে থেকেই Pain Score জিজ্ঞেস করবে।"
+        )
+        return
+    scored.sort(key=lambda n: str(n.get("Date", "")))
+    lines = [f"📈 {scored[0].get('Patient_Name', '')} ({patient_id}) — Pain Score ট্রেন্ড\n"]
+    for n in scored:
+        lines.append(f"{n.get('Date', '')}  {_pain_bar(n.get('Pain', ''))}  {n.get('Pain', '')}/10")
+    try:
+        diff = int(float(scored[0].get("Pain", ""))) - int(float(scored[-1].get("Pain", "")))
+        if diff > 0:
+            trend = f"✅ শুরু থেকে এখন পর্যন্ত ব্যথা {diff} পয়েন্ট কমেছে।"
+        elif diff < 0:
+            trend = f"⚠️ শুরু থেকে এখন পর্যন্ত ব্যথা {abs(diff)} পয়েন্ট বেড়েছে।"
+        else:
+            trend = "➖ শুরু থেকে এখন পর্যন্ত ব্যথার স্কোর একই আছে।"
+        lines.append("\n" + trend)
+    except (TypeError, ValueError):
+        pass
+    await query.message.reply_text("\n".join(lines))
+
+
 async def thist_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
     if staff is None:
@@ -2973,6 +3075,7 @@ async def thist_patient_callback(update: Update, context: ContextTypes.DEFAULT_T
         tid = str(n.get("Treatment_ID", "")).strip()
         date_str = n.get("Date", "")
         buttons.append([InlineKeyboardButton(f"🗓 {date_str} — {tid}", callback_data=f"thdate_{tid}")])
+    buttons.append([InlineKeyboardButton("📈 প্রোগ্রেস দেখো", callback_data=f"thistprog_{patient_id}")])
     await query.edit_message_text(
         "কোন তারিখের ট্রিটমেন্ট প্ল্যান দেখতে চাও?",
         reply_markup=InlineKeyboardMarkup(buttons),
@@ -3067,6 +3170,7 @@ async def thist_back_to_dates_callback(update: Update, context: ContextTypes.DEF
         tid = str(n.get("Treatment_ID", "")).strip()
         date_str = n.get("Date", "")
         buttons.append([InlineKeyboardButton(f"🗓 {date_str} — {tid}", callback_data=f"thdate_{tid}")])
+    buttons.append([InlineKeyboardButton("📈 প্রোগ্রেস দেখো", callback_data=f"thistprog_{patient_id}")])
     await query.edit_message_text(
         "কোন তারিখের ট্রিটমেন্ট প্ল্যান দেখতে চাও?",
         reply_markup=InlineKeyboardMarkup(buttons),
@@ -3789,8 +3893,19 @@ def _build_case_study_context(patient_id: str) -> str | None:
         for t in treatment_notes[-3:]:
             date_str = t.get("Date", "")
             note_text = t.get("Note", "") or t.get("Notes", "") or t.get("Treatment_Given", "") or t.get("Remarks", "")
-            if note_text:
-                lines.append(f"  • {date_str}: {note_text}")
+            pain = str(t.get("Pain", "")).strip()
+            pain_note = f" [Pain Score: {pain}/10]" if pain else ""
+            if note_text or pain_note:
+                lines.append(f"  • {date_str}: {note_text}{pain_note}")
+
+    scored_notes = [t for t in treatment_notes if str(t.get("Pain", "")).strip() != ""]
+    if len(scored_notes) >= 2:
+        scored_notes_sorted = sorted(scored_notes, key=lambda t: str(t.get("Date", "")))
+        first_n, last_n = scored_notes_sorted[0], scored_notes_sorted[-1]
+        lines.append(
+            f"\nPain Score Trend: {first_n.get('Pain', '')}/10 ({first_n.get('Date', '')}) "
+            f"→ {last_n.get('Pain', '')}/10 ({last_n.get('Date', '')})"
+        )
 
     reports = sheets.get_reports_for_patient(patient_id)
     if reports:
@@ -4229,6 +4344,10 @@ def main():
             TREAT_PATIENT_COMMENT: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), treat_patient_comment_receive),
             ],
+            TREAT_PROGRESS_SCORE: [
+                CallbackQueryHandler(treat_progress_score_callback, pattern="^trpain_"),
+                CallbackQueryHandler(treat_progress_score_callback, pattern="^trpainskip$"),
+            ],
             TREAT_AI_QUESTION: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), treat_ai_question_receive),
             ],
@@ -4322,6 +4441,7 @@ def main():
     app.add_handler(CallbackQueryHandler(thist_date_callback, pattern="^thdate_"))
     app.add_handler(CallbackQueryHandler(thist_nav_callback, pattern="^thnav_"))
     app.add_handler(CallbackQueryHandler(thist_back_to_dates_callback, pattern="^thistback_"))
+    app.add_handler(CallbackQueryHandler(thist_progress_callback, pattern="^thistprog_"))
 
     staffai_conv = ConversationHandler(
         entry_points=[
