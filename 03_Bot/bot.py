@@ -138,6 +138,7 @@ _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 (STAFFAI_QUESTION,) = range(37, 38)
 (CASESTUDY_INPUT,) = range(38, 39)
 (CASESTUDY_LESSON,) = range(39, 40)
+(CASESTUDY_SEARCH, CASESTUDY_EXTRA) = range(40, 42)
 
 TPLAN_CATEGORY, TPLAN_TESTS = range(200, 202)
 
@@ -3290,6 +3291,60 @@ async def staffai_cancel(update, context):
     return ConversationHandler.END
 
 
+def _build_case_study_context(patient_id: str) -> str | None:
+    """রোগীর Chief Complaint + Assessment + সাম্প্রতিক Treatment Note + Report লিস্ট
+    একত্র করে Case Study AI-কে দেওয়ার জন্য একটা সংক্ষিপ্ত context বানায়।"""
+    patient = sheets.get_patient_by_id(patient_id)
+    if patient is None:
+        return None
+
+    name = patient.get("Full_Name") or patient.get("Name") or "Unknown"
+    lines = [f"রোগী: {name} ({patient_id})"]
+
+    problem = patient.get("Note") or patient.get("Notes") or patient.get("Problem", "")
+    if problem:
+        lines.append(f"প্রাথমিক সমস্যা/নোট: {problem}")
+
+    assessments = sheets.get_assessments_for_patient(patient_id)
+    if assessments:
+        latest = assessments[0]
+        category = latest.get("Category", "")
+        test_data = latest.get("Test_Data", {}) or {}
+        chief_complaint = test_data.get("ChiefComplaint", "")
+        lines.append(f"\nAssessment Category: {category}")
+        if chief_complaint:
+            lines.append(f"Chief Complaint: {chief_complaint}")
+        for k, v in test_data.items():
+            if k == "ChiefComplaint" or not v:
+                continue
+            lines.append(f"  {k}: {v}")
+    else:
+        lines.append("\nকোনো Assessment রেকর্ড নেই।")
+
+    treatment_notes = sheets.get_treatment_notes_for_patient(patient_id)
+    if treatment_notes:
+        lines.append("\nসাম্প্রতিক ট্রিটমেন্ট নোট:")
+        for t in treatment_notes[-3:]:
+            date_str = t.get("Date", "")
+            note_text = t.get("Note", "") or t.get("Notes", "") or t.get("Treatment_Given", "") or t.get("Remarks", "")
+            if note_text:
+                lines.append(f"  • {date_str}: {note_text}")
+
+    reports = sheets.get_reports_for_patient(patient_id)
+    if reports:
+        lines.append("\nআপলোড করা রিপোর্ট/ফাইল:")
+        for r in reports[-5:]:
+            fname = r.get("File_Name", "")
+            ftype = r.get("File_Type", "")
+            if fname:
+                lines.append(f"  • {fname} ({ftype})")
+
+    full_text = "\n".join(lines)
+    if len(full_text) > 3000:
+        full_text = full_text[:2990] + "\n...(আরও আছে)"
+    return full_text
+
+
 def _cslesson_next_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [[InlineKeyboardButton("➡️ পরবর্তী Lesson", callback_data="cslesson_next")]]
@@ -3303,16 +3358,57 @@ async def casestudy_start(update, context):
     if not roles.can_access(staff.get("Role", ""), roles.MENU_CASE_STUDY):
         return ConversationHandler.END
     await update.message.reply_text(
-        "\U0001F4DA আজকের রুগীর কেসটা লেখো (বয়স, ডায়াগনোসিস, উপসর্গ)।\n"
-        "উদাহরণ: \"৫০ বছর বয়সী রুগী, stroke, right side weakness\"\n"
+        "\U0001F4DA কোন রোগীর কেস পড়াবে? নাম, ফোন নম্বর, অথবা Patient ID লেখো।\n"
         "বাতিল করতে /cancel লেখো।"
     )
-    return CASESTUDY_INPUT
+    return CASESTUDY_SEARCH
 
 
-async def casestudy_receive(update, context):
-    staff = context.user_data.get("staff", {})
-    case_text = update.message.text.strip()
+async def casestudy_search_receive(update, context):
+    query_text = update.message.text.strip()
+    results = sheets.search_patients(query_text)
+    if not results:
+        await update.message.reply_text("কোনো রোগী পাওয়া যায়নি। আবার চেষ্টা করো, অথবা /cancel দাও।")
+        return CASESTUDY_SEARCH
+    results = results[:10]
+    await update.message.reply_text(
+        "কোন রোগীর কেস পড়াবে?",
+        reply_markup=_patient_search_buttons(results, "cssel_", "cssearchback"),
+    )
+    return CASESTUDY_SEARCH
+
+
+async def casestudy_select_callback(update, context):
+    query = update.callback_query
+    await query.answer()
+    patient_id = query.data.replace("cssel_", "", 1)
+
+    case_context = _build_case_study_context(patient_id)
+    if case_context is None:
+        await query.edit_message_text("রোগী পাওয়া যায়নি।")
+        return ConversationHandler.END
+
+    context.user_data["cs_case_context"] = case_context
+    await query.edit_message_text(
+        "\u2705 রোগীর ডেটা লোড হয়েছে।\n"
+        "কেসের বাড়তি কোনো তথ্য/অবজারভেশন থাকলে লেখো, না থাকলে শুধু 'না' লিখো।"
+    )
+    return CASESTUDY_EXTRA
+
+
+async def casestudy_search_cancel_callback(update, context):
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_text("\u274c বাতিল করা হলো।")
+    return ConversationHandler.END
+
+
+async def casestudy_extra_receive(update, context):
+    text = update.message.text.strip()
+    case_context = context.user_data.get("cs_case_context", "")
+    extra = "" if text in ("না", "না।", "no", "No", "No.") else text
+    case_text = case_context + (f"\n\nবাড়তি তথ্য: {extra}" if extra else "")
+
     context.user_data["cs_case_text"] = case_text
     context.user_data["cs_lesson"] = 1
     await update.message.reply_text("\U0001F914 কেস বিশ্লেষণ করছি, Lesson 1 তৈরি হচ্ছে...")
@@ -3649,8 +3745,13 @@ def main():
             MessageHandler(filters.Regex(f"^{roles.MENU_CASE_STUDY}$"), casestudy_start)
         ],
         states={
-            CASESTUDY_INPUT: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), casestudy_receive)
+            CASESTUDY_SEARCH: [
+                CallbackQueryHandler(casestudy_select_callback, pattern="^cssel_"),
+                CallbackQueryHandler(casestudy_search_cancel_callback, pattern="^cssearchback$"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), casestudy_search_receive),
+            ],
+            CASESTUDY_EXTRA: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), casestudy_extra_receive)
             ],
             CASESTUDY_LESSON: [
                 CallbackQueryHandler(casestudy_lesson_callback, pattern="^cslesson_next$")
