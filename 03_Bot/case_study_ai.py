@@ -218,9 +218,14 @@ def analyze_report_images(image_data_list: list) -> str:
     content = [{
         "type": "text",
         "text": (
-            "তুমি একজন Physiotherapy Clinical Tutor। নিচের রিপোর্ট/ইমেজগুলো দেখে "
-            "প্রতিটার জন্য সংক্ষেপে (২-৩ লাইন) কী Finding দেখা যাচ্ছে লিখো। "
-            "নিশ্চিত না হলে স্পষ্ট বলো 'স্পষ্ট বোঝা যাচ্ছে না'। কিছু বানিয়ে লিখো না। "
+            "তুমি একজন Physiotherapy Clinical Tutor, এবং ব্যবহারকারী একজন অভিজ্ঞ Physiotherapist "
+            "যিনি নিজেই X-ray/MRI film পড়তে অভ্যস্ত। নিচের রিপোর্ট/ইমেজগুলো দেখে প্রতিটার জন্য "
+            "সংক্ষেপে (৩-৪ লাইন) যা কিছু চোখে পড়ছে তা নির্দিষ্টভাবে লিখো — যেমন vertebral level "
+            "marker, visible hardware/implant, gross alignment/curvature, disc space narrowing, "
+            "বা অন্য কোনো visible abnormality। যতটা স্পষ্ট ততটা specific ভাষায় বলো, কিন্তু কোনো "
+            "চূড়ান্ত Diagnosis নিজে থেকে ঘোষণা কোরো না — এটা AI-এর প্রাথমিক পর্যবেক্ষণ মাত্র, "
+            "চূড়ান্ত সিদ্ধান্ত therapist নিজের clinical film-reading দিয়ে নেবেন। কিছু বানিয়ে লিখো না — "
+            "ছবির মান/angle-এর কারণে কোনো অংশ বোঝা না গেলে সেটা স্পষ্টভাবে উল্লেখ করো। "
             "মেডিক্যাল Terminology ইংরেজিতে রাখো, বাকিটা বাংলায়।"
         ),
     }]
