@@ -2724,20 +2724,52 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if not roles.can_access(staff.get("Role", ""), roles.MENU_REPORTS):
         return
-    today_str = bd_now().strftime("%Y-%m-%d")
+    now = bd_now()
+    today_str = now.strftime("%Y-%m-%d")
+    this_month_str = now.strftime("%Y-%m")
+    if now.month == 1:
+        last_month_dt = now.replace(year=now.year - 1, month=12, day=1)
+    else:
+        last_month_dt = now.replace(month=now.month - 1, day=1)
+    last_month_str = last_month_dt.strftime("%Y-%m")
+
     patients = sheets.get_all_patients()
     total_patients = len(patients)
+    this_month_patients = sum(
+        1 for p in patients
+        if str(p.get("Registration_Date", "")).strip().startswith(this_month_str)
+    )
+
     today_appointments = sheets.get_appointments_for_date(today_str)
+
     payments = sheets.get_all_payments()
-    today_payments = [p for p in payments if str(p.get("Date", "")) == today_str]
+    today_payments = [p for p in payments if str(p.get("Date", "")).strip() == today_str]
     today_collection = sum(float(p.get("Amount", 0) or 0) for p in today_payments)
+
+    this_month_payments = [
+        p for p in payments
+        if str(p.get("Date", "")).strip().startswith(this_month_str)
+    ]
+    this_month_collection = sum(float(p.get("Amount", 0) or 0) for p in this_month_payments)
+
+    last_month_payments = [
+        p for p in payments
+        if str(p.get("Date", "")).strip().startswith(last_month_str)
+    ]
+    last_month_collection = sum(float(p.get("Amount", 0) or 0) for p in last_month_payments)
+
     total_collection = sum(float(p.get("Amount", 0) or 0) for p in payments)
+
     lines = [
         "\U0001F4CA রিপোর্ট ও অ্যানালিটিক্স",
         "",
-        f"\U0001F465 মোট রোগী: {total_patients}",
+        f"\U0001F465 মোট রোগী (সর্বমোট): {total_patients}",
+        f"\U0001F195 এই মাসের ({this_month_str}) নতুন রোগী: {this_month_patients}",
         f"\U0001F4CB আজকের অ্যাপয়েন্টমেন্ট: {len(today_appointments)}",
+        "",
         f"\U0001F4B0 আজকের আয়: {today_collection:.0f} টাকা",
+        f"\U0001F4B0 এই মাসের ({this_month_str}) আয়: {this_month_collection:.0f} টাকা",
+        f"\U0001F4B0 গত মাসের ({last_month_str}) আয়: {last_month_collection:.0f} টাকা",
         f"\U0001F4B0 সর্বমোট আয়: {total_collection:.0f} টাকা",
     ]
     await update.effective_message.reply_text(
