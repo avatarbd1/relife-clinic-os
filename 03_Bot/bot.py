@@ -3290,6 +3290,12 @@ async def staffai_cancel(update, context):
     return ConversationHandler.END
 
 
+def _cslesson_next_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton("➡️ পরবর্তী Lesson", callback_data="cslesson_next")]]
+    )
+
+
 async def casestudy_start(update, context):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
     if staff is None:
@@ -3311,35 +3317,30 @@ async def casestudy_receive(update, context):
     context.user_data["cs_lesson"] = 1
     await update.message.reply_text("\U0001F914 কেস বিশ্লেষণ করছি, Lesson 1 তৈরি হচ্ছে...")
     answer = case_study_ai.answer_case_lesson(case_text, 1)
-    await update.message.reply_text(answer)
+    await update.message.reply_text(answer, reply_markup=_cslesson_next_keyboard())
     return CASESTUDY_LESSON
 
 
-async def casestudy_lesson_receive(update, context):
+async def casestudy_lesson_callback(update, context):
+    query = update.callback_query
+    await query.answer()
     staff = context.user_data.get("staff", {})
-    text = update.message.text.strip()
     case_text = context.user_data.get("cs_case_text", "")
     lesson = context.user_data.get("cs_lesson", 1)
 
-    if text != "দাও":
-        await update.message.reply_text(
-            "পরবর্তী Lesson দেখতে শুধু 'দাও' লিখুন, অথবা /cancel দিয়ে বাতিল করুন।"
-        )
-        return CASESTUDY_LESSON
-
     lesson += 1
-    await update.message.reply_text(f"\U0001F914 Lesson {lesson} তৈরি হচ্ছে...")
+    await query.message.reply_text(f"\U0001F914 Lesson {lesson} তৈরি হচ্ছে...")
     answer = case_study_ai.answer_case_lesson(case_text, lesson)
     context.user_data["cs_lesson"] = lesson
 
     if lesson >= len(case_study_ai.LESSON_TITLES):
-        await update.message.reply_text(
+        await query.message.reply_text(
             answer,
             reply_markup=_menu_keyboard(staff.get("Role", "")),
         )
         return ConversationHandler.END
 
-    await update.message.reply_text(answer)
+    await query.message.reply_text(answer, reply_markup=_cslesson_next_keyboard())
     return CASESTUDY_LESSON
 
 
@@ -3652,7 +3653,7 @@ def main():
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), casestudy_receive)
             ],
             CASESTUDY_LESSON: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), casestudy_lesson_receive)
+                CallbackQueryHandler(casestudy_lesson_callback, pattern="^cslesson_next$")
             ],
         },
         fallbacks=[

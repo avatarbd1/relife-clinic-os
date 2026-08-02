@@ -102,7 +102,7 @@ def answer_case_lesson(case_text: str, lesson_number: int) -> str:
         "শুধু এই Lesson-টাই লিখো, অন্য কোনো Lesson বা ভূমিকা/উপসংহার যোগ কোরো না। আগের কোনো Lesson পুনরাবৃত্তি কোরো না।"
     )
     if lesson_number < len(LESSON_TITLES):
-        user_msg += "\n\nএই Lesson-এর একদম শেষে হুবহু এই লাইনটা লিখো: \"পরবর্তী Lesson দেখতে শুধু 'দাও' লিখুন।\""
+        pass
     else:
         user_msg += "\n\nএই Lesson-এর একদম শেষে হুবহু এই লাইনটা লিখো: \"এই Case Study সম্পূর্ণ শেষ হয়েছে। নতুন Case দিতে পারেন।\""
 
