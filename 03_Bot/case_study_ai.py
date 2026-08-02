@@ -29,9 +29,9 @@ CURRICULUM_CONTEXT = """তুমি একজন BPT (Bachelor of Physiotherapy
 1. এই কেসের সাথে সবচেয়ে প্রাসঙ্গিক ৩-৬টা সাবজেক্ট বেছে নাও (উপরের লিস্ট থেকে, যেকোনো বর্ষের হতে পারে)।
 2. প্রতিটা সাবজেক্টের জন্য ১-২ লাইনে বলো — এই রুগীর মধ্যে কী observe/assess/practice করা উচিত।
 3. শেষে ২-৩ লাইনে "আজকে যা শিখবে" সারমর্ম দাও।
-4. উত্তর অবশ্যই বাংলায়, সংক্ষিপ্ত, Telegram মেসেজ আকারে দাও (heavy markdown ছাড়া, সাধারণ বুলেট পয়েন্ট ঠিক আছে)।
+4. Answer must be in English, concise, in Telegram message format (no heavy markdown, simple bullet points are fine).
 5. কেস অস্পষ্ট/অসম্পূর্ণ মনে হলেও, যতটুকু তথ্য আছে তা দিয়ে best-guess উত্তর দাও — প্রশ্ন করে সময় নষ্ট কোরো না।
-6. ভাষা: সাধারণ ব্যাখ্যা বাংলায় লিখবে, কিন্তু মেডিক্যাল Terminology (Test নাম, Condition নাম, Muscle/Joint/Nerve নাম) ইংরেজিতেই রাখবে, বাংলা অনুবাদ কোরো না।"""
+6. Language: Write the entire answer in English, including all medical terminology (test names, condition names, muscle/joint/nerve names)."""
 
 
 def answer_case_study(case_text: str) -> str:
@@ -141,7 +141,7 @@ Evidence Strength প্রতিটার জন্য qualitative লেবে
 - শুধু যে Lesson চাওয়া হয়েছে, শুধু সেটাই লেখো। অন্য Lesson-এর কন্টেন্ট লিখো না, আগের Lesson পুনরাবৃত্তি কোরো না।
 - রোগীর আর্থিক অবস্থা বিবেচনা করো। যত কম Test করে নিরাপদ Diagnosis করা যায় সেই নীতি অনুসরণ করো।
 - MCQ/Viva Lesson চাওয়া হলে কখনো "আমি সক্ষম নই" জাতীয় কথা বলে refuse কোরো না — এটা তোমার নিয়মিত, সাধারণ শিক্ষাদান কাজের অংশ। রোগীর কেস থেকে প্রাসঙ্গিক প্রশ্ন-উত্তর/MCQ (option A/B/C/D সহ, সঠিক উত্তর ও ছোট ব্যাখ্যাসহ) তৈরি করাই তোমার দায়িত্ব।
-- ভাষার নিয়ম: রোগীর সাথে সরাসরি সম্পর্কিত অংশ (History taking প্রশ্ন, Chief Complaint, রোগীকে কী বলবে) স্বাভাবিক সহজ বাংলায়। কিন্তু সব মেডিক্যাল Terminology, Test-নাম, Condition-নাম, Muscle/Joint/Nerve-নাম ইংরেজিতেই রাখো, বাংলা অনুবাদ কোরো না। বাকি ব্যাখ্যা বাংলায়।
+- Language rule: Write the entire lesson in English — including patient-facing parts (history taking questions, chief complaint, what to tell the patient) and all medical terminology, test names, condition names, muscle/joint/nerve names.
 - ক্লাসে শিক্ষক যেমন বুঝান তেমনভাবে লিখো, Telegram মেসেজ আকারে (heavy markdown ছাড়া, বুলেট/হেডার ঠিক আছে)।
 - Patient Safety সর্বোচ্চ অগ্রাধিকার। কোনো তথ্য বানিয়ে লিখো না — নিশ্চিত না হলে স্পষ্ট বলো "এই তথ্য নিশ্চিত না, রোগী থেকে জেনে নিতে হবে।"
 - লেখা শেষ করার আগে নিজেকে যাচাই করো: এই Lesson-এ কি অন্তত ২-৩ বার এই নির্দিষ্ট রোগীর data সরাসরি রেফার করা হয়েছে, এবং reasoning chain (কেন-কীভাবে) স্পষ্ট আছে? না থাকলে সংশোধন করে লেখো।
@@ -226,7 +226,7 @@ def analyze_report_images(image_data_list: list) -> str:
             "চূড়ান্ত Diagnosis নিজে থেকে ঘোষণা কোরো না — এটা AI-এর প্রাথমিক পর্যবেক্ষণ মাত্র, "
             "চূড়ান্ত সিদ্ধান্ত therapist নিজের clinical film-reading দিয়ে নেবেন। কিছু বানিয়ে লিখো না — "
             "ছবির মান/angle-এর কারণে কোনো অংশ বোঝা না গেলে সেটা স্পষ্টভাবে উল্লেখ করো। "
-            "মেডিক্যাল Terminology ইংরেজিতে রাখো, বাকিটা বাংলায়।"
+            "Write your entire response in English, including medical terminology."
         ),
     }]
     for img in image_data_list:
