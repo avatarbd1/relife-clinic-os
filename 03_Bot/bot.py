@@ -2718,6 +2718,25 @@ async def reg_amount_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     return PAY_METHOD
 
 
+def _month_bounds(now):
+    """(this_month_str, last_month_str) রিটার্ন করে — বছর পরিবর্তনসহ ঠিকমতো হ্যান্ডল করে।"""
+    this_month_str = now.strftime("%Y-%m")
+    if now.month == 1:
+        last_month_dt = now.replace(year=now.year - 1, month=12, day=1)
+    else:
+        last_month_dt = now.replace(month=now.month - 1, day=1)
+    last_month_str = last_month_dt.strftime("%Y-%m")
+    return this_month_str, last_month_str
+
+
+def _reports_summary_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("\U0001F465 মোট রোগী ও সর্বমোট আয়", callback_data="rpt_totals")],
+        [InlineKeyboardButton("\U0001F4B0 গত মাসের আয়", callback_data="rpt_lastmonth")],
+        [InlineKeyboardButton("\U0001F4C5 তারিখ ভিত্তিক রিপোর্ট", callback_data="rpt_daterep")],
+    ])
+
+
 async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
     if staff is None:
@@ -2726,21 +2745,17 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     now = bd_now()
     today_str = now.strftime("%Y-%m-%d")
-    this_month_str = now.strftime("%Y-%m")
-    if now.month == 1:
-        last_month_dt = now.replace(year=now.year - 1, month=12, day=1)
-    else:
-        last_month_dt = now.replace(month=now.month - 1, day=1)
-    last_month_str = last_month_dt.strftime("%Y-%m")
+    this_month_str, _ = _month_bounds(now)
 
     patients = sheets.get_all_patients()
-    total_patients = len(patients)
+    today_new_patients = sum(
+        1 for p in patients
+        if str(p.get("Registration_Date", "")).strip() == today_str
+    )
     this_month_patients = sum(
         1 for p in patients
         if str(p.get("Registration_Date", "")).strip().startswith(this_month_str)
     )
-
-    today_appointments = sheets.get_appointments_for_date(today_str)
 
     payments = sheets.get_all_payments()
     today_payments = [p for p in payments if str(p.get("Date", "")).strip() == today_str]
@@ -2752,33 +2767,64 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     this_month_collection = sum(float(p.get("Amount", 0) or 0) for p in this_month_payments)
 
+    lines = [
+        "\U0001F4CA রিপোর্ট ও অ্যানালিটিক্স",
+        "",
+        f"\U0001F195 আজকের নতুন রোগী: {today_new_patients}",
+        f"\U0001F4C8 এই মাসের ({this_month_str}) নতুন রোগী: {this_month_patients}",
+        f"\U0001F4B0 আজকের আয়: {today_collection:.0f} টাকা",
+        f"\U0001F4B0 এই মাসের ({this_month_str}) আয়: {this_month_collection:.0f} টাকা",
+        "",
+        "\U0001F447 আরও বিস্তারিত দেখতে নিচের বাটন চাপো:",
+    ]
+    await update.effective_message.reply_text(
+        "\n".join(lines),
+        reply_markup=_reports_summary_keyboard(),
+    )
+    await update.effective_message.reply_text(
+        "মেনুতে ফিরতে নিচের কীবোর্ড ব্যবহার করো:",
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
+
+
+async def rpt_totals_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    patients = sheets.get_all_patients()
+    total_patients = len(patients)
+    payments = sheets.get_all_payments()
+    total_collection = sum(float(p.get("Amount", 0) or 0) for p in payments)
+    text = (
+        "\U0001F465 মোট রোগী ও সর্বমোট আয়\n\n"
+        f"\U0001F465 মোট রোগী (সর্বমোট): {total_patients}\n"
+        f"\U0001F4B0 সর্বমোট আয়: {total_collection:.0f} টাকা"
+    )
+    await query.message.reply_text(text)
+
+
+async def rpt_lastmonth_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    now = bd_now()
+    _, last_month_str = _month_bounds(now)
+    payments = sheets.get_all_payments()
     last_month_payments = [
         p for p in payments
         if str(p.get("Date", "")).strip().startswith(last_month_str)
     ]
     last_month_collection = sum(float(p.get("Amount", 0) or 0) for p in last_month_payments)
+    text = f"\U0001F4B0 গত মাসের ({last_month_str}) আয়: {last_month_collection:.0f} টাকা"
+    await query.message.reply_text(text)
 
-    total_collection = sum(float(p.get("Amount", 0) or 0) for p in payments)
 
-    lines = [
-        "\U0001F4CA রিপোর্ট ও অ্যানালিটিক্স",
-        "",
-        f"\U0001F465 মোট রোগী (সর্বমোট): {total_patients}",
-        f"\U0001F195 এই মাসের ({this_month_str}) নতুন রোগী: {this_month_patients}",
-        f"\U0001F4CB আজকের অ্যাপয়েন্টমেন্ট: {len(today_appointments)}",
-        "",
-        f"\U0001F4B0 আজকের আয়: {today_collection:.0f} টাকা",
-        f"\U0001F4B0 এই মাসের ({this_month_str}) আয়: {this_month_collection:.0f} টাকা",
-        f"\U0001F4B0 গত মাসের ({last_month_str}) আয়: {last_month_collection:.0f} টাকা",
-        f"\U0001F4B0 সর্বমোট আয়: {total_collection:.0f} টাকা",
-    ]
-    await update.effective_message.reply_text(
-        "\n".join(lines),
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
+async def rpt_daterep_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    today = bd_now().date()
+    await query.message.reply_text(
+        "\U0001F4C5 তারিখ সিলেক্ট করুন:",
+        reply_markup=calendar_helper.build_calendar(today.year, today.month),
     )
-
-
-# ---------- ট্রিটমেন্ট হিস্ট্রি (তারিখ-ভিত্তিক ভিউয়ার) ----------
 
 async def thist_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
@@ -4079,6 +4125,9 @@ def main():
     app.add_handler(tplan_conv)
 
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_REPORTS}$"), reports_menu))
+    app.add_handler(CallbackQueryHandler(rpt_totals_callback, pattern="^rpt_totals$"))
+    app.add_handler(CallbackQueryHandler(rpt_lastmonth_callback, pattern="^rpt_lastmonth$"))
+    app.add_handler(CallbackQueryHandler(rpt_daterep_callback, pattern="^rpt_daterep$"))
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_DATE_REPORT}$"), date_report_menu))
     app.add_handler(CallbackQueryHandler(date_report_calendar_navigate, pattern="^calnav_"))
     app.add_handler(CallbackQueryHandler(date_report_day_selected, pattern="^calday_"))
