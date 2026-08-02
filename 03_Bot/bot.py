@@ -1329,6 +1329,35 @@ async def apt_date_toggle_callback(update: Update, context: ContextTypes.DEFAULT
     return APT_DATE
 
 
+def _time_multi_keyboard(selected: list) -> InlineKeyboardMarkup:
+    """সময় মাল্টি-সিলেক্ট কীবোর্ড — একই দিনে সর্বোচ্চ ২টা সেশন বুক করার জন্য
+    (স্বাভাবিকভাবে ১টা সেশন হয়, মাঝেমধ্যে ২টা)। ✅ চিহ্ন দিয়ে বোঝানো হয় কোন কোন
+    সময় এখন পর্যন্ত বাছাই করা আছে।"""
+    slots = [
+        "09:00 AM", "10:00 AM", "11:00 AM",
+        "12:00 PM", "01:00 PM",
+        "03:00 PM", "04:00 PM", "05:00 PM",
+        "06:00 PM", "07:00 PM", "08:00 PM",
+    ]
+    buttons = []
+    row = []
+    for slot in slots:
+        label = ("✅ " + slot) if slot in selected else slot
+        row.append(InlineKeyboardButton(label, callback_data=f"apttimetoggle_{slot}"))
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+    done_label = (
+        f"➡️ পরের ধাপ ({len(selected)}টা সময় বাছাই করা হয়েছে)"
+        if selected else "➡️ অন্তত ১টা সময় বাছাই করো"
+    )
+    buttons.append([InlineKeyboardButton(done_label, callback_data="apttimedone")])
+    buttons.append([InlineKeyboardButton("⬅️ আগের ধাপ", callback_data="aptback_date")])
+    return InlineKeyboardMarkup(buttons)
+
+
 async def apt_date_done_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     selected = context.user_data.get("apt_dates", set())
@@ -1341,8 +1370,8 @@ async def apt_date_done_callback(update: Update, context: ContextTypes.DEFAULT_T
     context.user_data.pop("apt_dates", None)
     await query.edit_message_text(f"✅ তারিখ বাছাই করা হয়েছে: {', '.join(dates)}")
     await query.message.reply_text(
-        "সময় বেছে নাও (অথবা টাইপ করো) — সবগুলো দিনের জন্য একই সময় প্রযোজ্য হবে:",
-        reply_markup=_time_keyboard(),
+        "সময় বেছে নাও — একই দিনে ২টা সেশন হলে দুইটাই বাছাই করো (সর্বোচ্চ ২টা), তারপর 'পরের ধাপ' চাপো:",
+        reply_markup=_time_multi_keyboard([]),
     )
     return APT_TIME
 
@@ -1366,8 +1395,8 @@ async def apt_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     dates = [p.strip() for p in raw.replace(",", " ").split() if p.strip()]
     context.user_data.setdefault("new_appointment", {})["Dates"] = dates
     await update.message.reply_text(
-        "সময় বেছে নাও (অথবা টাইপ করো) — সবগুলো দিনের জন্য একই সময় প্রযোজ্য হবে:",
-        reply_markup=_time_keyboard(),
+        "সময় বেছে নাও — একই দিনে ২টা সেশন হলে দুইটাই বাছাই করো (সর্বোচ্চ ২টা), তারপর 'পরের ধাপ' চাপো:",
+        reply_markup=_time_multi_keyboard([]),
     )
     return APT_TIME
 
@@ -1386,8 +1415,44 @@ async def apt_time_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def apt_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["new_appointment"]["Time"] = update.message.text.strip()
+    raw = update.message.text.strip()
+    times = [p.strip() for p in raw.split(",") if p.strip()] or [raw]
+    context.user_data.setdefault("new_appointment", {})["Times"] = times
     await update.message.reply_text(
+        "থেরাপিস্ট বেছে নাও (অথবা টাইপ করো):",
+        reply_markup=_therapist_keyboard(),
+    )
+    return APT_THERAPIST
+
+
+async def apt_time_toggle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    slot = query.data.replace("apttimetoggle_", "")
+    selected = context.user_data.get("apt_times", [])
+    if slot in selected:
+        selected.remove(slot)
+    else:
+        if len(selected) >= 2:
+            await query.answer("সর্বোচ্চ ২টা সময় বাছাই করা যাবে (দিনে বড়জোর ২টা সেশন হয়)।", show_alert=True)
+            return APT_TIME
+        selected.append(slot)
+    context.user_data["apt_times"] = selected
+    await query.answer()
+    await query.edit_message_reply_markup(reply_markup=_time_multi_keyboard(selected))
+    return APT_TIME
+
+
+async def apt_time_done_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    selected = context.user_data.get("apt_times", [])
+    if not selected:
+        await query.answer("অন্তত একটা সময় বাছাই করো।", show_alert=True)
+        return APT_TIME
+    await query.answer()
+    context.user_data.setdefault("new_appointment", {})["Times"] = list(selected)
+    context.user_data.pop("apt_times", None)
+    await query.edit_message_text(f"✅ সময় বাছাই করা হয়েছে: {', '.join(selected)}")
+    await query.message.reply_text(
         "থেরাপিস্ট বেছে নাও (অথবা টাইপ করো):",
         reply_markup=_therapist_keyboard(),
     )
@@ -1398,9 +1463,12 @@ async def apt_back_to_time_callback(update: Update, context: ContextTypes.DEFAUL
     """থেরাপিস্ট-নির্বাচনের ধাপ থেকে '⬅️ আগের ধাপ' চাপলে আবার সময়-নির্বাচনের ধাপে ফিরে যায়।"""
     query = update.callback_query
     await query.answer()
+    a = context.user_data.setdefault("new_appointment", {})
+    prev_times = list(a.get("Times") or ([a["Time"]] if a.get("Time") else []))
+    context.user_data["apt_times"] = prev_times
     await query.edit_message_text(
-        "⬅️ সময় বেছে নাও (অথবা টাইপ করো) — সবগুলো দিনের জন্য একই সময় প্রযোজ্য হবে:",
-        reply_markup=_time_keyboard(),
+        "⬅️ সময় বেছে নাও — একই দিনে ২টা সেশন হলে দুইটাই বাছাই করো (সর্বোচ্চ ২টা), তারপর 'পরের ধাপ' চাপো:",
+        reply_markup=_time_multi_keyboard(prev_times),
     )
     return APT_TIME
 
@@ -1409,11 +1477,16 @@ def _apt_summary_text(a: dict) -> str:
     dates = a.get("Dates") or ([a["Date"]] if a.get("Date") else [])
     date_line = ", ".join(dates) if len(dates) > 1 else (dates[0] if dates else "-")
     date_label = "তারিখসমূহ" if len(dates) > 1 else "তারিখ"
+    times = a.get("Times") or ([a["Time"]] if a.get("Time") else [])
+    time_line = ", ".join(times) if len(times) > 1 else (times[0] if times else "-")
+    time_label = "সময়সমূহ" if len(times) > 1 else "সময়"
+    total = len(dates) * len(times) if dates and times else 0
+    total_note = f"\nমোট অ্যাপয়েন্টমেন্ট হবে: {total}টা" if total > 1 else ""
     return (
         "নিচের তথ্য ঠিক আছে কিনা চেক করো:\n\n"
         f"রোগী: {a['Patient_Name']} ({a['Patient_ID']})\n"
         f"Department: {a.get('Department') or 'N/A'}\n"
-        f"{date_label}: {date_line}\nসময়: {a['Time']}\n"
+        f"{date_label}: {date_line}\n{time_label}: {time_line}{total_note}\n"
         f"থেরাপিস্ট: {a['Therapist']}\n\n"
         "ঠিক থাকলে নিচের বাটনে ট্যাপ করো।"
     )
@@ -1449,13 +1522,17 @@ async def apt_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text in ("হ্যাঁ", "yes", "y", "হা", "ha"):
         a = context.user_data.get("new_appointment", {})
         dates = a.get("Dates") or ([a["Date"]] if a.get("Date") else [])
+        times = a.get("Times") or ([a["Time"]] if a.get("Time") else [])
         ids = []
         for d in dates:
-            row = dict(a)
-            row["Date"] = d
-            row.pop("Dates", None)
-            appointment_id = sheets.add_appointment(row, created_by=staff.get("Full_Name", "Unknown"))
-            ids.append(appointment_id)
+            for t in times:
+                row = dict(a)
+                row["Date"] = d
+                row["Time"] = t
+                row.pop("Dates", None)
+                row.pop("Times", None)
+                appointment_id = sheets.add_appointment(row, created_by=staff.get("Full_Name", "Unknown"))
+                ids.append(appointment_id)
         if len(ids) > 1:
             msg = f"✅ {len(ids)}টা অ্যাপয়েন্টমেন্ট বুক হয়েছে!\nAppointment IDs: {', '.join(ids)}"
         else:
@@ -1468,6 +1545,7 @@ async def apt_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     context.user_data.pop("new_appointment", None)
     context.user_data.pop("apt_dates", None)
+    context.user_data.pop("apt_times", None)
     return ConversationHandler.END
 
 
@@ -1476,6 +1554,7 @@ async def apt_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.pop("new_appointment", None)
     context.user_data.pop("apt_search_results", None)
     context.user_data.pop("apt_dates", None)
+    context.user_data.pop("apt_times", None)
     await update.effective_message.reply_text(
         "অ্যাপয়েন্টমেন্ট বুকিং বাতিল করা হয়েছে।",
         reply_markup=_menu_keyboard(staff.get("Role", "")),
@@ -3787,7 +3866,8 @@ def main():
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_date),
             ],
             APT_TIME: [
-                CallbackQueryHandler(apt_time_callback, pattern="^apttime_"),
+                CallbackQueryHandler(apt_time_toggle_callback, pattern="^apttimetoggle_"),
+                CallbackQueryHandler(apt_time_done_callback, pattern="^apttimedone$"),
                 CallbackQueryHandler(apt_back_to_date_callback, pattern="^aptback_date$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_time),
             ],
