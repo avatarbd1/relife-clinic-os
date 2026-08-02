@@ -1889,10 +1889,10 @@ async def _treat_prepare_for_patient(patient: dict, context: ContextTypes.DEFAUL
     প্ল্যান থাকলে context.user_data["treatment"]/["treat_selected"] সাজিয়ে
     (selected_machines_set, summary_text) রিটার্ন করে — কলার তখন মেশিন-বাছাই কীবোর্ড দেখাবে।
 
-    Exercise/Electrotherapy/Manual_Therapy আগে সর্বশেষ ট্রিটমেন্ট নোট থেকে নেওয়া হয়
-    (থেরাপিস্ট গতকাল যা এডিট করেছিল সেটাই), শুধু কোনো নোট না থাকলে (session 1) মূল
-    প্ল্যানের মান ফলব্যাক হিসেবে ব্যবহৃত হয়। আগে এই ৩টা সবসময় প্ল্যান থেকেই আসতো,
-    ফলে এডিট করা মান পরদিন হারিয়ে যেত — এই ফিক্স সেটা সমাধান করে।
+    Exercise/Manual_Therapy আগে সর্বশেষ ট্রিটমেন্ট নোট থেকে নেওয়া হয় (থেরাপিস্ট গতকাল যা
+    এডিট করেছিল সেটাই), শুধু কোনো নোট না থাকলে (session 1) মূল প্ল্যানের মান ফলব্যাক
+    হিসেবে ব্যবহৃত হয়। Electrotherapy আর আলাদা করে টাইপ করানো হয় না — এটা এখন সম্পূর্ণভাবে
+    নিচের মেশিন-চেকলিস্ট (TENS/Ultrasound/SWD/IFT ইত্যাদি) দিয়ে ক্যাপচার হয়।
     """
     patient_id = patient.get("Patient_ID", "")
     plan = sheets.get_active_plan_for_patient(patient_id)
@@ -1908,11 +1908,9 @@ async def _treat_prepare_for_patient(patient: dict, context: ContextTypes.DEFAUL
     last_note = sheets.get_last_treatment_note_for_patient(patient_id)
 
     exercise = plan.get("Exercise_Plan", "")
-    electro = plan.get("Electrotherapy_Plan", "")
     manual = plan.get("Manual_Therapy_Plan", "")
     if last_note:
         exercise = last_note.get("Exercise", "") or exercise
-        electro = last_note.get("Electrotherapy", "") or electro
         manual = last_note.get("Manual_Therapy", "") or manual
 
     context.user_data["treatment"] = {
@@ -1922,7 +1920,7 @@ async def _treat_prepare_for_patient(patient: dict, context: ContextTypes.DEFAUL
         "Diagnosis": plan.get("Diagnosis", ""),
         "Treatment_Given": "",
         "Exercise": exercise,
-        "Electrotherapy": electro,
+        "Electrotherapy": "",
         "Manual_Therapy": manual,
         "Session_No": session_no,
     }
@@ -1938,11 +1936,11 @@ async def _treat_prepare_for_patient(patient: dict, context: ContextTypes.DEFAUL
         f"📋 {patient.get('Full_Name')} ({patient_id}) — সেশন {session_no}/{total}\n\n"
         f"সমস্যা (Diagnosis): {plan.get('Diagnosis') or '-'}\n"
         f"এক্সারসাইজ: {exercise or '-'}\n"
-        f"ইলেক্ট্রোথেরাপি: {electro or '-'}\n"
         f"ম্যানুয়াল থেরাপি: {manual or '-'}\n\n"
-        "আজকের এক্সারসাইজ/ইলেক্ট্রোথেরাপি/ম্যানুয়াল থেরাপি কি গতকালের মতোই থাকবে, নাকি এডিট করবে?"
+        "আজকের এক্সারসাইজ/ম্যানুয়াল থেরাপি কি গতকালের মতোই থাকবে, নাকি এডিট করবে?"
     )
     return selected, summary
+
 
 async def treat_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ট্রিটমেন্ট নোট এন্ট্রি শুরু — রোগী খোঁজা দিয়ে শুরু হয়।"""
@@ -2038,11 +2036,10 @@ async def treat_edit_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE
         t["Exercise"] = text
     context.user_data["treatment"] = t
 
-    prev_el = t.get("Electrotherapy", "")
-    hint = f" (আগেরটা: {prev_el} — একই রাখতে - দাও)" if prev_el else " (না থাকলে - দাও)"
-    await update.message.reply_text(f"✏️ আজকের ইলেক্ট্রোথেরাপি লেখো{hint}:")
-    return TREAT_EDIT_ELECTRO
-
+    prev_man = t.get("Manual_Therapy", "")
+    hint = f" (আগেরটা: {prev_man} — একই রাখতে - দাও)" if prev_man else " (না থাকলে - দাও)"
+    await update.message.reply_text(f"✏️ আজকের ম্যানুয়াল থেরাপি লেখো{hint}:")
+    return TREAT_EDIT_MANUAL
 
 async def treat_edit_electro(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
@@ -2068,13 +2065,11 @@ async def treat_edit_manual(update: Update, context: ContextTypes.DEFAULT_TYPE):
     summary = (
         f"📋 {t.get('Patient_Name')} ({t.get('Patient_ID')}) — সেশন {t.get('Session_No', '?')}\n\n"
         f"এক্সারসাইজ: {t.get('Exercise') or '-'}\n"
-        f"ইলেক্ট্রোথেরাপি: {t.get('Electrotherapy') or '-'}\n"
         f"ম্যানুয়াল থেরাপি: {t.get('Manual_Therapy') or '-'}\n\n"
         "আজকের মেশিন/মোডালিটি বেছে নাও, তারপর সম্পন্ন চাপো:"
     )
     await update.message.reply_text(summary, reply_markup=_machine_keyboard(selected))
     return TREAT_MACHINES
-
 
 async def treat_back_to_search_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """মেশিন-নির্বাচনের ধাপ থেকে '⬅️ আগের ধাপ' চাপলে আবার রোগী খোঁজার ধাপে ফিরে যায়।"""
