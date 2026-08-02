@@ -3429,7 +3429,7 @@ async def _download_report_images(context, patient_id: str, limit: int = 4) -> l
     বা ফেইল করলে Telegram file_id দিয়ে ফলব্যাক করে। সর্বোচ্চ `limit` টা ছবি নেয়
     (ফ্রি ভিশন মডেলের রেট-লিমিট বাঁচাতে)।"""
     reports = sheets.get_reports_for_patient(patient_id)
-    image_reports = [r for r in reports if str(r.get("File_Type", "")).lower().startswith("image")]
+    image_reports = [r for r in reports if str(r.get("File_Type", "")).lower() in ("photo", "image") or str(r.get("File_Type", "")).lower().startswith("image")]
     image_reports = image_reports[-limit:]
     out = []
     for r in image_reports:
