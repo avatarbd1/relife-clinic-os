@@ -1617,11 +1617,38 @@ async def apt_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         if patient:
             await query.edit_message_text(
                 f"✅ {appointment_id} — উপস্থিত হয়েছে।\n\n" + _patient_card_text(patient),
-                reply_markup=_patient_card_keyboard(patient_id),
+                reply_markup=_patient_card_keyboard(
+                    patient_id,
+                    back_callback_data=f"apttodayback_{appointment_id}",
+                    back_label="🔙 অ্যাপয়েন্টমেন্ট তালিকায় ফিরুন",
+                ),
             )
             return
 
     await query.edit_message_text(f"✅ {appointment_id} — স্ট্যাটাস: {status}")
+
+
+async def apt_today_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """আজকের অ্যাপয়েন্টমেন্টে 'উপস্থিত' মার্ক করার পর Patient Action Panel থেকে
+    '🔙 অ্যাপয়েন্টমেন্ট তালিকায় ফিরুন' চাপলে সেই নির্দিষ্ট অ্যাপয়েন্টমেন্টের মূল
+    সময়/রোগীর নাম + উপস্থিত/আসেনি বাটন-ওয়ালা বার্তাটাই আবার দেখায় (patch27 —
+    আগে এটা ভুল করে সাধারণ 📋 রোগীর তালিকায় নিয়ে যেত)।"""
+    query = update.callback_query
+    await query.answer()
+    appointment_id = query.data.replace("apttodayback_", "", 1)
+    a = sheets.get_appointment_by_id(appointment_id)
+    if not a:
+        await query.edit_message_text("❌ এই অ্যাপয়েন্টমেন্টটা আর পাওয়া যাচ্ছে না।")
+        return
+    text = (
+        f"🕐 {a.get('Time')} — {a.get('Patient_Name')} ({a.get('Patient_ID')})\n"
+        f"Department: {a.get('Department')} | থেরাপিস্ট: {a.get('Therapist')}"
+    )
+    buttons = InlineKeyboardMarkup([[
+        InlineKeyboardButton("✅ উপস্থিত", callback_data=f"aptstatus_{a.get('Appointment_ID')}_Completed_{a.get('Patient_ID')}"),
+        InlineKeyboardButton("❌ আসেনি", callback_data=f"aptstatus_{a.get('Appointment_ID')}_NoShow_{a.get('Patient_ID')}"),
+    ]])
+    await query.edit_message_text(text, reply_markup=buttons)
 
 
 # ---------- পেমেন্ট / বিল এন্ট্রি ----------
@@ -3665,6 +3692,7 @@ def main():
         MessageHandler(filters.Regex(f"^{roles.MENU_TODAY_APPOINTMENTS}$"), today_appointments)
     )
     app.add_handler(CallbackQueryHandler(apt_status_callback, pattern="^aptstatus_"))
+    app.add_handler(CallbackQueryHandler(apt_today_back_callback, pattern="^apttodayback_"))
     app.add_handler(
         MessageHandler(filters.Regex(f"^{roles.MENU_DAILY_REGISTER}$"), register_menu)
     )
