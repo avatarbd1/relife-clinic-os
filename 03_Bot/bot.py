@@ -3090,10 +3090,10 @@ def _patient_card_keyboard(
 async def patient_list_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
     if staff is None:
-        return
+        return ConversationHandler.END
     if not roles.can_access(staff.get("Role", ""), roles.MENU_PATIENT_LIST):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
-        return
+        return ConversationHandler.END
     patients = [
         p for p in sheets.get_all_patients()
         if str(p.get("Status", "")).strip() == "Active"
@@ -3101,11 +3101,43 @@ async def patient_list_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
     patients.sort(key=lambda p: p.get("Full_Name", ""))
     if not patients:
         await update.message.reply_text("কোনো সক্রিয় রোগী পাওয়া যায়নি।")
-        return
+        return ConversationHandler.END
     context.user_data["plist_patients"] = {
         p.get("Patient_ID", "").strip(): p for p in patients
     }
     await _send_patient_list_page(update.message, context, page=0)
+    return "PLIST_BROWSE"
+
+
+async def patient_list_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """📋 রোগীর তালিকায় নাম/ফোন/আইডি টাইপ করলে এই হ্যান্ডলার ফিল্টার করা রেজাল্ট দেখায়
+    (patch29) — আগে/পরের বাটনও কাজ করে, আবার সরাসরি টাইপ করেও খোঁজা যায়।"""
+    query_text = update.message.text.strip()
+    results = sheets.search_patients(query_text)
+    results = [
+        p for p in results
+        if str(p.get("Status", "")).strip() == "Active"
+    ]
+    if not results:
+        await update.message.reply_text(
+            "❌ কোনো রোগী পাওয়া যায়নি। আবার নাম/ফোন/আইডি লেখো, অথবা নিচে স্ক্রল করো।"
+        )
+        return "PLIST_BROWSE"
+    results.sort(key=lambda p: p.get("Full_Name", ""))
+    context.user_data["plist_patients"] = {
+        p.get("Patient_ID", "").strip(): p for p in results
+    }
+    await _send_patient_list_page(update.message, context, page=0)
+    return "PLIST_BROWSE"
+
+
+async def patient_list_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff", {})
+    await update.effective_message.reply_text(
+        "❌ বাতিল করা হলো।",
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
+    return ConversationHandler.END
 
 
 async def _send_patient_list_page(message, context: ContextTypes.DEFAULT_TYPE, page: int, edit: bool = False):
@@ -3127,7 +3159,7 @@ async def _send_patient_list_page(message, context: ContextTypes.DEFAULT_TYPE, p
         nav.append(InlineKeyboardButton("পরের ➡️", callback_data=f"plistpage_{page + 1}"))
     if nav:
         buttons.append(nav)
-    text = f"📋 রোগীর তালিকা (পাতা {page + 1}) — নাম চাপো:"
+    text = f"📋 রোগীর তালিকা (পাতা {page + 1}) — নাম চাপো, অথবা নাম/ফোন/আইডি টাইপ করে খোঁজো:"
     markup = InlineKeyboardMarkup(buttons)
     if edit:
         await message.edit_text(text, reply_markup=markup)
@@ -3776,9 +3808,22 @@ def main():
         MessageHandler(filters.Regex(f"^{roles.MENU_DAILY_REGISTER}$"), register_menu)
     )
 
-    app.add_handler(
-        MessageHandler(filters.Regex(f"^{roles.MENU_PATIENT_LIST}$"), patient_list_start)
+    plist_conv = ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_PATIENT_LIST}$"), patient_list_start)
+        ],
+        states={
+            "PLIST_BROWSE": [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), patient_list_search),
+            ],
+        },
+        fallbacks=[
+            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
+            CommandHandler("cancel", patient_list_cancel),
+            CommandHandler("start", _restart_via_start),
+        ],
     )
+    app.add_handler(plist_conv)
     app.add_handler(CallbackQueryHandler(patient_list_page_callback, pattern="^plistpage_"))
     app.add_handler(CallbackQueryHandler(patient_list_select_callback, pattern="^plistsel_"))
     app.add_handler(CallbackQueryHandler(patient_list_back_callback, pattern="^plistact_back$"))
