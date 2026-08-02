@@ -147,6 +147,7 @@ _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 (CASESTUDY_SEARCH, CASESTUDY_EXTRA) = range(40, 42)
 (CASESTUDY_QUESTION,) = range(42, 43)  # আর ব্যবহার হয় না (patch22 revert) — future reuse-এর জন্য number সংরক্ষিত
 (REG_FIELDS,) = range(43, 44)  # রেজিস্ট্রেশনে missing fields একসাথে জিজ্ঞাসার state (patch38)
+(PAYDEL_LIST, PAYDEL_CONFIRM) = range(300, 302)  # আজকের এন্ট্রি মুছার ফ্লো
 
 TPLAN_CATEGORY, TPLAN_TESTS = range(200, 202)
 
@@ -1110,18 +1111,35 @@ async def reg_photo_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def reg_fields(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     missing = context.user_data.get("new_patient_missing", [])
-    parts = [x.strip() for x in update.message.text.strip().split(",")]
-    if len(parts) != len(missing) or any(not x for x in parts):
-        labels = [_REG_FIELD_LABELS[k] for k in missing]
-        await update.message.reply_text(
-            f"⚠️ ঠিক {len(missing)}টা তথ্য কমা (,) দিয়ে আলাদা করে দাও, এই ক্রমে: {', '.join(labels)}"
-        )
-        return REG_FIELDS
+    raw_parts = [x.strip() for x in update.message.text.strip().split(",")]
+    # ডাবল-কমা বা শেষে/শুরুতে অতিরিক্ত কমার কারণে খালি অংশ বাদ দেওয়া হয়, যাতে ছোট টাইপোতে
+    # পুরো এন্ট্রি বাতিল না হয়ে যায় (patch: আগে একটাও কম/বেশি হলে পুরোটাই রিজেক্ট হতো)।
+    parts = [x for x in raw_parts if x]
+
     p = context.user_data.setdefault("new_patient", {})
+
+    if len(parts) >= len(missing):
+        # প্রয়োজনীয় সবকটা (বা তার বেশি) তথ্য দিয়েছে — ক্রম অনুযায়ী বসিয়ে এগিয়ে যাও
+        for key, val in zip(missing, parts):
+            p[key] = val
+        context.user_data.pop("new_patient_missing", None)
+        return await _reg_check_duplicate_then_note(update, context)
+
+    # কিছু তথ্য কম দিয়েছে — যেগুলো দিয়েছে সেগুলো সেভ করে শুধু বাকিগুলো জিজ্ঞেস করো
     for key, val in zip(missing, parts):
         p[key] = val
-    context.user_data.pop("new_patient_missing", None)
-    return await _reg_check_duplicate_then_note(update, context)
+    still_missing = missing[len(parts):]
+    context.user_data["new_patient_missing"] = still_missing
+    labels = [_REG_FIELD_LABELS[k] for k in still_missing]
+    if len(labels) == 1:
+        prompt = f"⚠️ বাকি আছে — {labels[0]} লেখো:"
+    else:
+        prompt = (
+            f"⚠️ বাকি {len(still_missing)}টা তথ্য কমা (,) দিয়ে আলাদা করে এই ক্রমে লেখো:\n\n"
+            f"{', '.join(labels)}"
+        )
+    await update.message.reply_text(prompt)
+    return REG_FIELDS
 
 
 async def reg_phone_dup_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1999,7 +2017,9 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sessions = p.get("Sessions", 0)
 
     try:
-        bill_status = sheets.update_patient_payment(patient_id, amount, discount=0)
+        bill_status = None
+        if amount > 0:
+            bill_status = sheets.update_patient_payment(patient_id, amount, discount=0)
 
         receipt_no = sheets.add_payment({
             "Patient_ID": patient_id,
@@ -2008,7 +2028,7 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Amount": amount,
             "Discount": 0,
             "Due": bill_status["due_amount"] if bill_status else "",
-            "Payment_Method": p.get("Payment_Method", ""),
+            "Payment_Method": p.get("Payment_Method", "") if amount > 0 else "N/A",
             "Received_By": staff.get("Full_Name", "Unknown"),
             "Remarks": f"Sessions: {sessions}" if sessions else "",
         })
@@ -2017,13 +2037,20 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for _ in range(sessions):
                 sheets.increment_package_session(patient_id)
 
-        lines = [
-            f"✅ পেমেন্ট সেভ হয়েছে! Receipt No: {receipt_no}",
-            f"রোগী: {p.get('Patient_Name')} ({patient_id})",
-            f"জমা নেওয়া হলো: {amount} ({p.get('Payment_Method')})",
-        ]
-        if bill_status:
-            lines.append(f"মোট জমা: {bill_status['paid_amount']} | বাকি: {bill_status['due_amount']}")
+        if amount > 0:
+            lines = [
+                f"✅ পেমেন্ট সেভ হয়েছে! Receipt No: {receipt_no}",
+                f"রোগী: {p.get('Patient_Name')} ({patient_id})",
+                f"জমা নেওয়া হলো: {amount} ({p.get('Payment_Method')})",
+            ]
+            if bill_status:
+                lines.append(f"মোট জমা: {bill_status['paid_amount']} | বাকি: {bill_status['due_amount']}")
+        else:
+            lines = [
+                f"✅ সেভ হয়েছে (কোনো টাকা নেওয়া হয়নি — শুধু সেশন এন্ট্রি) — Entry No: {receipt_no}",
+                f"রোগী: {p.get('Patient_Name')} ({patient_id})",
+                f"সেশন: {sessions}" if sessions else "",
+            ]
 
         await update.message.reply_text(
             "\n".join(lines), reply_markup=_menu_keyboard(staff.get("Role", ""))
@@ -2048,6 +2075,129 @@ async def pay_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(
         "পেমেন্ট এন্ট্রি বাতিল করা হয়েছে।",
         reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
+    return ConversationHandler.END
+
+
+# ---------- আজকের এন্ট্রি মুছুন (ভুল টাকা/সেশন সংখ্যা ঠিক করার জন্য) ----------
+
+def _paydel_list_keyboard(entries: list[dict]) -> InlineKeyboardMarkup:
+    buttons = []
+    for e in entries:
+        amount = e.get("Amount", 0)
+        remarks = str(e.get("Remarks", ""))
+        label_bits = [str(e.get("Patient_Name", ""))]
+        if _safe_int(amount, 0) > 0:
+            label_bits.append(f"৳{amount}")
+        m = re.search(r"Sessions:\s*(\d+)", remarks)
+        if m:
+            label_bits.append(f"{m.group(1)} সেশন")
+        label = f"{e.get('Receipt_No', '')} — " + " | ".join(label_bits)
+        buttons.append([InlineKeyboardButton(label, callback_data=f"paydelsel_{e.get('Receipt_No', '')}")])
+    buttons.append([InlineKeyboardButton("❌ বাতিল", callback_data="paydelcancel")])
+    return InlineKeyboardMarkup(buttons)
+
+
+async def paydel_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return ConversationHandler.END
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_DELETE_ENTRY):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return ConversationHandler.END
+
+    staff_name = staff.get("Full_Name", "")
+    entries = sheets.get_today_payments_by_staff(staff_name)
+    if not entries:
+        await update.message.reply_text(
+            "আজকে তোমার নামে কোনো এন্ট্রি নেই।",
+            reply_markup=_menu_keyboard(staff.get("Role", "")),
+        )
+        return ConversationHandler.END
+
+    context.user_data["paydel_entries"] = {str(e.get("Receipt_No", "")): e for e in entries}
+    await update.message.reply_text(
+        "আজকে তোমার করা এন্ট্রিগুলোর মধ্যে কোনটা মুছবে? বেছে নাও:\n"
+        "(শুধু আজকের এন্ট্রি এখানে দেখানো হয়।)",
+        reply_markup=_paydel_list_keyboard(entries),
+    )
+    return PAYDEL_LIST
+
+
+async def paydel_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    receipt_no = query.data.replace("paydelsel_", "", 1)
+    entries = context.user_data.get("paydel_entries", {})
+    entry = entries.get(receipt_no)
+    if entry is None:
+        await query.edit_message_text("❌ এন্ট্রিটা আর পাওয়া যাচ্ছে না। আবার শুরু করো।")
+        return ConversationHandler.END
+
+    context.user_data["paydel_selected"] = receipt_no
+    amount = entry.get("Amount", 0)
+    remarks = str(entry.get("Remarks", ""))
+    m = re.search(r"Sessions:\s*(\d+)", remarks)
+    sessions_line = f"সেশন: {m.group(1)}\n" if m else ""
+    text = (
+        "নিচের এন্ট্রিটা মুছে ফেলা হবে — এটা ঠিক আছে?\n\n"
+        f"রোগী: {entry.get('Patient_Name', '')} ({entry.get('Patient_ID', '')})\n"
+        f"টাকা: {amount}\n"
+        f"{sessions_line}"
+        f"Entry No: {receipt_no}\n\n"
+        "⚠️ মুছলে রোগীর হিসাব ও সেশন সংখ্যা থেকেও এটা বাদ যাবে। এটা ফেরানো যাবে না।"
+    )
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("✅ হ্যাঁ, মুছে দাও", callback_data="paydelconfirm_yes")],
+        [InlineKeyboardButton("❌ না, বাতিল করো", callback_data="paydelcancel")],
+    ])
+    await query.edit_message_text(text, reply_markup=keyboard)
+    return PAYDEL_CONFIRM
+
+
+async def paydel_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    staff = context.user_data.get("staff", {})
+    receipt_no = context.user_data.get("paydel_selected")
+
+    if not receipt_no:
+        await query.edit_message_text("❌ কিছু একটা ভুল হয়েছে। আবার শুরু করো।")
+        return ConversationHandler.END
+
+    try:
+        deleted = sheets.delete_payment(receipt_no, deleted_by=staff.get("Full_Name", "Unknown"))
+    except Exception as e:
+        logger.exception("delete_payment ব্যর্থ হয়েছে")
+        await query.edit_message_text(
+            f"❌ মুছতে সমস্যা হয়েছে।\nError: {e}\nস্ক্রিনশট দিয়ে জানাও।"
+        )
+        context.user_data.pop("paydel_entries", None)
+        context.user_data.pop("paydel_selected", None)
+        return ConversationHandler.END
+
+    if deleted is None:
+        await query.edit_message_text("❌ এন্ট্রিটা খুঁজে পাওয়া যায়নি (হয়তো আগেই মোছা হয়েছে)।")
+    else:
+        await query.edit_message_text(f"✅ এন্ট্রি (Entry No: {receipt_no}) মুছে ফেলা হয়েছে।")
+
+    context.user_data.pop("paydel_entries", None)
+    context.user_data.pop("paydel_selected", None)
+    await query.message.reply_text(
+        "🏠 মূল মেনু", reply_markup=_menu_keyboard(staff.get("Role", ""))
+    )
+    return ConversationHandler.END
+
+
+async def paydel_cancel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    staff = context.user_data.get("staff", {})
+    context.user_data.pop("paydel_entries", None)
+    context.user_data.pop("paydel_selected", None)
+    await query.edit_message_text("বাতিল করা হয়েছে — কিছুই মোছা হয়নি।")
+    await query.message.reply_text(
+        "🏠 মূল মেনু", reply_markup=_menu_keyboard(staff.get("Role", ""))
     )
     return ConversationHandler.END
 
@@ -4305,6 +4455,28 @@ def main():
             CommandHandler("start", _restart_via_start),],
     )
     app.add_handler(pay_conv)
+
+    paydel_conv = ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_DELETE_ENTRY}$"), paydel_start),
+        ],
+        states={
+            PAYDEL_LIST: [
+                CallbackQueryHandler(paydel_select_callback, pattern="^paydelsel_"),
+                CallbackQueryHandler(paydel_cancel_callback, pattern="^paydelcancel$"),
+            ],
+            PAYDEL_CONFIRM: [
+                CallbackQueryHandler(paydel_confirm_callback, pattern="^paydelconfirm_yes$"),
+                CallbackQueryHandler(paydel_cancel_callback, pattern="^paydelcancel$"),
+            ],
+        },
+        fallbacks=[
+            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
+            CommandHandler("cancel", pay_cancel),
+            CommandHandler("start", _restart_via_start),
+        ],
+    )
+    app.add_handler(paydel_conv)
 
     treat_conv = ConversationHandler(
         entry_points=[

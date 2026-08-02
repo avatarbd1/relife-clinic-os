@@ -547,6 +547,33 @@ def increment_package_session(patient_id: str) -> bool:
     ws.update_cell(row_number, 6, remaining)
     if remaining == 0:
         ws.update_cell(row_number, 11, "Completed")
+    _invalidate_cache(ws)
+    return True
+
+
+def decrement_package_session(patient_id: str) -> bool:
+    """increment_package_session-এর উল্টো — ভুল সেশন এন্ট্রি ডিলিট হলে সেশন কাউন্ট ফিরিয়ে আনার
+    জন্য ব্যবহার হয় (delete_payment থেকে কল হয়)। রোগীর সবচেয়ে সাম্প্রতিক প্যাকেজ রো ধরা হয় —
+    এটা Active অথবা সদ্য Completed যেকোনোটাই হতে পারে (উদাহরণ: শেষ সেশন এন্ট্রিটাই ডিলিট হচ্ছে
+    যেটার ফলে প্যাকেজ Completed হয়ে গিয়েছিল)। সেশন কমিয়ে দরকার হলে আবার Active করে দেয়।"""
+    ws = _worksheet(config.SHEET_PACKAGES)
+    records = safe_get_all_records(ws, _use_cache=False)
+    row_number = None
+    pkg = None
+    for idx, r in enumerate(records, start=2):
+        if str(r.get("Patient_ID", "")).strip() == patient_id.strip():
+            row_number = idx
+            pkg = r  # সবচেয়ে নিচের (সর্বশেষ) মিলটাই থেকে যাবে
+    if pkg is None:
+        return False
+    used = max(0, int(pkg.get("Sessions_Used", 0) or 0) - 1)
+    total = int(pkg.get("Total_Sessions", 0) or 0)
+    remaining = max(0, total - used)
+    ws.update_cell(row_number, 5, used)
+    ws.update_cell(row_number, 6, remaining)
+    if remaining > 0 and str(pkg.get("Status", "")).strip() == "Completed":
+        ws.update_cell(row_number, 11, "Active")
+    _invalidate_cache(ws)
     return True
 
 
@@ -581,6 +608,107 @@ def add_payment(data: dict) -> str:
     ]
     ws.append_row(row)
     return receipt_no
+
+
+def get_today_payments_by_staff(staff_name: str) -> list[dict]:
+    """আজকের তারিখে নির্দিষ্ট স্টাফের করা পেমেন্ট/সেশন এন্ট্রিগুলো লিস্ট করে (Delete ফিচারের
+    জন্য)। শুধু নিজের করা এন্ট্রি এবং শুধু আজকের এন্ট্রি — এর বাইরে কিছু রিটার্ন করে না।
+    সর্বশেষ এন্ট্রি সবার আগে থাকে।"""
+    ws = _worksheet(config.SHEET_PAYMENTS)
+    records = safe_get_all_records(ws, _use_cache=False)
+    today_str = bd_now().strftime("%Y-%m-%d")
+    result = []
+    for idx, r in enumerate(records, start=2):
+        if str(r.get("Date", "")).strip() != today_str:
+            continue
+        if str(r.get("Received_By", "")).strip() != str(staff_name).strip():
+            continue
+        r["_row_number"] = idx
+        result.append(r)
+    result.sort(key=lambda r: r["_row_number"], reverse=True)
+    return result
+
+
+def delete_payment(receipt_no: str, deleted_by: str) -> dict | None:
+    """একটা পেমেন্ট/সেশন এন্ট্রি মুছে দেয় এবং এর প্রভাব রিভার্স করে:
+    - রোগীর Paid_Amount/Due_Amount/Status ফিরিয়ে আনে (টাকা নেওয়া থাকলে)
+    - প্যাকেজের Sessions_Used কমিয়ে দেয় (সেশন এন্ট্রি থাকলে)
+    - Delete_Log শীটে মোছার আগের সম্পূর্ণ ডেটা সংরক্ষণ করে (কে, কখন, কী মুছল)
+    এন্ট্রি খুঁজে না পেলে None রিটার্ন করে, নাহলে মোছা এন্ট্রির ডেটা (dict) রিটার্ন করে।
+
+    সতর্কতা: এই ফাংশন ধরে নেয় যে এন্ট্রিটা আজকেরই এবং এর পরে ওই রোগীর হিসেবে অন্য কোনো
+    পরিবর্তন হয়নি (তাই শুধু আজকের এন্ট্রি ডিলিট করা যায় — get_today_payments_by_staff দিয়ে
+    সীমাবদ্ধ রাখা হয়েছে)।"""
+    ws = _worksheet(config.SHEET_PAYMENTS)
+    try:
+        cell = ws.find(str(receipt_no).strip(), in_column=1)
+    except gspread.exceptions.CellNotFound:
+        cell = None
+    if cell is None:
+        return None
+    row_number = cell.row
+    row_values = ws.row_values(row_number)
+
+    def _val(idx):
+        try:
+            return row_values[idx]
+        except IndexError:
+            return ""
+
+    entry = {
+        "Receipt_No": _val(0), "Date": _val(1), "SL": _val(2),
+        "Patient_ID": _val(3), "Patient_Name": _val(4), "Department": _val(5),
+        "Amount": _val(6), "Discount": _val(7), "Due": _val(8),
+        "Payment_Method": _val(9), "Received_By": _val(10), "Remarks": _val(11),
+    }
+
+    amount = _safe_float(entry["Amount"])
+    discount = _safe_float(entry["Discount"])
+    patient_id = str(entry["Patient_ID"]).strip()
+
+    sessions = 0
+    m = re.search(r"Sessions:\s*(\d+)", entry["Remarks"] or "")
+    if m:
+        sessions = int(m.group(1))
+
+    # ১) Payments শীট থেকে রো মোছা
+    ws.delete_rows(row_number)
+    _invalidate_cache(ws)
+
+    # ২) রোগীর Paid/Due হিসাব রিভার্স করা (টাকা নেওয়া থাকলে)
+    if amount > 0 and patient_id:
+        try:
+            update_patient_payment(patient_id, -amount, discount=-discount)
+        except Exception as e:
+            print(f"⚠️ রোগীর Paid/Due রিভার্স করতে সমস্যা হয়েছে: {e}")
+
+    # ৩) প্যাকেজের সেশন কমানো (সেশন এন্ট্রি থাকলে)
+    if sessions > 0 and patient_id:
+        for _ in range(sessions):
+            try:
+                decrement_package_session(patient_id)
+            except Exception as e:
+                print(f"⚠️ প্যাকেজ সেশন রিভার্স করতে সমস্যা হয়েছে: {e}")
+                break
+
+    # ৪) Delete_Log শীটে রেকর্ড রাখা
+    try:
+        log_ws = _worksheet(getattr(config, "SHEET_DELETE_LOG", "Delete_Log"))
+        log_ws.append_row([
+            bd_now().strftime("%Y-%m-%d %I:%M %p"),
+            deleted_by,
+            "Payment/Session",
+            entry["Receipt_No"],
+            entry["Patient_ID"],
+            entry["Patient_Name"],
+            entry["Amount"],
+            sessions,
+            json.dumps(entry, ensure_ascii=False),
+        ])
+    except Exception as e:
+        print(f"⚠️ Delete_Log-এ লেখা ব্যর্থ হয়েছে (এন্ট্রি তবুও মোছা হয়েছে): {e}")
+
+    return entry
 
 
 def get_all_payments() -> list[dict]:
