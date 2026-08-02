@@ -11,6 +11,21 @@ import re
 
 import time
 
+
+def _safe_float(value):
+    """শীট থেকে আসা মান (খালি স্ট্রিং, কমাযুক্ত সংখ্যা, N/A ইত্যাদি) নিরাপদে float-এ কনভার্ট করে।
+    ব্যর্থ হলে 0.0 রিটার্ন করে, কখনো crash করে না।"""
+    if value is None:
+        return 0.0
+    try:
+        cleaned = str(value).replace(",", "").strip()
+        if cleaned == "" or cleaned.upper() == "N/A":
+            return 0.0
+        return float(cleaned)
+    except (ValueError, TypeError):
+        return 0.0
+
+
 _records_cache = {}  # {worksheet_title: (timestamp, records)}
 _RECORDS_CACHE_TTL = 2.0  # সেকেন্ড — একই ড্যাশবোর্ড রেন্ডারের মধ্যে বারবার একই শীট না পড়ার জন্য
 
