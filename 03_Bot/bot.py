@@ -51,6 +51,7 @@ import calendar_helper
 import staff_ai_query
 import case_study_ai
 import photo_extract
+import text_extract
 import ai_helper
 import assessment_defs
 
@@ -975,8 +976,9 @@ async def _reg_ask_fields_or_continue(update: Update, context: ContextTypes.DEFA
             prompt = f"{labels[0]} লেখো:"
         else:
             prompt = (
-                "নিচের তথ্যগুলো কমা (,) দিয়ে আলাদা করে এই ক্রমে এক লাইনে লেখো:\n\n"
-                f"{', '.join(labels)}"
+                "রোগীর তথ্য এক লাইনে স্বাভাবিক ভাষায় লেখো, ক্রম/কমা বাধ্যতামূলক না — "
+                "AI বাকিটা বুঝে নেবে। উদাহরণ: রহিম, বয়স ৩২, 01712345678, মিরপুর ঢাকা\n\n"
+                f"লাগবে: {', '.join(labels)}"
             )
         await update.message.reply_text(prompt, reply_markup=ReplyKeyboardRemove())
         return REG_FIELDS
@@ -1111,21 +1113,50 @@ async def reg_photo_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def reg_fields(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     missing = context.user_data.get("new_patient_missing", [])
-    raw_parts = [x.strip() for x in update.message.text.strip().split(",")]
-    # ডাবল-কমা বা শেষে/শুরুতে অতিরিক্ত কমার কারণে খালি অংশ বাদ দেওয়া হয়, যাতে ছোট টাইপোতে
-    # পুরো এন্ট্রি বাতিল না হয়ে যায় (patch: আগে একটাও কম/বেশি হলে পুরোটাই রিজেক্ট হতো)।
-    parts = [x for x in raw_parts if x]
-
+    raw_text = update.message.text.strip()
     p = context.user_data.setdefault("new_patient", {})
 
+    # প্রথমে AI দিয়ে ফ্রি-টেক্সট থেকে ফিল্ড বের করার চেষ্টা — কমা/নির্দিষ্ট ক্রম লাগবে না।
+    # AI ব্যর্থ হলে (key নেই / নেটওয়ার্ক সমস্যা / parse fail) নিচে পুরনো কমা-পদ্ধতিতে ফলব্যাক হয়।
+    ai_filled = False
+    if len(missing) > 1:
+        try:
+            extracted = text_extract.extract_patient_fields(raw_text)
+        except Exception as e:
+            logger.warning(f"text_extract ব্যর্থ হয়েছে, comma-split এ ফলব্যাক: {e}")
+            extracted = None
+        if extracted:
+            field_map = {"full_name": "Full_Name", "phone": "Phone", "address": "Address", "age": "Age"}
+            for src_key, dst_key in field_map.items():
+                val = extracted.get(src_key)
+                if val and dst_key in missing:
+                    p[dst_key] = str(val).strip()
+                    ai_filled = True
+
+    if ai_filled:
+        still_missing = _reg_missing_fields(p)
+        if not still_missing:
+            context.user_data.pop("new_patient_missing", None)
+            return await _reg_check_duplicate_then_note(update, context)
+        context.user_data["new_patient_missing"] = still_missing
+        labels = [_REG_FIELD_LABELS[k] for k in still_missing]
+        if len(labels) == 1:
+            prompt = f"⚠️ বাকি আছে — {labels[0]} লেখো:"
+        else:
+            prompt = f"⚠️ বাকি আছে: {', '.join(labels)} — এক লাইনে লেখো:"
+        await update.message.reply_text(prompt)
+        return REG_FIELDS
+
+    # AI কিছু না পেলে বা ব্যর্থ হলে পুরনো কমা-ভিত্তিক পদ্ধতি (fallback, আগের মতোই কাজ করে)
+    raw_parts = [x.strip() for x in raw_text.split(",")]
+    parts = [x for x in raw_parts if x]
+
     if len(parts) >= len(missing):
-        # প্রয়োজনীয় সবকটা (বা তার বেশি) তথ্য দিয়েছে — ক্রম অনুযায়ী বসিয়ে এগিয়ে যাও
         for key, val in zip(missing, parts):
             p[key] = val
         context.user_data.pop("new_patient_missing", None)
         return await _reg_check_duplicate_then_note(update, context)
 
-    # কিছু তথ্য কম দিয়েছে — যেগুলো দিয়েছে সেগুলো সেভ করে শুধু বাকিগুলো জিজ্ঞেস করো
     for key, val in zip(missing, parts):
         p[key] = val
     still_missing = missing[len(parts):]
