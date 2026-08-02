@@ -262,24 +262,35 @@ def analyze_report_images(image_data_list: list) -> str:
         return "(এই ছবি/রিপোর্ট থেকে এই মুহূর্তে বিশ্লেষণ সম্ভব হয়নি। রোগীর লিখিত/জানানো তথ্যের ভিত্তিতেই এগোনো হচ্ছে।)"
 
 
-def check_lesson_questions(case_text: str, lesson_number: int) -> list:
-    """এই Lesson international case-competition মানে লিখতে আরও patient-detail দরকার কিনা AI নিজে যাচাই করে।
-    দরকার হলে সর্বোচ্চ ১০টা নির্দিষ্ট প্রশ্ন (list of str) রিটার্ন করে, দরকার না হলে খালি list।"""
+def check_treatment_red_flags(t: dict) -> str:
+    """দৈনিক Treatment এন্ট্রি সেভ হওয়ার ঠিক আগে, সত্যিকারের Red Flag/Safety-critical
+    তথ্য মিসিং কিনা AI যাচাই করে। দরকার হলে ১টা ছোট, নির্দিষ্ট প্রশ্ন (str) রিটার্ন করে,
+    রুটিন কিছুতে দরকার না হলে খালি string ("") রিটার্ন করে।"""
     if not OPENROUTER_API_KEY:
-        return []
+        return ""
 
-    title = LESSON_TITLES[lesson_number - 1]
+    note_lines = [
+        f"Diagnosis: {t.get('Diagnosis', '') or '-'}",
+        f"Session No: {t.get('Session_No', '') or '-'}",
+        f"Exercise: {t.get('Exercise', '') or '-'}",
+        f"Electrotherapy: {t.get('Electrotherapy', '') or '-'}",
+        f"Manual Therapy: {t.get('Manual_Therapy', '') or '-'}",
+        f"Machines: {t.get('Machines', '') or '-'}",
+    ]
+    note_text = "\n".join(note_lines)
+
     system_msg = (
-        "তুমি একজন Senior Physiotherapy Clinical Mentor। ব্যবহারকারী একটা রোগীর কেস দিয়েছে এবং "
-        f"এখন এই Lesson লিখতে চাও: \"{title}\"। "
-        "এই Lesson international physiotherapy case-competition মানের (sharp, patient-specific reasoning সহ) "
-        "লিখতে দেওয়া তথ্য যথেষ্ট কিনা যাচাই করো। "
-        "যথেষ্ট না হলে সর্বোচ্চ ১০টা নির্দিষ্ট, সংক্ষিপ্ত প্রশ্ন লেখো যা মিসিং তথ্য জানতে সাহায্য করবে — "
-        "শুধু সেই প্রশ্নগুলোই লেখো যেগুলোর উত্তর সত্যিই এই Lesson-এর মান বাড়াবে, অপ্রয়োজনীয় প্রশ্ন কোরো না। "
-        "উত্তর অবশ্যই শুধুমাত্র একটা JSON array of strings হতে হবে — অন্য কোনো টেক্সট, ব্যাখ্যা বা মার্কডাউন ছাড়া। "
-        "তথ্য যথেষ্ট মনে হলে খালি array [] রিটার্ন করো।"
+        "তুমি একজন Senior Physiotherapy Clinical Safety Reviewer। নিচে আজকের একটা রুটিন "
+        "ট্রিটমেন্ট সেশনের সংক্ষিপ্ত নোট দেওয়া হলো। শুধুমাত্র সত্যিকারের Red Flag বা Safety-critical "
+        "তথ্য (যেমন: হঠাৎ ব্যথা তীব্র বেড়ে যাওয়া, নতুন নিউরোলজিক্যাল উপসর্গ, পোস্ট-অপ কমপ্লিকেশন সাইন, "
+        "জ্বর, অস্বাভাবিক ফোলা/লালচেভাব) সত্যিই মিসিং এবং জিজ্ঞেস করা জরুরি মনে হলে একটা মাত্র ছোট, "
+        "নির্দিষ্ট প্রশ্ন লেখো (Bengali-তে, দরকারে medical term English রাখতে পারো)। "
+        "রুটিন কিছুতে (এক্সারসাইজ কেমন হলো, রোগী কেমন ফিল করলো, সাধারণ প্রোগ্রেস ইত্যাদি) কখনো প্রশ্ন কোরো না — "
+        "শুধু আসল সেফটি ঝুঁকির সন্দেহ থাকলেই প্রশ্ন করবে, নাহলে চুপ থাকবে। "
+        "উত্তর অবশ্যই শুধু plain text-এ ১টা প্রশ্ন হবে, JSON বা markdown ছাড়া। "
+        "প্রশ্নের দরকার না থাকলে শুধু 'NONE' লিখো, অন্য কিছু না।"
     )
-    user_msg = f"রোগীর কেস: {case_text}"
+    user_msg = f"আজকের ট্রিটমেন্ট নোট:\n{note_text}"
 
     try:
         resp = requests.post(
@@ -294,19 +305,16 @@ def check_lesson_questions(case_text: str, lesson_number: int) -> list:
                     {"role": "system", "content": system_msg},
                     {"role": "user", "content": user_msg},
                 ],
-                "max_tokens": 500,
+                "max_tokens": 120,
             },
-            timeout=40,
+            timeout=20,
         )
         resp.raise_for_status()
         data = resp.json()
         content = data["choices"][0]["message"]["content"].strip()
-        content = content.replace("```json", "").replace("```", "").strip()
-        questions = json.loads(content)
-        if isinstance(questions, list):
-            return [str(q).strip() for q in questions if str(q).strip()][:10]
-        return []
+        if not content or content.strip().upper().startswith("NONE"):
+            return ""
+        return content
     except Exception as e:
-        print(f"[case_study_ai] check_lesson_questions FAILED: {e}")
-        return []
-
+        print(f"[case_study_ai] check_treatment_red_flags FAILED: {e}")
+        return ""
