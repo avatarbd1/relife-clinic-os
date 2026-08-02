@@ -7,6 +7,7 @@ case_study_ai.py
 
 import os
 import requests
+import json
 import time
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -259,3 +260,53 @@ def analyze_report_images(image_data_list: list) -> str:
         # raw error message case_text-এ ঢুকিয়ে AI-কে বিভ্রান্ত করা ঠিক না —
         # তাই শুধু একটা safe, informative note দেওয়া হচ্ছে, technical error না।
         return "(এই ছবি/রিপোর্ট থেকে এই মুহূর্তে বিশ্লেষণ সম্ভব হয়নি। রোগীর লিখিত/জানানো তথ্যের ভিত্তিতেই এগোনো হচ্ছে।)"
+
+
+def check_lesson_questions(case_text: str, lesson_number: int) -> list:
+    """এই Lesson international case-competition মানে লিখতে আরও patient-detail দরকার কিনা AI নিজে যাচাই করে।
+    দরকার হলে সর্বোচ্চ ১০টা নির্দিষ্ট প্রশ্ন (list of str) রিটার্ন করে, দরকার না হলে খালি list।"""
+    if not OPENROUTER_API_KEY:
+        return []
+
+    title = LESSON_TITLES[lesson_number - 1]
+    system_msg = (
+        "তুমি একজন Senior Physiotherapy Clinical Mentor। ব্যবহারকারী একটা রোগীর কেস দিয়েছে এবং "
+        f"এখন এই Lesson লিখতে চাও: \"{title}\"। "
+        "এই Lesson international physiotherapy case-competition মানের (sharp, patient-specific reasoning সহ) "
+        "লিখতে দেওয়া তথ্য যথেষ্ট কিনা যাচাই করো। "
+        "যথেষ্ট না হলে সর্বোচ্চ ১০টা নির্দিষ্ট, সংক্ষিপ্ত প্রশ্ন লেখো যা মিসিং তথ্য জানতে সাহায্য করবে — "
+        "শুধু সেই প্রশ্নগুলোই লেখো যেগুলোর উত্তর সত্যিই এই Lesson-এর মান বাড়াবে, অপ্রয়োজনীয় প্রশ্ন কোরো না। "
+        "উত্তর অবশ্যই শুধুমাত্র একটা JSON array of strings হতে হবে — অন্য কোনো টেক্সট, ব্যাখ্যা বা মার্কডাউন ছাড়া। "
+        "তথ্য যথেষ্ট মনে হলে খালি array [] রিটার্ন করো।"
+    )
+    user_msg = f"রোগীর কেস: {case_text}"
+
+    try:
+        resp = requests.post(
+            OPENROUTER_URL,
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": MODEL,
+                "messages": [
+                    {"role": "system", "content": system_msg},
+                    {"role": "user", "content": user_msg},
+                ],
+                "max_tokens": 500,
+            },
+            timeout=40,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        content = data["choices"][0]["message"]["content"].strip()
+        content = content.replace("```json", "").replace("```", "").strip()
+        questions = json.loads(content)
+        if isinstance(questions, list):
+            return [str(q).strip() for q in questions if str(q).strip()][:10]
+        return []
+    except Exception as e:
+        print(f"[case_study_ai] check_lesson_questions FAILED: {e}")
+        return []
+

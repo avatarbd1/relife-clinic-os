@@ -141,6 +141,7 @@ _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 (CASESTUDY_INPUT,) = range(38, 39)
 (CASESTUDY_LESSON,) = range(39, 40)
 (CASESTUDY_SEARCH, CASESTUDY_EXTRA) = range(40, 42)
+(CASESTUDY_QUESTION,) = range(42, 43)
 
 TPLAN_CATEGORY, TPLAN_TESTS = range(200, 202)
 
@@ -3477,6 +3478,18 @@ async def casestudy_extra_receive(update, context):
             case_text += f"\n\nরিপোর্ট ছবি বিশ্লেষণ (AI Vision):\n{vision_notes}"
 
     context.user_data["cs_case_text"] = case_text
+
+    questions = case_study_ai.check_lesson_questions(case_text, 1)
+    if questions:
+        context.user_data["cs_pending_lesson"] = 1
+        numbered = "\n".join(f"{i+1}. {q}" for i, q in enumerate(questions))
+        await update.message.reply_text(
+            "এই Lesson আরো ভালোভাবে লিখতে কিছু তথ্য দরকার:\n\n"
+            f"{numbered}\n\n"
+            "যতটুকু জানো লিখে পাঠাও (না জানলে 'জানি না' লিখো):"
+        )
+        return CASESTUDY_QUESTION
+
     context.user_data["cs_lesson"] = 1
     await update.message.reply_text("\U0001F914 কেস বিশ্লেষণ করছি, Lesson 1 তৈরি হচ্ছে...")
     answer = case_study_ai.answer_case_lesson(case_text, 1)
@@ -3505,6 +3518,18 @@ async def casestudy_lesson_callback(update, context):
     lesson = context.user_data.get("cs_lesson", 1)
 
     lesson += 1
+
+    questions = case_study_ai.check_lesson_questions(case_text, lesson)
+    if questions:
+        context.user_data["cs_pending_lesson"] = lesson
+        numbered = "\n".join(f"{i+1}. {q}" for i, q in enumerate(questions))
+        await query.message.reply_text(
+            "এই Lesson আরো ভালোভাবে লিখতে কিছু তথ্য দরকার:\n\n"
+            f"{numbered}\n\n"
+            "যতটুকু জানো লিখে পাঠাও (না জানলে 'জানি না' লিখো):"
+        )
+        return CASESTUDY_QUESTION
+
     await query.message.reply_text(f"\U0001F914 Lesson {lesson} তৈরি হচ্ছে...")
     answer = case_study_ai.answer_case_lesson(case_text, lesson)
     context.user_data["cs_lesson"] = lesson
@@ -3529,6 +3554,41 @@ async def casestudy_lesson_callback(update, context):
         return ConversationHandler.END
 
     await query.message.reply_text(answer, reply_markup=_cslesson_next_keyboard())
+    return CASESTUDY_LESSON
+
+
+async def casestudy_question_receive(update, context):
+    text = update.message.text.strip()
+    lesson = context.user_data.get("cs_pending_lesson", context.user_data.get("cs_lesson", 1) + 1)
+    case_text = context.user_data.get("cs_case_text", "")
+    if text not in ("জানি না", "na", "n/a", "N/A", "No", "no"):
+        case_text += f"\n\nLesson {lesson}-এর জন্য বাড়তি তথ্য:\n{text}"
+        context.user_data["cs_case_text"] = case_text
+    staff = context.user_data.get("staff", {})
+    await update.message.reply_text(f"\U0001F914 Lesson {lesson} তৈরি হচ্ছে...")
+    answer = case_study_ai.answer_case_lesson(case_text, lesson)
+    context.user_data["cs_lesson"] = lesson
+    try:
+        sheets.add_case_study_lesson(
+            context.user_data.get("cs_session_id", ""),
+            context.user_data.get("cs_patient_id", ""),
+            context.user_data.get("cs_patient_name", ""),
+            lesson,
+            case_study_ai.LESSON_TITLES[lesson - 1],
+            answer,
+            staff.get("Full_Name") or staff.get("Name") or str(staff.get("Staff_ID", "")),
+        )
+    except Exception:
+        pass
+
+    if lesson >= len(case_study_ai.LESSON_TITLES):
+        await update.message.reply_text(
+            answer,
+            reply_markup=_menu_keyboard(staff.get("Role", "")),
+        )
+        return ConversationHandler.END
+
+    await update.message.reply_text(answer, reply_markup=_cslesson_next_keyboard())
     return CASESTUDY_LESSON
 
 
@@ -3844,6 +3904,9 @@ def main():
             ],
             CASESTUDY_EXTRA: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), casestudy_extra_receive)
+            ],
+            CASESTUDY_QUESTION: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), casestudy_question_receive)
             ],
             CASESTUDY_LESSON: [
                 CallbackQueryHandler(casestudy_lesson_callback, pattern="^cslesson_next$")
