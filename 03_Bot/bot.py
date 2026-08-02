@@ -1,4 +1,5 @@
 import os
+import time
 # GLOBAL-EVENTLOOP-PATCH-PY314
 import asyncio as _asyncio_p314
 import threading
@@ -3389,6 +3390,10 @@ async def casestudy_select_callback(update, context):
         return ConversationHandler.END
 
     context.user_data["cs_case_context"] = case_context
+    context.user_data["cs_patient_id"] = patient_id
+    patient = sheets.get_patient_by_id(patient_id) or {}
+    context.user_data["cs_patient_name"] = patient.get("Full_Name") or patient.get("Name") or ""
+    context.user_data["cs_session_id"] = f"CS-{patient_id}-{int(time.time())}"
     await query.edit_message_text(
         "\u2705 রোগীর ডেটা লোড হয়েছে।\n"
         "কেসের বাড়তি কোনো তথ্য/অবজারভেশন থাকলে লেখো, না থাকলে শুধু 'না' লিখো।"
@@ -3413,6 +3418,19 @@ async def casestudy_extra_receive(update, context):
     context.user_data["cs_lesson"] = 1
     await update.message.reply_text("\U0001F914 কেস বিশ্লেষণ করছি, Lesson 1 তৈরি হচ্ছে...")
     answer = case_study_ai.answer_case_lesson(case_text, 1)
+    staff = context.user_data.get("staff", {})
+    try:
+        sheets.add_case_study_lesson(
+            context.user_data.get("cs_session_id", ""),
+            context.user_data.get("cs_patient_id", ""),
+            context.user_data.get("cs_patient_name", ""),
+            1,
+            case_study_ai.LESSON_TITLES[0],
+            answer,
+            staff.get("Full_Name") or staff.get("Name") or str(staff.get("Staff_ID", "")),
+        )
+    except Exception:
+        pass
     await update.message.reply_text(answer, reply_markup=_cslesson_next_keyboard())
     return CASESTUDY_LESSON
 
@@ -3428,6 +3446,18 @@ async def casestudy_lesson_callback(update, context):
     await query.message.reply_text(f"\U0001F914 Lesson {lesson} তৈরি হচ্ছে...")
     answer = case_study_ai.answer_case_lesson(case_text, lesson)
     context.user_data["cs_lesson"] = lesson
+    try:
+        sheets.add_case_study_lesson(
+            context.user_data.get("cs_session_id", ""),
+            context.user_data.get("cs_patient_id", ""),
+            context.user_data.get("cs_patient_name", ""),
+            lesson,
+            case_study_ai.LESSON_TITLES[lesson - 1],
+            answer,
+            staff.get("Full_Name") or staff.get("Name") or str(staff.get("Staff_ID", "")),
+        )
+    except Exception:
+        pass
 
     if lesson >= len(case_study_ai.LESSON_TITLES):
         await query.message.reply_text(
