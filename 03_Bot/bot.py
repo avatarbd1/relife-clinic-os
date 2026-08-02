@@ -4082,6 +4082,10 @@ def main():
         fallbacks=[CommandHandler("cancel", thist_cancel)],
     )
     app.add_handler(thist_conv)
+    # thist_date_callback আগে শুধু thist_conv-এর THIST_DATE state-এর ভিতরেই ধরা যেত।
+    # তারিখ সিলেক্ট করার পর conversation END হয়ে যায়, ফলে "🔙 ফিরুন" দিয়ে ফিরে এসে
+    # আরেকটা তারিখ চাপলে কোনো handler সেটা ধরত না। গ্লোবালি রেজিস্টার করে ফিক্স (patch30)।
+    app.add_handler(CallbackQueryHandler(thist_date_callback, pattern="^thdate_"))
     app.add_handler(CallbackQueryHandler(thist_back_to_dates_callback, pattern="^thistback_"))
 
     staffai_conv = ConversationHandler(
