@@ -11,3 +11,4 @@ apply_patch.py
 __pycache__/
 *.pyc
 .env
+patch*.py
