@@ -52,6 +52,7 @@ import staff_ai_query
 import case_study_ai
 import photo_extract
 import text_extract
+import intent_router
 import ai_helper
 import assessment_defs
 
@@ -3620,6 +3621,24 @@ async def unknown_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff") or await _require_staff(update, context)
     if staff is None:
         return
+    text = (update.message.text or "").strip()
+    allowed_items = roles.get_menu_for_role(staff.get("Role", ""))
+    suggested = None
+    if text:
+        try:
+            suggested = intent_router.classify_menu_intent(text, allowed_items)
+        except Exception as e:
+            logger.warning(f"intent_router ব্যর্থ হয়েছে: {e}")
+            suggested = None
+
+    if suggested:
+        suggest_kb = ReplyKeyboardMarkup([[suggested]], resize_keyboard=True, one_time_keyboard=True)
+        await update.message.reply_text(
+            f"মনে হচ্ছে তুমি এটা করতে চাও 👇\nনিচের বাটনে ট্যাপ করো, অথবা মূল মেনুতে ফিরতে {roles.MENU_BACK_MAIN} চাপো।",
+            reply_markup=suggest_kb,
+        )
+        return
+
     await update.message.reply_text(
         "এই ফিচারটা এখনো তৈরি হচ্ছে 🚧",
         reply_markup=_menu_keyboard(staff.get("Role", "")),
@@ -4151,7 +4170,8 @@ async def staffai_receive(update, context):
     staff = context.user_data.get("staff", {})
     question = update.message.text.strip()
     await update.message.reply_text("\U0001F914 খুঁজছি...")
-    answer = staff_ai_query.answer_staff_query(question)
+    staff = context.user_data.get("staff", {})
+    answer = staff_ai_query.answer_staff_query(question, role=staff.get("Role", ""))
     await update.message.reply_text(
         answer,
         reply_markup=_menu_keyboard(staff.get("Role", "")),

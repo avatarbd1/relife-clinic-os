@@ -53,7 +53,6 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_APPOINTMENT, MENU_TODAY_SCHEDULE],
         [MENU_PAYMENT, MENU_REPORTS],
         [MENU_DELETE_ENTRY],
-        [MENU_STAFF_AI_QUERY],
         [MENU_INVENTORY],
     ],
     Role.THERAPIST: [
@@ -62,7 +61,6 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_MY_PATIENTS],
         [MENU_TREATMENT_NOTE, MENU_TREATMENT_PLAN],
         [MENU_TREATMENT_HISTORY],
-        [MENU_STAFF_AI_QUERY],
         [MENU_INVENTORY],
     ],
     Role.MANAGER: [
@@ -72,7 +70,6 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_TREATMENT],
         [MENU_REPORTS],
         [MENU_DELETE_ENTRY],
-        [MENU_STAFF_AI_QUERY],
         [MENU_INVENTORY],
     ],
 }

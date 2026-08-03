@@ -76,8 +76,17 @@ SHEET_CATALOG = {
 }
 
 
-def _pick_relevant_sheet(question: str) -> str:
-    catalog_text = "\n".join(f"- {name}: {desc}" for name, desc in SHEET_CATALOG.items())
+ROLE_RESTRICTED_SHEETS = {
+    "Therapist": ["06_Payments"],  # income/payment তথ্য থেরাপিস্টের জন্য না
+}
+
+
+def _pick_relevant_sheet(question: str, role: str = "") -> str:
+    allowed_catalog = {
+        name: desc for name, desc in SHEET_CATALOG.items()
+        if name not in ROLE_RESTRICTED_SHEETS.get(role, [])
+    }
+    catalog_text = "\n".join(f"- {name}: {desc}" for name, desc in allowed_catalog.items())
     prompt = f"""নিচে কিছু Google Sheet-এর তালিকা ও তাদের বিষয়বস্তু দেওয়া হলো:
 
 {catalog_text}
@@ -87,7 +96,7 @@ def _pick_relevant_sheet(question: str) -> str:
 শুধু সবচেয়ে প্রাসঙ্গিক sheet-এর নাম লিখুন (যেমন: 06_Payments), অন্য কিছু লিখবেন না।
 """
     sheet_name = _call_groq(prompt).strip()
-    if sheet_name not in SHEET_CATALOG:
+    if sheet_name not in allowed_catalog:
         return None
     return sheet_name
 
@@ -115,13 +124,13 @@ def _summarize_answer(question: str, sheet_name: str, records: list) -> str:
     return _call_openrouter(prompt).strip()
 
 
-def answer_staff_query(question: str) -> str:
+def answer_staff_query(question: str, role: str = "") -> str:
     if not GROQ_API_KEY or not OPENROUTER_API_KEY:
         return "⚠️ AI query ফিচার এখনো সেটআপ হয়নি (GROQ_API_KEY বা OPENROUTER_API_KEY নেই)।"
     try:
-        sheet_name = _pick_relevant_sheet(question)
+        sheet_name = _pick_relevant_sheet(question, role)
         if not sheet_name:
-            return "দুঃখিত, আপনার প্রশ্নটা কোন তথ্যের সাথে সম্পর্কিত বুঝতে পারিনি। আরেকটু স্পষ্ট করে জিজ্ঞেস করুন।"
+            return "দুঃখিত, এই তথ্য তোমার জন্য প্রযোজ্য না, অথবা প্রশ্নটা কোন তথ্যের সাথে সম্পর্কিত বুঝতে পারিনি।"
         worksheet = sheets._worksheet(getattr(config, f"SHEET_{sheet_name.split('_', 1)[1].upper()}", sheet_name))
         records = sheets.safe_get_all_records(worksheet)
         return _summarize_answer(question, sheet_name, records)
