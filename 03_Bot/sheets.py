@@ -103,6 +103,70 @@ def _worksheet(name: str):
     return _worksheet_cache[name]
 
 
+def _find_inventory_row(item_name: str):
+    ws = _worksheet(config.SHEET_INVENTORY)
+    values = ws.get_all_values()
+    if not values:
+        return None, None, None
+    header = values[0]
+    if "Item_Name" not in header:
+        return None, header, ws
+    name_idx = header.index("Item_Name")
+    target = item_name.strip().lower()
+    for i, row in enumerate(values[1:], start=2):
+        if len(row) > name_idx and row[name_idx].strip().lower() == target:
+            return i, header, ws
+    return None, header, ws
+
+
+def get_all_inventory() -> list:
+    ws = _worksheet(config.SHEET_INVENTORY)
+    return safe_get_all_records(ws)
+
+
+def adjust_inventory_stock(item_name: str, change: float, reason: str, staff: str) -> dict:
+    """09_Inventory-এ item_name খুঁজে Current_Stock-এ change যোগ/বিয়োগ করে (change ঋণাত্মক
+    হলে কমবে), 17_Inventory_Log-এ একটা লগ এন্ট্রি রাখে। item না পাওয়া গেলে বা কোনো সমস্যা
+    হলে {"ok": False, "error": ...} রিটার্ন করে — কখনো exception raise করে caller-কে থামায়
+    না, কারণ inventory ট্র্যাকিং ব্যর্থ হলেও মূল ট্রিটমেন্ট/রেজিস্ট্রেশন ফ্লো থেমে যাওয়া উচিত না।"""
+    try:
+        row_num, header, ws = _find_inventory_row(item_name)
+        if row_num is None:
+            return {"ok": False, "error": f"'{item_name}' নামে item 09_Inventory-এ পাওয়া যায়নি"}
+        stock_idx = header.index("Current_Stock") + 1
+        id_idx = header.index("Item_ID") + 1 if "Item_ID" in header else None
+        lastupd_idx = header.index("Last_Updated") + 1 if "Last_Updated" in header else None
+        minimum_idx = header.index("Minimum") + 1 if "Minimum" in header else None
+
+        current = _safe_float(ws.cell(row_num, stock_idx).value)
+        new_balance = current + change
+        if new_balance < 0:
+            new_balance = 0
+        ws.update_cell(row_num, stock_idx, new_balance)
+        now = bd_now()
+        if lastupd_idx:
+            ws.update_cell(row_num, lastupd_idx, now.strftime("%Y-%m-%d %I:%M %p"))
+        item_id = ws.cell(row_num, id_idx).value if id_idx else ""
+
+        try:
+            log_ws = _worksheet(config.SHEET_INVENTORY_LOG)
+            log_ws.append_row(
+                [now.strftime("%Y-%m-%d %I:%M %p"), item_id, item_name, change, reason, staff, new_balance],
+                value_input_option="RAW",
+            )
+        except Exception as e:
+            print(f"⚠️ Inventory log লিখতে সমস্যা হয়েছে: {e}")
+
+        low_stock = False
+        if minimum_idx:
+            min_val = _safe_float(ws.cell(row_num, minimum_idx).value)
+            low_stock = min_val > 0 and new_balance <= min_val
+
+        return {"ok": True, "new_balance": new_balance, "item_id": item_id, "low_stock": low_stock}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 def get_active_therapist_names() -> list[str]:
     ws = _worksheet(config.SHEET_STAFF)
     records = safe_get_all_records(ws)

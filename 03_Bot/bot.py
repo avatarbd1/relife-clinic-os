@@ -128,6 +128,7 @@ _ALL_MENU_ITEMS = [
     roles.MENU_BACK_MAIN,
     roles.MENU_STAFF_AI_QUERY,
     roles.MENU_CASE_STUDY,
+    roles.MENU_INVENTORY,
 ]
 _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 
@@ -149,6 +150,7 @@ _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 (CASESTUDY_QUESTION,) = range(42, 43)  # আর ব্যবহার হয় না (patch22 revert) — future reuse-এর জন্য number সংরক্ষিত
 (REG_FIELDS,) = range(43, 44)  # রেজিস্ট্রেশনে missing fields একসাথে জিজ্ঞাসার state (patch38)
 (PAYDEL_LIST, PAYDEL_CONFIRM) = range(300, 302)  # আজকের এন্ট্রি মুছার ফ্লো
+(INV_UPDATE,) = range(310, 311)  # ইনভেন্টরি স্টক আপডেট ফ্লো
 
 TPLAN_CATEGORY, TPLAN_TESTS = range(200, 202)
 
@@ -1215,6 +1217,10 @@ async def reg_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data["new_patient"],
             created_by=staff.get("Full_Name", "Unknown"),
         )
+        try:
+            sheets.adjust_inventory_stock("Patient Card", -1, "Auto-Registration", staff.get("Full_Name", "Unknown"))
+        except Exception as e:
+            logger.warning(f"inventory auto-deduct (Patient Card) ব্যর্থ হয়েছে: {e}")
         await update.message.reply_text(
             f"✅ রোগী রেজিস্ট্রেশন সম্পন্ন! Patient ID: {patient_id}",
             reply_markup=_menu_keyboard(staff.get("Role", "")),
@@ -2592,6 +2598,120 @@ async def treat_ai_question_receive(update: Update, context: ContextTypes.DEFAUL
     return await _treat_do_save(update.message.reply_text, update.message.reply_text, context, t, selected)
 
 
+def _apply_inventory_auto_deduct(machines_str: str, staff_name: str):
+    """ট্রিটমেন্ট নোট সেভ হওয়ার পর প্রাসঙ্গিক inventory item গুলো auto-deduct করে। কোনো
+    item পাওয়া না গেলে বা Sheets-এ সমস্যা হলেও এই ফাংশন exception raise করে না — inventory
+    ট্র্যাকিং ব্যর্থ হলেও মূল ট্রিটমেন্ট ফ্লো কখনো আটকাবে না।"""
+    try:
+        sheets.adjust_inventory_stock("Hand Gloves", -1, "Auto-Session", staff_name)
+    except Exception as e:
+        logger.warning(f"inventory auto-deduct (Hand Gloves) ব্যর্থ হয়েছে: {e}")
+    try:
+        sheets.adjust_inventory_stock("Tissue", -1, "Auto-Session", staff_name)
+    except Exception as e:
+        logger.warning(f"inventory auto-deduct (Tissue) ব্যর্থ হয়েছে: {e}")
+
+    machines = [m.strip().lower() for m in (machines_str or "").split(",") if m.strip()]
+    if "manual therapy" in machines:
+        try:
+            sheets.adjust_inventory_stock("Olive Oil", -33, "Auto-Session", staff_name)
+        except Exception as e:
+            logger.warning(f"inventory auto-deduct (Olive Oil) ব্যর্থ হয়েছে: {e}")
+    if "dry needling" in machines:
+        try:
+            sheets.adjust_inventory_stock("Acupuncture Needle", -5, "Auto-Session", staff_name)
+        except Exception as e:
+            logger.warning(f"inventory auto-deduct (Acupuncture Needle) ব্যর্থ হয়েছে: {e}")
+    if "wax bath" in machines:
+        try:
+            sheets.adjust_inventory_stock("Poly", -1, "Auto-Session", staff_name)
+        except Exception as e:
+            logger.warning(f"inventory auto-deduct (Poly) ব্যর্থ হয়েছে: {e}")
+        try:
+            sheets.adjust_inventory_stock("PP Wax", -0.05, "Auto-Session", staff_name)
+        except Exception as e:
+            logger.warning(f"inventory auto-deduct (PP Wax) ব্যর্থ হয়েছে: {e}")
+
+
+def _inventory_list_text() -> str:
+    items = sheets.get_all_inventory()
+    lines = ["📦 বর্তমান স্টক:", ""]
+    any_item = False
+    for it in items:
+        name = str(it.get("Item_Name", "")).strip()
+        if not name:
+            continue
+        any_item = True
+        stock = it.get("Current_Stock", "")
+        unit = str(it.get("Unit", "")).strip()
+        minimum_raw = it.get("Minimum", "")
+        warn = ""
+        try:
+            stock_f = float(str(stock).replace(",", "") or 0)
+            min_f = float(str(minimum_raw).replace(",", "") or 0)
+            if min_f > 0 and stock_f <= min_f:
+                warn = " ⚠️ কম আছে!"
+        except ValueError:
+            pass
+        lines.append(f"• {name}: {stock} {unit}{warn}")
+    if not any_item:
+        lines.append("এখনো কোনো item যোগ করা হয়নি — 09_Inventory শীটে সরাসরি item যোগ করো।")
+    lines.append("")
+    lines.append("স্টক বাড়াতে/কমাতে লেখো, যেমন:\nHand Gloves -20\nPetrol +5")
+    return "\n".join(lines)
+
+
+async def inventory_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return ConversationHandler.END
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_INVENTORY):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return ConversationHandler.END
+    await update.message.reply_text(
+        _inventory_list_text(),
+        reply_markup=ReplyKeyboardMarkup([[roles.MENU_BACK_MAIN]], resize_keyboard=True),
+    )
+    return INV_UPDATE
+
+
+async def inventory_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff", {})
+    text = update.message.text.strip()
+    m = re.match(r"^(.+?)\s*([+\-])\s*([\d.]+)\s*$", text)
+    if not m:
+        await update.message.reply_text(
+            "⚠️ ফরম্যাট ঠিক না। যেমন লেখো: Hand Gloves -20 (কমাতে) বা Petrol +5 (বাড়াতে)"
+        )
+        return INV_UPDATE
+    item_name, sign, amount_str = m.groups()
+    item_name = item_name.strip()
+    try:
+        amount = float(amount_str)
+    except ValueError:
+        await update.message.reply_text("⚠️ সংখ্যাটা বুঝতে পারিনি।")
+        return INV_UPDATE
+    change = amount if sign == "+" else -amount
+    result = sheets.adjust_inventory_stock(item_name, change, reason="Manual", staff=staff.get("Full_Name", "Unknown"))
+    if not result.get("ok"):
+        await update.message.reply_text(f"❌ {result.get('error')}")
+        return INV_UPDATE
+    msg = f"✅ {item_name} আপডেট হয়েছে। নতুন স্টক: {result['new_balance']}"
+    if result.get("low_stock"):
+        msg += "\n⚠️ স্টক Minimum লেভেলের নিচে/সমান নেমে গেছে — রিঅর্ডার করার কথা ভাবো।"
+    await update.message.reply_text(msg)
+    await update.message.reply_text(_inventory_list_text())
+    return INV_UPDATE
+
+
+async def inventory_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff", {})
+    await update.message.reply_text(
+        "ইনভেন্টরি মেনু থেকে বের হওয়া হলো।", reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
+    return ConversationHandler.END
+
+
 async def _treat_do_save(result_reply, menu_reply, context: ContextTypes.DEFAULT_TYPE, t: dict, selected: set):
     """t ও selected থেকে Machines বসিয়ে ট্রিটমেন্ট নোট সেভ করে, ফলাফল দেখায়, মেনুতে ফিরিয়ে দেয়।"""
     staff = context.user_data.get("staff", {})
@@ -2600,6 +2720,7 @@ async def _treat_do_save(result_reply, menu_reply, context: ContextTypes.DEFAULT
     try:
         treatment_id = sheets.add_treatment_note(t, created_by=staff.get("Full_Name", "Unknown"))
         sheets.increment_plan_session(patient_id)
+        _apply_inventory_auto_deduct(t["Machines"], staff.get("Full_Name", "Unknown"))
         await result_reply(
             f"✅ ট্রিটমেন্ট নোট সেভ হয়েছে! Treatment ID: {treatment_id}\n"
             f"সেশন: {t.get('Session_No', '?')}\n"
@@ -4517,6 +4638,21 @@ def main():
         ],
     )
     app.add_handler(paydel_conv)
+
+    inv_conv = ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_INVENTORY}$"), inventory_menu),
+        ],
+        states={
+            INV_UPDATE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), inventory_update)],
+        },
+        fallbacks=[
+            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
+            CommandHandler("cancel", inventory_cancel),
+            CommandHandler("start", _restart_via_start),
+        ],
+    )
+    app.add_handler(inv_conv)
 
     treat_conv = ConversationHandler(
         entry_points=[
