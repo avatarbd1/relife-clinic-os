@@ -3,7 +3,7 @@
 
 *OPD Musculoskeletal Physiotherapy — Standard Operating Procedure & Clinical Reference*
 
-**Version:** 0.2 — Living Document
+**Version:** 0.3 — Living Document
 **Build started:** July 2026
 **Purpose:** Internal clinical training, patient-care standardization, and the evidence-based knowledge base powering the Relife Clinic OS AI Clinical Assistant.
 
@@ -29,9 +29,9 @@
 | 9 | Module 9: Outcome Measure Interpretation (score meaning, MCID, red flags in scoring) | ⏳ Not started | 0% |
 | 10 | Module 10: Home Exercise Program Templates | ⏳ Not started | 0% |
 | — | **PART B — DISEASE-WISE PROTOCOLS** (each: Anatomy Link → Assessment Clues → Differential → 7-14-28 day phase goals → Session time-block → Manual/Exercise/Electro/Acupuncture detail → Contraindications → Progression criteria → Red flags → Home program) | | |
-| B1 | Shoulder: Frozen Shoulder (stage-based) | ⏳ Not started | 0% |
-| B2 | Shoulder: Rotator Cuff Tendinopathy/Tear | ⏳ Not started | 0% |
-| B3 | Shoulder: Subacromial Impingement | ⏳ Not started | 0% |
+| B1 | Shoulder: Frozen Shoulder (stage-based) | ✅ Complete | 100% |
+| B2 | Shoulder: Rotator Cuff Tendinopathy/Tear | ✅ Complete | 100% |
+| B3 | Shoulder: Subacromial Impingement | ✅ Complete | 100% |
 | B4 | Shoulder: Instability | ⏳ Not started | 0% |
 | B5 | Neck: Mechanical Neck Pain | ⏳ Not started | 0% |
 | B6 | Neck: Cervical Radiculopathy | ⏳ Not started | 0% |
@@ -60,7 +60,7 @@
 | B29 | Fibromyalgia / Chronic Widespread Pain (nociplastic pain approach) | ⏳ Not started | 0% |
 | B30 | Postural Syndrome / Upper Crossed Syndrome | ⏳ Not started | 0% |
 
-**Overall completion: ~2 of ~40 planned sections (~5%) — updated 2026-08-03 after Module 2 was added.**
+**Overall completion: ~5 of ~40 planned sections (~12.5%) — updated 2026-08-04 after B3 (Subacromial Impingement) was added. Next up: B4 Shoulder Instability.**
 
 ---
 
@@ -94,7 +94,11 @@
 - Module 9: Outcome Measure Interpretation ⏳
 - Module 10: Home Exercise Program Templates ⏳
 
-**PART B — DISEASE-WISE PROTOCOLS** (30 conditions listed in Progress Tracker) ⏳
+**PART B — DISEASE-WISE PROTOCOLS** (30 conditions listed in Progress Tracker)
+- B1: Shoulder — Frozen Shoulder ✅
+- B2: Shoulder — Rotator Cuff Tendinopathy/Tear ✅
+- B3: Shoulder — Subacromial Impingement ✅
+- B4-B30: ⏳
 
 ---
 
@@ -348,4 +352,438 @@ Refer to the supervising clinician/physician when:
 
 # PART B — DISEASE-WISE PROTOCOLS
 
-*(Not yet started — see Progress Tracker for the full planned list of 30 conditions and required structure.)*
+## B1. Shoulder: Frozen Shoulder (Adhesive Capsulitis)
+
+> **Format note:** This is the first Part B condition and therefore also serves as the template for B2-B30. Frozen Shoulder is explicitly **stage-based** rather than tissue-healing-time-based, so it uses its own 3-stage model (Freezing → Frozen → Thawing) instead of the generic 7-14-28 day framework from Module 2.3 — later conditions that *do* follow normal tissue-healing timelines (e.g. B2 Rotator Cuff, most Low Back and Knee protocols) will map onto the standard 7-14-28 structure directly.
+
+### B1.1 Anatomy Link
+
+Frozen shoulder (adhesive capsulitis) is a primary disorder of the **glenohumeral joint capsule**, not the surrounding tendons or bursae. The capsule — particularly the axillary fold, the rotator interval (containing the coracohumeral and superior glenohumeral ligaments), and the subscapularis recess — undergoes progressive fibrotic thickening and contracture, with histological studies showing dense collagen deposition and, in active phases, neurovascular proliferation consistent with an inflammatory-then-fibrotic process rather than pure mechanical stiffening.
+
+- The rotator interval and axillary pouch are the earliest and most severely involved regions — this is why external rotation and abduction are lost before internal rotation and flexion in the classic capsular pattern.
+- Because the pathology is capsular, not contractile, resisted testing (Module 1, 1.5) is typically only mildly affected relative to passive ROM loss — a key differentiator from rotator cuff pathology (B2), where resisted testing is disproportionately painful/weak relative to passive ROM.
+- The condition is frequently associated with diabetes mellitus (both prevalence and severity/duration are worse in diabetics), thyroid disease, and prior shoulder immobilization (post-fracture, post-surgical, post-stroke) — always screen these in history (Module 1, 1.1).
+
+### B1.2 Assessment Clues
+
+Building on Module 1's standard assessment, these findings should specifically raise or confirm suspicion of frozen shoulder:
+
+| Finding | Typical frozen shoulder pattern |
+|---|---|
+| Onset | Insidious, no clear trauma (primary/idiopathic) or following a period of immobilization (secondary — post-fracture, post-surgery, post-stroke) |
+| AROM vs PROM | Both restricted, and **restricted by a similar magnitude** — true capsular restriction limits passive movement almost as much as active, unlike a purely painful/guarded presentation where PROM often exceeds AROM |
+| Capsular pattern | External rotation most limited > abduction > internal rotation (classic Cyriax pattern) — confirm with goniometry against the unaffected side |
+| End-feel | Capsular (firm, leathery) end-feel at end-range in all restricted directions, not empty or springy-block |
+| Night pain | Prominent in the Freezing stage, often the presenting complaint that drives the patient to seek care |
+| Scapulohumeral rhythm | Increased scapular contribution/hiking compensating for lost glenohumeral motion during elevation |
+| Associated history | Diabetes, thyroid disorder, prior immobilization, contralateral frozen shoulder history (recurrence in the same shoulder is uncommon; the other shoulder is affected in a meaningful minority of cases) |
+
+> **Clinical Note:** The single most useful discriminator against rotator cuff pathology is the **AROM-PROM concordance** — if PROM is nearly as limited as AROM in a capsular pattern with a capsular end-feel, treat the working diagnosis as capsular (frozen shoulder), not tendinopathy, even if a rotator cuff special test is also mildly positive (mixed presentations exist, especially in older patients).
+
+### B1.3 Differential Diagnosis
+
+| Differential | Distinguishing feature against Frozen Shoulder |
+|---|---|
+| Subacromial Impingement / Rotator Cuff Tendinopathy (B2/B3) | PROM close to full or only mildly restricted; pain reproduced disproportionately on resisted testing; painful arc typically 60-120° rather than global restriction |
+| Rotator Cuff Tear (full-thickness) | Positive drop-arm sign, marked resisted weakness with normal or near-normal PROM, often a clear traumatic or acute-on-chronic history |
+| Glenohumeral Osteoarthritis | Crepitus, bony end-feel rather than capsular/leathery, typically older patients, X-ray shows joint space narrowing/osteophytes |
+| Cervical Radiculopathy (B6) referred to shoulder | Neurological signs (dermatomal/myotomal), neck movements reproduce the symptom, Spurling's test positive, shoulder PROM itself is full |
+| Calcific Tendinitis (acute) | Very acute, severe onset, often no capsular pattern yet, X-ray shows calcific deposit; can co-exist with or mimic early Freezing stage |
+
+### B1.4 Staging and Phase Goals
+
+Frozen shoulder progresses through three recognized clinical stages. **Duration is highly variable between patients (this is a slow-healing condition by nature) — Relife's role is to shorten each stage's duration and its functional impact versus the natural, untreated history, not to promise a fixed universal timeline.** State expected ranges to patients as ranges, and set goals against the current stage's criteria, not a calendar date.
+
+| Stage | Typical natural-history duration | Primary clinical aim | Relife target trajectory |
+|---|---|---|---|
+| **1. Freezing (Painful)** | 2-9 months untreated | Control pain and irritability; prevent the patient from further guarding/immobilizing the joint (which worsens stiffness); preserve whatever ROM remains | Reduce worst-pain NPRS to ≤4/10 and eliminate/reduce night-waking within 2-3 weeks of starting care |
+| **2. Frozen (Stiff)** | 4-12 months untreated | Pain settles at rest but marked ROM restriction dominates the clinical picture and functional limitation | Measurable ROM gain (goniometric, tracked every reassessment) each 2-week block; functional milestones (reaching overhead, behind back) trending upward |
+| **3. Thawing (Recovery)** | 12-42 months untreated (highly variable) | Spontaneous, gradual return of ROM | Accelerate return toward pre-morbid or functional ROM via progressive stretching/strengthening; discharge once functional goals (2.2) are met, not necessarily full 100% ROM symmetry |
+
+- **Goal-setting (per Module 2.2):** short-term goals in Freezing are pain/sleep-based; medium-term goals in Frozen are ROM-based (state target degrees for flexion/abduction/external rotation against the contralateral side); long-term/discharge goals are functional (dressing, reaching a top shelf, driving, sport-specific overhead demand if relevant).
+- **SIN status drives stage-appropriate dosing directly:** Freezing stage is typically high irritability (Nature: active capsular inflammation) — treat gently, prioritize pain control. Frozen stage is typically low irritability but high severity of restriction — this is where more vigorous end-range mobilization and stretching is both tolerated and necessary to drive change.
+
+### B1.5 Session Time-Block Application
+
+Applying the Module 2.4 template to frozen shoulder, weighted by stage:
+
+| Stage | Opening electro (~10 min) | Manual therapy (~10-12 min) | Exercise (~15-20 min) | Closing electro (~10 min) |
+|---|---|---|---|---|
+| Freezing | Hot pack; short-duration TENS for pain modulation | Grade I-II oscillations only (pain-relief grade), gentle rotator interval/capsule soft tissue work, avoid stretching into resistance | Pendulum (Codman's) exercises, active-assisted ROM within pain-free range only, posture/scapular control | TENS or ice if post-treatment soreness |
+| Frozen | Hot pack (heat improves tissue extensibility before stretching) | Grade III-IV mobilization progressing to sustained end-range holds (capsular stretch technique), MET (contract-relax) for capsule | Active-assisted → active stretching into resistance (not sharp pain), strengthening begins as ROM allows | Ice if stretching provoked soreness; otherwise optional |
+| Thawing | Hot pack (optional, brief) | Maintenance mobilization as needed; shift majority of hands-on time to guided active stretching supervision | Progressive resistance strengthening (rotator cuff and scapular stabilizers), functional/sport-specific patterns | Optional, minimal |
+
+> **Clinical Note:** In the Frozen stage specifically, the exercise block should expand and the passive-modality blocks should contract more aggressively than in most other conditions — this is a condition where under-dosed stretching intensity is the single most common cause of a stalled plateau.
+
+### B1.6 Manual Therapy Detail
+
+- **Freezing stage:** Maitland Grade I-II oscillations to the glenohumeral joint in pain-free positions; gentle soft tissue work to the rotator cuff and periscapular muscles to reduce protective guarding; avoid any technique that reproduces sharp pain.
+- **Frozen stage:** Progress to Grade III-IV mobilization, prioritizing the directions most restricted per the capsular pattern (typically posterior/inferior glide to gain external rotation, and inferior glide to gain abduction). Sustained end-range stretching (holding at the restricted end-range for 30-60 seconds, repeated) and Mulligan mobilization-with-movement (MWM) techniques for external rotation and flexion are both well-supported adjuncts. Muscle Energy Technique (contract-relax at end-range) is useful where guarding persists despite reduced irritability.
+- **Thawing stage:** Manual therapy becomes maintenance/facilitation rather than the primary driver — supervised stretching and self-mobilization take over as the main modality; formal manual therapy time can taper.
+- (Full technique-by-technique parameters — grip, direction, oscillation rate — will be detailed in Module 3: Manual Therapy Library once written; this section defines condition-specific technique selection and staging only.)
+
+### B1.7 Exercise Prescription Detail
+
+| Stage | Exercise focus | Example progressions |
+|---|---|---|
+| Freezing | Pain-free active-assisted ROM maintenance; avoid aggressive stretching | Pendulum/Codman's exercises, table-slide flexion, wand-assisted ROM within pain-free range, gentle scapular setting |
+| Frozen | Progressive stretching into resistance (not sharp pain) across all restricted planes; begin light rotator cuff activation as tolerated | Wall-walk flexion/abduction, doorway/corner stretch for external rotation, sleeper stretch for internal rotation (cautious dosing), towel-behind-back stretch, isometric rotator cuff holds progressing to light resistance-band work |
+| Thawing | Progressive resistance strengthening of rotator cuff and scapular stabilizers; restore functional/overhead capacity | Resistance-band internal/external rotation, scapular stabilization (rows, wall slides), functional overhead reaching tasks, sport/work-specific patterns where relevant |
+
+> **Clinical Note:** Dosage principle specific to this condition — stretching should be held long enough and repeated often enough to produce a mild latent stretch-soreness that settles within a few hours, not a same-session sharp pain response; under-dosing (brief, gentle stretches only) is the most common preventable cause of a stalled Frozen-stage plateau, while over-dosing into sharp pain risks re-triggering the inflammatory (Freezing-stage) irritability.
+
+### B1.8 Electrotherapy Detail
+
+Electrotherapy is adjunctive throughout (Module 2.5) and its role shifts by stage:
+
+- **Freezing stage:** Hot pack before treatment (comfort, mild circulatory effect); TENS (conventional, high-frequency low-intensity) for pain modulation, particularly useful for managing night pain when taught as part of the home program.
+- **Frozen stage:** Hot pack before stretching/mobilization specifically to improve collagen extensibility immediately before the manual/exercise block — this is the stage where heat's role is most clinically justified, not just comfort. IFT/ultrasound have weak and inconsistent evidence for altering capsular fibrosis directly and should not be relied upon as the primary driver of ROM change — never substitute electrotherapy time for the stretching/mobilization dose this stage requires.
+- **Thawing stage:** Electrotherapy plays a minimal role; taper out in favor of exercise-dominant sessions.
+
+### B1.9 Acupuncture / Dry Needling Detail
+
+- Indicated as an adjunct where myofascial trigger points in the periscapular muscles (upper trapezius, levator scapulae, infraspinatus, subscapularis) are contributing to guarding and secondary pain, particularly in the Freezing and early Frozen stages.
+- Rationale: reducing myofascial guarding can allow more effective, less painful manual therapy and stretching in the same or following session — used to enable the primary interventions, not as a stand-alone treatment for the capsular pathology itself (consistent with Module 2.5's general acupuncture principle).
+- Not indicated as a primary treatment for the capsule itself — there is no meaningful evidence that needling alters capsular fibrosis directly.
+
+### B1.10 Contraindications and Precautions
+
+- Intra-articular corticosteroid injection (medical management, not physiotherapy-delivered) is a recognized effective adjunct particularly in the Freezing stage — flag to the supervising/referring physician as an option if pain is not settling with conservative care, rather than persisting with physiotherapy alone indefinitely through a high-irritability Freezing stage.
+- Avoid aggressive Grade III-IV mobilization or vigorous stretching during high-irritability Freezing-stage presentations — this can provoke a flare and worsen the guarding cycle; match technique grade to current SIN status (Module 2.1), not to the calendar stage alone.
+- Screen and manage diabetes/thyroid status as a contributing factor (Module 1, 1.1) — poorly controlled diabetes is associated with more severe and prolonged courses; this doesn't change physiotherapy technique but should be documented and flagged to the referring physician.
+- Rule out adhesive capsulitis mimics (B1.3) before committing to an aggressive stretching program, since aggressive PROM stretching would be inappropriate for, e.g., an undiagnosed rotator cuff tear or unstable shoulder.
+
+### B1.11 Progression Criteria
+
+Condition-specific thresholds, applied within the Module 2.7 generic framework:
+
+**Progress stage/intensity when:**
+- Freezing → Frozen transition is suggested clinically when resting/night pain has settled substantially even though ROM restriction persists or has become the dominant complaint — this is a clinical judgment call, not a fixed day count, and should be documented explicitly in the reassessment note (Module 2.8).
+- Within the Frozen stage, progress mobilization/stretching intensity when the previous session's dose was tolerated with only mild, same-day latent soreness that settled within a few hours and no >24h flare.
+- Move toward Thawing-stage strengthening emphasis once goniometric ROM is trending consistently upward across two consecutive reassessment points (Module 2.8) rather than plateaued.
+
+**Regress or hold when:**
+- A stretching/mobilization dose triggers a >24h flare in pain or a measurable ROM loss at the next visit — return to the prior intensity level and reassess SIN status before re-progressing.
+- Night pain or resting NPRS worsens after having previously settled — reconsider whether the patient has re-entered a more irritable phase or whether an alternate/co-existing diagnosis (B1.3) needs to be re-screened.
+
+### B1.12 Red Flags Specific to This Condition
+
+In addition to the universal red flags (Module 1, 1.2), specifically re-screen for:
+
+- A history of significant trauma or a positive drop-arm sign at any point — suggests a rotator cuff tear rather than (or in addition to) frozen shoulder, and changes the aggressiveness of stretching that is appropriate.
+- Marked, painless global weakness disproportionate to the capsular restriction — consider neurological causes (e.g. cervical radiculopathy, brachial neuritis/Parsonage-Turner syndrome) rather than assuming pure capsulitis.
+- No improvement at all in pain or ROM across two full reassessment cycles (approx. 4 weeks) despite appropriately staged and dosed treatment — refer back to the physician to reconsider imaging, injection, or (in genuinely refractory, prolonged cases) surgical options (manipulation under anesthesia, capsular release), per Module 2.10.
+
+### B1.13 Home Exercise Program
+
+| Stage | Home program emphasis | Example content |
+|---|---|---|
+| Freezing | Frequent, brief, pain-free ROM maintenance; night-pain management education | Pendulum exercises several times daily, sleep positioning advice (e.g. supported side-lying, avoiding lying directly on the affected shoulder), home TENS use if provided |
+| Frozen | Structured stretching program, dosed to produce a tolerable latent soreness, performed daily | Doorway/corner external rotation stretch, wand-assisted flexion/abduction, towel-behind-back internal rotation stretch, each held and repeated per a written hold/rep prescription |
+| Thawing | Progressive home strengthening and functional practice | Resistance-band internal/external rotation and rows, functional overhead reaching practice, gradual return to sport/work-specific overhead tasks |
+
+- Educate the patient explicitly on the expected variable natural-history duration of this condition (B1.4) up front — unmanaged expectations about timeline are a common cause of early drop-out from an otherwise appropriate program.
+- Emphasize consistency of the home program over intensity of any single clinic session — frozen shoulder outcomes are strongly driven by cumulative daily stretching dose, not solely by in-clinic manual therapy frequency.
+- (Full templated home program handouts, formatted for patient hand-out, will be built in Module 10: Home Exercise Program Templates.)
+
+*End of B1. Next in the tracker's work order: B2 — Rotator Cuff Tendinopathy/Tear.*
+
+---
+
+## B2. Shoulder: Rotator Cuff Tendinopathy/Tear
+
+> **Format note:** This protocol applies the standard Module 2.3 7-14-28 day phase framework to rotator cuff pathology. Rotator cuff pathology spans a continuum from reactive tendinopathy through degenerative tendinosis to partial- and full-thickness tearing, which are managed by a graded loading approach. True acute full-thickness tears in young/active patients are surgical candidates — the sections below flag when surgical referral, not physiotherapy alone, is the first-line plan, but the post-surgical rehabilitation of rotator cuff repair is covered separately under B27 (Post-Surgical General Rehab Principles).
+
+### B2.1 Anatomy Link
+
+The rotator cuff comprises four muscles — supraspinatus, infraspinatus, teres minor, and subscapularis — whose tendons blend into a confluent insertion on the humeral head. They function as dynamic stabilizers of the glenohumeral joint, compressing the humeral head into the glenoid during arm movement. Their tendons, particularly the supraspinatus, pass through the narrow subacromial space, making them vulnerable to compression and degenerative change.
+
+- Supraspinatus is the most commonly affected tendon. It initiates abduction, is positioned directly under the acromion, and has a watershed zone roughly 1 cm proximal to its insertion where blood supply is poorest — this is where most degenerative tears occur.
+- Infraspinatus and teres minor control external rotation and contribute to the posterior-superior cuff; infraspinatus degeneration is commonly co-present with supraspinatus involvement.
+- Subscapularis controls internal rotation and anterior stability; isolated subscapularis tears are less common but often missed — think of them when resisted internal rotation is disproportionately weak.
+- The continuum model of pathology (Cook & Purdam) runs from reactive tendinopathy (acute overload, thickened tendon, cell proliferation with proteinaceous ground substance — responds well to load management and gradual reloading) through tendon dysrepair (disorganized matrix, neovascularization) to degenerative tendinosis (collagen disorganization, cell death, little inflammatory component — pain is driven by mechanical and neurovascular mechanisms, not inflammation per se). A tear is a structural failure in any of these stages.
+
+### B2.2 Assessment Clues
+
+Building on Module 1's standard assessment, these findings should specifically raise or confirm suspicion of rotator cuff pathology:
+
+| Finding | Rotator Cuff Tendinopathy/Tear pattern |
+|---|---|
+| Onset | Acute overload (new activity, increased volume/intensity) for reactive tendinopathy; insidious or gradual for degenerative tendinosis; acute tear often has a specific moment of injury (fall, heavy lift) in younger patients but can be atraumatic in older/degenerative tendons |
+| Painful arc | Classic 60-120° of active abduction, often less painful above 120° once the greater tuberosity clears the acromion — highly suggestive of subacromial tissue involvement |
+| AROM vs PROM | AROM restricted and painful, PROM substantially greater and less painful — this is the key discriminative finding vs frozen shoulder (B1), where PROM is nearly as restricted as AROM |
+| Resisted testing | Pain and/or weakness reproduced on resisted abduction (supraspinatus), external rotation (infraspinatus), or internal rotation (subscapularis) — resisted testing is the primary means of isolating rotator cuff as the contractile pain source |
+| Pain location | Anterior/lateral shoulder, often radiating to deltoid insertion; not typically radiating below the elbow (unlike cervical radiculopathy) |
+| Night pain | Common, particularly lying on the affected side; in degenerative tendinosis, this is often mechanical (compression/position) rather than the inflammatory night-pain of frozen shoulder |
+| Special tests | Empty can test (supraspinatus), resisted external rotation (infraspinatus), lift-off or belly-press test (subscapularis), Hawkins-Kennedy and Neer's impingement tests (subacromial compression — positive in tendinopathy, less reliable in full-thickness tear) |
+| Drop-arm sign | Positive when the patient cannot lower the arm smoothly from 90° abduction — suggests a full-thickness supraspinatus tear (surgical referral consideration) |
+
+> **Clinical Note:** A patient can have a full-thickness rotator cuff tear with relatively preserved function if the remaining cuff muscles and deltoid compensate. Do not rule out a clinically significant tear solely because the patient can lift the arm — check resisted abduction and external rotation strength (MMT grade, Module 1.5) against the unaffected side, and flag any marked side-to-side difference.
+
+### B2.3 Differential Diagnosis
+
+| Differential | Distinguishing feature against Rotator Cuff Tendinopathy/Tear |
+|---|---|
+| Subacromial Impingement (B3) | Often co-exists with cuff tendinopathy and is treated similarly in the early phases; distinguishing becomes relevant only if impingement is primary and structural (e.g. hooked acromion on imaging) rather than secondary to cuff dysfunction — but in most clinical settings, subacromial impingement and cuff tendinopathy are managed as a single clinical entity |
+| Frozen Shoulder (B1) | PROM limited to a similar degree as AROM; capsular pattern; capsular end-feel; resisted testing is not the primary pain source |
+| Glenohumeral Osteoarthritis | Bony end-feel, crepitus, older patient, X-ray confirms joint space narrowing; rotator cuff special tests may be positive but AROM-PROM concordance suggests more of an arthrogenic pattern |
+| Cervical Radiculopathy (B6) | Pain radiates below elbow, dermatomal distribution, neurological signs on upper limb neuro exam, positive Spurling's test; shoulder PROM itself is full |
+| Biceps Tendinopathy | Pain and tenderness localized to the bicipital groove, positive Speed's test; often co-exists with cuff pathology; treated with the same loading principles |
+| Calcific Tendinitis (acute) | Very acute, severe inflammatory onset, X-ray shows calcific deposit; management during the acute inflammatory flare is different (rest, NSAIDs/medical management) — physiotherapy enters once acute flare settles |
+
+### B2.4 Phase Goals (7-14-28 Day Framework)
+
+Rotator cuff pathology follows the standard Module 2.3 phase structure, adapted for tendon loading:
+
+| Phase | Typical window | Primary aim | Key metrics to track |
+|---|---|---|---|
+| Phase 1 — Acute/Protective | Day 1–7 | Reduce pain, reduce load on the irritated tendon without complete rest, begin pain-free active-assisted ROM, educate on load management and avoidance of aggravating positions | NPRS worst-pain trend; absence of night pain; ability to perform pain-free pendulum/active-assisted ROM |
+| Phase 2 — Sub-acute/Restorative | Day 7–14 | Restore full pain-free AROM, begin controlled tendon loading (isometric → isotonic at low resistance), correct scapular dyskinesis | AROM approaching contralateral side; pain ≤3/10 during therapeutic loading; scapular control during elevation |
+| Phase 3 — Remodeling/Functional | Day 14–28 | Progress tendon loading capacity (eccentric emphasis for tendinosis, progressive resistance for general cuff strengthening), build toward functional/work/sport demand | Resisted MMT approaching contralateral side; pain-free completion of functional overhead task (or target from intake Module 1.1) |
+| Phase 4 — Discharge/Maintenance | Beyond Day 28 (chronic/degenerative cases, or slow-responders) | Independent load management, graduated return to sport/work/specific activity, relapse-prevention education | Return to target activity; patient demonstrates independent home program and understanding of load-monitoring |
+
+- The time windows above are targets for a well-managed reactive/acute tendinopathy. Degenerative tendinosis and partial-thickness tears may take longer — a chronic degenerative cuff with several months' history will not fully remodel in 28 days, and the "discharge" target shifts to patient independence with a maintenance home program rather than 100% structural resolution. Be explicit with the patient about this distinction: acute/reactive presentations can resolve in weeks, while chronic degenerative presentations are managed over months with function as the goal, not imaging-normal tendon.
+- For full-thickness tears managed non-operatively (older patients, low-demand, compensated function), the phase windows double or triple — Phase 1/2 may take 2-4 weeks each, and the end goal is compensated functional capacity, not tendon healing per se. Flag these cases as "cuff tear — non-operative management" in documentation so all treating clinicians know the trajectory expectation is longer and the loading ceiling is lower.
+
+### B2.5 Session Time-Block Application
+
+Applying the Module 2.4 template to rotator cuff pathology, weighted by phase:
+
+| Phase | Opening electro (~10 min) | Manual therapy (~10-12 min) | Exercise (~15-20 min) | Closing electro (~10 min) |
+|---|---|---|---|---|
+| Phase 1 | Hot pack; TENS for pain modulation if acute flare | Soft tissue release to periscapular and cervical muscles (upper trapezius, levator scapulae) if guarding present; gentle Grade I-II glenohumeral oscillations within pain-free range; avoid aggressive mobilization that compresses subacromial space | Pendulum/Codman's; active-assisted ROM (wand exercises within pain-free arc); isometric rotator cuff holds at neutral (below shoulder level, no elevation load); scapular setting | Ice (if post-treatment soreness); or TENS for pain management |
+| Phase 2 | Hot pack before exercise | Soft tissue work continues; progress to Grade III mobilization if capsular restriction is present (differentiate from cuff guarding); address posterior capsule tightness if GIRD (glenohumeral internal rotation deficit) is found — this is a key driver of subacromial compression | Active ROM to full available; isometric progressing to light isotonic (resistance band or light dumbbell); eccentric emphasis begins for tendinosis; scapular stabilization strengthening | Ice if needed; reduce electrotherapy time as irritability drops |
+| Phase 3 | Minimal/optional | Mobilization as needed for any residual restriction; manual therapy time should taper in favor of exercise time — shift to supervised loading | Progressive resistance strengthening: resistance-band/dumbbell internal/external rotation, rows, scapular stabilization progressions; overhead functional loading begins; eccentric emphasis maintained for tendinosis | Minimal; discharge electrotherapy as primary modalities except where post-exercise soreness management is needed |
+
+> **Clinical Note:** Tendon loading is the primary driver of recovery from Phase 2 onward — passive modalities (electrotherapy, manual therapy) are adjuncts that facilitate loading by reducing pain, not substitutes for loading dose. If a session's exercise block is being consistently truncated to accommodate more manual or electro time, the plan has drifted from the evidence base and should be corrected at the next reassessment.
+
+### B2.6 Manual Therapy Detail
+
+- **Phase 1:** Soft tissue release to periscapular muscles (upper trapezius, levator scapulae, rhomboids, infraspinatus/teres minor) that are guarding in response to pain or contributing to scapular dyskinesis. Gentle Maitland Grade I-II glenohumeral oscillations in pain-free positions — AP glide, caudal/inferior glide — to provide neurophysiological pain relief without compressing the subacromial space.
+- **Phase 2:** If posterior capsule tightness is present (assessed via horizontal adduction test, internal rotation ROM at 90° abduction vs contralateral side), add Grade III-IV posterior capsule mobilization (posterior glide) — posterior capsule tightness is a well-established contributor to altered glenohumeral kinematics and subacromial impingement. Continue periscapular soft tissue work. MWM (Mulligan mobilization-with-movement) for painful abduction or external rotation can provide immediate symptom modulation that enables more effective exercise loading in the same session.
+- **Phase 3:** Manual therapy transitions to maintenance and any residual restriction-targeting work; the therapist's hands-on time is better spent guiding and correcting exercise form than performing prolonged passive mobilizations.
+- **For full-thickness tears managed non-operatively:** avoid aggressive Grade IV mobilization or any technique that reproduces sharp pain — the cuff is structurally compromised, and mobilization force should be conservative to avoid extending the tear (though this risk is low with proper grading, it is not zero).
+
+### B2.7 Exercise Prescription Detail
+
+Tendon loading follows a staged progression. The general principle is: load the tendon to a level that produces a tolerable, settled-within-hours response — not pain-free but not sharply aggravating. This is the "sweet spot" for tendon adaptation.
+
+| Phase | Exercise focus | Example progressions |
+|---|---|---|
+| Phase 1 | Active-assisted pain-free ROM; low-load isometric activation (pain-modulation effect) | Pendulum; wand-assisted flexion/abduction/external rotation within pain-free arc; isometric external rotation/internal rotation holding at neutral/arm by side (5 x 10-second holds, low effort); scapular setting/retraction |
+| Phase 2 | Pain-free active ROM; begin controlled isotonic loading; eccentric emphasis introduced | Active ROM to full available; resistance-band external rotation/internal rotation with arm at side progressing to 30-45° abduction; side-lying external rotation (low-weight dumbbell); supine forward flexion (eccentric lowering emphasis); scapular strengthening (rows, wall slides, prone Y/T/W) |
+| Phase 3 | Progressive resistance loading; eccentric emphasis maintained for tendinosis; overhead and functional-plane loading | Increase resistance band/dumbbell load; add overhead press progressions within pain-tolerated arc; sport-specific throwing/preparation motions (if relevant); push-up plus (serratus anterior); functional reaching/lifting tasks |
+
+> **Clinical Note on eccentric loading:** The evidence for eccentric loading in lower-limb tendinopathy (Achilles, patellar) is stronger than the upper-limb evidence, but clinical consensus supports its inclusion in rotator cuff tendinosis management as part of a mixed loading program, not the sole loading type. Emphasize slow, controlled eccentric phases of external rotation, abduction, and forward flexion in Phase 2 and 3, but do not use eccentric-only programs — combined concentric-eccentric loading produces comparable outcomes and is more functional.
+
+- **Dosage:** Phase 2 starts at 3 sets of 10-12 repetitions at a load producing ≤3/10 pain during exercise that settles within 1 hour. Phase 3 progresses to 3-4 sets of 8-10 repetitions with higher load, still monitoring the 24-hour response. A latent flare (>24h increased pain) means the load was too high — reduce to the prior tolerated level.
+- **Pain-monitoring rule for this condition:** "Pain during loading is acceptable up to 3/10 NPRS if it settles promptly; pain after loading that persists >1 hour or appears the next day means reduce." This is the condition-specific calibration of Module 2.7's generic progression criteria.
+
+### B2.8 Electrotherapy Detail
+
+- **TENS:** Indicated for pain modulation in Phase 1, particularly for night pain when taught as part of home program alongside sleep positioning education. Conventional TENS (high-frequency, low-intensity) applied over the deltoid and supraspinatus trigger area.
+- **Hot pack:** Useful before manual therapy and exercise in Phase 1-2 to relax guarding and improve tissue extensibility, though the effect is superficial and transient — it enables treatment, it is not itself treatment.
+- **Therapeutic ultrasound:** Weak evidence for altering tendon healing or providing clinically meaningful additional benefit over exercise alone. May be used as an adjunct in Phase 1-2 if the clinic protocol includes it, but never substitute US time for exercise loading time — if a choice must be made, exercise always takes priority.
+- **IFT:** Adjunctive for pain relief; same caveat as US — it is not a substitute for loading.
+- **Laser therapy (LLLT):** Some evidence for short-term pain relief in tendinopathy; can be used as an adjunct, but current evidence does not support it as a primary driver of recovery.
+
+### B2.9 Acupuncture / Dry Needling Detail
+
+- Indicated as an adjunct where myofascial trigger points in the rotator cuff (particularly infraspinatus, supraspinatus), periscapular muscles (upper trapezius, levator scapulae, rhomboids), and deltoid are contributing to pain and guarding, especially in Phase 1-2.
+- Rationale: reducing trigger-point activity can improve pain-free ROM, reduce compensatory guarding, and allow more effective exercise loading in the same session — consistent with Module 2.5's acupuncture principle of enabling primary interventions.
+- Not indicated as a primary treatment for the tendinopathy itself — needling does not directly alter tendon structure, and there is no evidence that needling a degenerating tendon accelerates its remodeling.
+- (Full needle selection, depth, technique, and safety precautions for each muscle will be detailed in Module 6: Acupuncture/Dry Needling Protocol Library.)
+
+### B2.10 Contraindications and Precautions
+
+- **Corticosteroid injection:** An intra-articular or subacromial corticosteroid injection may be considered in Phase 1 for acute, high-irritability tendinopathy that is not settling with load management. Flag to the referring physician as an option — physiotherapy-relevant note: load the tendon gently for ~7-10 days post-injection (the corticosteroid temporarily weakens tendon structure), then resume progressive loading.
+- **Full-thickness tear in young/active patient (<60, high functional demand):** early surgical repair produces better outcomes than prolonged non-operative management — refer to orthopedic surgeon for surgical opinion at intake, not after months of failed conservative care. This is a red-flag-adjacent decision point (see B2.12).
+- **Acute calcific tendinitis flare:** this is an inflammatory flare, not a loading-responsive tendinopathy — rest, ice, and medical management (NSAIDs, possible barbotage/aspiration) are the first-line approach. Physiotherapy loading enters after the acute flare has settled.
+- Avoid heavy overhead loading or aggressive stretching into the painful arc during Phase 1 — this can drive a reactive tendinopathy further into the degenerative pathway rather than promoting repair.
+- Screen for cervical spine contribution (Module 1, 1.6) — C5-C6 radiculopathy can present with shoulder pain and weakness that mimics cuff pathology.
+
+### B2.11 Progression Criteria
+
+Condition-specific thresholds, applied within the Module 2.7 generic framework:
+
+**Progress to the next phase/loading level when:**
+- Phase 1 → 2: Worst-pain NPRS is trending downward and night pain has resolved or significantly reduced; patient can perform active-assisted ROM within an expanded pain-free arc.
+- Phase 2 → 3: Pain-free AROM is full or near-full; isometric and light isotonic loading is tolerated with ≤3/10 exercise pain that settles within 1 hour; scapular control during elevation is improved (reduced shoulder hiking/compensation).
+- Within Phase 3, progress resistance when current load produces ≤2/10 exercise pain, no latent flare, and the patient can complete 3 sets of 12 reps comfortably — move to 3 sets of 8-10 reps at higher load.
+
+**Regress or hold when:**
+- Loading at current level produces pain >3/10 during exercise OR a latent flare (>24h delayed increase) — return to the prior tolerated load level and re-check SIN status before re-progressing.
+- Pain-free AROM worsens by ≥15° in any direction compared to the prior visit — halt loading progression, re-screen for a new aggravating factor or alternate diagnosis.
+- For full-thickness non-operative tears, weakness worsens rather than stabilizes or improves — re-assess with the referring physician and consider re-imaging.
+
+### B2.12 Red Flags Specific to This Condition
+
+In addition to the universal red flags (Module 1, 1.2), specifically re-screen for:
+
+- **Acute full-thickness tear in a young/active patient:** history of a specific traumatic event (fall, heavy lift, dislocation event) with immediate onset of weakness, positive drop-arm sign, marked side-to-side MMT difference — refer for surgical opinion within days to weeks, not months.
+- **Acute-on-chronic tear with sudden functional worsening:** a patient with known degenerative cuff disease who suddenly cannot lift the arm after a minor event — suspect extension of a partial tear to a full-thickness tear; refer for imaging and surgical opinion.
+- **Deep, constant, non-mechanical pain with systemic symptoms:** consider referred pain (cardiac — left shoulder; diaphragmatic — shoulder tip), or less commonly, infection of the glenohumeral joint (unlikely without systemic signs but possible in immunosuppressed patients).
+- **Progressive, painless weakness with atrophy:** consider a neurological cause (Parsonage-Turner syndrome/brachial neuritis, cervical motor neuron disease) rather than a pure cuff pathology — the absence of pain with marked weakness and atrophy is suspicious and warrants neurological referral.
+
+### B2.13 Home Exercise Program
+
+| Phase | Home program emphasis | Example content |
+|---|---|---|
+| Phase 1 | Frequent, brief, pain-free ROM maintenance and low-load isometrics; load-modification education | Pendulum exercises (daily, several times); pain-free active-assisted ROM (wand exercises); isometric external/internal rotation holds (arm at side); avoid sleeping on the affected side |
+| Phase 2 | Structured daily loading program (isometric → isotonic at home resistance); scapular control | Resistance-band external/internal rotation (low resistance, 3x10-12 daily); side-lying external rotation (if equipment available); scapular retraction holds; wall slides |
+| Phase 3 | Progressive home resistance program; functional and sport-specific work | Increase home resistance as tolerated; add overhead pressing/tasks within pain-tolerated arc; sport-specific drills if relevant (e.g. graduated return to throwing, swimming, racket sport) |
+
+- Educate the patient on load-monitoring: the concept that some exercise discomfort is expected and acceptable (≤3/10, settles quickly) while sharp or persistent pain is not — this is the single most important piece of patient education for self-managing tendinopathy.
+- Emphasize that complete rest (immobilization/sling) is generally counterproductive for tendinopathy beyond the very initial acute flare period — relative rest (avoiding aggravating activities while continuing pain-free movement and loading) is the correct approach.
+- For degenerative tendinosis patients, set the expectation that the home program is a long-term maintenance tool, not a temporary course — stopping the program once symptoms resolve often leads to recurrence within weeks to months.
+- (Full templated home program handouts will be built in Module 10: Home Exercise Program Templates.)
+
+*End of B2. Next in the tracker's work order: B3 — Subacromial Impingement.*
+
+---
+
+## B3. Shoulder: Subacromial Impingement
+
+> **Format note:** Subacromial impingement (also called subacromial pain syndrome, SAPS, in current literature) overlaps heavily with B2 (Rotator Cuff Tendinopathy/Tear) in pathomechanics and management — both B2 and this protocol should be read together for a shoulder patient with a mid-range painful arc. This section is written primarily to cover the **mechanical/structural drivers of impingement** (posture, scapular kinematics, acromial morphology) that sit upstream of the tendon pathology itself, and to give this patient population its own phase-goal and outcome framework where impingement — not tendon degeneration — is the primary working diagnosis (e.g. younger patients with reversible kinematic causes, rather than older patients with degenerative tendinosis as the primary lesion).
+
+### B3.1 Anatomy Link
+
+The subacromial space is bounded superiorly by the acromion, coracoacromial ligament, and distal clavicle/AC joint (together forming the coracoacromial arch), and inferiorly by the humeral head and greater tuberosity. The subacromial bursa and the supraspinatus tendon occupy this space and are compressed when the space narrows during arm elevation.
+
+- **Neer's classification** describes impingement mechanically as compression of the rotator cuff (chiefly supraspinatus) and subacromial bursa between the humeral head and the anteroinferior acromion during elevation — this is the structural/mechanical model this protocol targets.
+- Two broad mechanisms are recognized and should be differentiated in reasoning (though they often coexist): **structural (outlet) impingement** — a reduced subacromial space from acromial morphology (hooked/Type III acromion), AC joint osteophytes, or a thickened coracoacromial ligament; and **functional (non-outlet) impingement** — a normal bony space that becomes functionally reduced due to poor scapular control, poor humeral head centering (rotator cuff weakness/imbalance), thoracic kyphosis, or posterior capsule tightness.
+- **Functional impingement is the dominant, physiotherapy-responsive category** and is the primary target of this protocol — structural/outlet impingement (confirmed on imaging, e.g. a hooked acromion) responds less predictably to conservative care alone and is more likely to need surgical subacromial decompression if conservative management fails (B3.10).
+- Scapulohumeral rhythm (the coordinated 2:1 ratio of glenohumeral-to-scapulothoracic movement during elevation) is frequently disrupted in impingement — reduced scapular upward rotation, posterior tilt, and external rotation during elevation narrows the subacromial space further at the exact point in range where compression is already greatest (60-120° abduction, matching the classic painful arc).
+
+### B3.2 Assessment Clues
+
+Building on Module 1's standard assessment, and overlapping substantially with B2.2:
+
+| Finding | Typical Subacromial Impingement pattern |
+|---|---|
+| Onset | Often insidious, related to repetitive overhead activity (occupational or sport) or a change in training/work load; can follow a specific overhead-loading incident |
+| Painful arc | Classic mid-range arc, 60-120° of abduction/flexion, easing above 120° once the tuberosity clears the arch — the single most characteristic clinical sign |
+| Posture | Frequently associated with thoracic kyphosis, forward head posture, and a protracted/downwardly-rotated scapula at rest — assess posture explicitly (cross-reference B30: Postural Syndrome once written) |
+| Scapular assessment | Scapular dyskinesis on active elevation — reduced upward rotation, excessive elevation/shrugging compensation, winging, or asymmetric timing compared to the unaffected side; the **Scapular Assistance Test (SAT)** and **Scapular Retraction Test (SRT)** — manually correcting scapular position/motion during elevation and observing whether pain reduces or ROM improves — are key functional tests specific to this condition |
+| Special tests | Neer's sign, Hawkins-Kennedy test, and the **Jobe relocation test** (posterior-directed force reducing anterior pain during elevation, more associated with instability-related impingement in younger athletes) — interpret in clusters, not in isolation (Module 1, 1.7) |
+| Resisted testing | May be mildly positive for supraspinatus/infraspinatus if secondary tendinopathy has developed (B2), but resisted weakness is typically less prominent than in a primary cuff tear |
+| GIRD | Glenohumeral internal rotation deficit (reduced IR at 90° abduction vs contralateral side) is common, particularly in overhead athletes, and directly narrows the effective subacromial space during elevation |
+
+> **Clinical Note:** The Scapular Assistance/Retraction Tests are the most clinically useful and specific tests for *this* protocol, because a positive result (pain reduces or range improves with manual scapular correction) directly confirms that scapular kinematics are a modifiable contributor — and therefore predicts a good response to the scapular-control-focused exercise program in B3.7, which is the core differentiator of this protocol from B2's more tendon-loading-centric approach.
+
+### B3.3 Differential Diagnosis
+
+| Differential | Distinguishing feature against Subacromial Impingement |
+|---|---|
+| Rotator Cuff Tendinopathy/Tear (B2) | Largely overlapping — treat as the same clinical spectrum; consider B2 the primary protocol when resisted-testing weakness/pain and tendon-specific special tests dominate the picture over scapular/postural findings |
+| Frozen Shoulder (B1) | Global capsular restriction, PROM nearly as limited as AROM, capsular end-feel — impingement has a mid-range arc with near-full PROM |
+| AC Joint Pathology | Pain localized directly over the AC joint, positive cross-body adduction test, pain typically at the very top of elevation (>150°) rather than mid-range |
+| Glenohumeral Instability (B4) | Positive apprehension/relocation test, history of subluxation/dislocation, generalized joint laxity, typically younger patients |
+| Cervical Radiculopathy (B6) | Neurological signs, symptoms provoked by neck movement, Spurling's test positive; shoulder-specific provocation tests are negative or inconsistent |
+| Calcific Tendinitis (acute) | Acute, severe onset; X-ray confirms calcific deposit; different acute-phase management (B2.10 principles apply) |
+
+### B3.4 Phase Goals (7-14-28 Day Framework)
+
+Subacromial impingement follows the standard Module 2.3 phase structure, with goals weighted toward postural/scapular correction rather than tendon loading alone:
+
+| Phase | Typical window | Primary aim | Key metrics to track |
+|---|---|---|---|
+| Phase 1 — Acute/Protective | Day 1-7 | Reduce pain, educate on activity/postural modification, begin pain-free scapular awareness work | NPRS during painful-arc range; ability to perform pain-free scapular setting; patient understands provocative postures/positions to modify |
+| Phase 2 — Sub-acute/Restorative | Day 7-14 | Improve scapular control and timing during elevation, address posterior capsule/GIRD if present, begin rotator cuff strengthening | Positive-to-negative shift on Scapular Assistance/Retraction Test; reduced painful-arc range; improved GIRD measurement |
+| Phase 3 — Remodeling/Functional | Day 14-28 | Progressive rotator cuff and scapular stabilizer strengthening, restore full overhead function, return to sport/work-specific overhead demand | Pain-free full elevation; functional task completion (reaching overhead, occupational/sport-specific movement) matching intake goals (Module 1.1) |
+| Phase 4 — Discharge/Maintenance | Beyond Day 28 (structural/outlet cases, or slow-responders) | Independent postural/scapular self-management, relapse-prevention, ongoing conditioning if returning to overhead sport | Independent home program; sport/work-specific return criteria met |
+
+- Functional (non-outlet) impingement in a compliant, younger patient typically tracks close to these windows. **Structural/outlet impingement** (confirmed hooked acromion or significant AC joint osteophyte on imaging) should be flagged explicitly in documentation — expect a slower and less certain conservative-care trajectory, and set the discharge/referral decision point earlier if Phase 2 goals are not being met (B3.10).
+
+### B3.5 Session Time-Block Application
+
+Applying Module 2.4's standard blocks, with this condition's characteristic emphasis:
+
+| Phase | Opening electro (~10 min) | Manual therapy (~10-12 min) | Exercise (~15-20 min) | Closing electro (~10 min) |
+|---|---|---|---|---|
+| Phase 1 | Hot pack for comfort | Thoracic spine mobilization (a major and often under-treated contributor to elevation range and impingement mechanics), soft tissue work to pectoralis minor/upper trapezius (both contribute to a protracted, downwardly-rotated resting scapular position) | Scapular setting/positioning awareness, pain-free active-assisted elevation, postural correction cueing | Ice/TENS if provoked |
+| Phase 2 | Hot pack before exercise | Posterior capsule mobilization if GIRD present (posterior glide, sleeper stretch supervision); continued thoracic mobilization | Scapular dynamic control exercises (serratus anterior, lower trapezius emphasis), rotator cuff isometric-to-isotonic progression, correction of elevation movement pattern with real-time feedback | Minimal |
+| Phase 3 | Optional/minimal | Maintenance only; hands-on time shifts to exercise-form coaching | Progressive resistance for cuff and scapular stabilizers, overhead functional/sport-specific pattern retraining, return-to-activity graded loading | Minimal |
+
+> **Clinical Note:** Thoracic spine mobility deserves specific emphasis in this protocol beyond what B2 gives it — reduced thoracic extension mechanically forces compensatory scapular protraction and reduced upward rotation during elevation, directly narrowing the subacromial space at the exact point of the painful arc. A tight thoracic spine that is never addressed is a common reason a scapular-control exercise program under-performs.
+
+### B3.6 Manual Therapy Detail
+
+- **Thoracic spine mobilization/manipulation** (mid-thoracic extension mobilization, thoracic manipulation where within scope and appropriate) to restore the thoracic extension needed for normal scapular upward rotation during elevation — this is a first-line technique for this condition specifically, more so than for B1/B2.
+- **Soft tissue release** to pectoralis minor (a key downward-rotator/protractor of the scapula when tight), upper trapezius, and levator scapulae to reduce the postural pull that keeps the scapula in a poor resting position.
+- **Posterior capsule mobilization** (posterior glide, Grade III-IV as irritability allows) where GIRD is confirmed — reducing posterior capsule tightness improves the humeral head centering during elevation and reduces functional impingement.
+- **Mulligan MWM** for painful elevation/abduction — applying a pain-free accessory glide (often posterolateral) during active elevation can immediately demonstrate a pain-free range increase, which is both therapeutically useful and educationally powerful for the patient (it demonstrates the mechanical, correctable nature of the problem).
+- Glenohumeral joint mobilization otherwise plays a smaller role here than in B1/B2, since the primary restriction in functional impingement is not usually capsular but postural/kinematic.
+
+### B3.7 Exercise Prescription Detail
+
+This is the protocol where **scapular kinematic retraining** is the centerpiece, more so than in B2:
+
+| Phase | Exercise focus | Example progressions |
+|---|---|---|
+| Phase 1 | Pain-free scapular awareness and positioning; postural correction; avoid provocative overhead loading | Scapular setting (gentle retraction/depression without shrugging), postural correction cueing (thoracic extension, "proud chest" cueing), pain-free active-assisted elevation within the non-painful arc |
+| Phase 2 | Scapular dynamic control (serratus anterior and lower trapezius emphasis — the two muscles most consistently found to be under-active in impingement); begin rotator cuff isometric/light isotonic loading | Wall slides with scapular upward rotation cueing, prone Y/T/W raises (light load, emphasis on quality of scapular motion over weight), serratus punch/push-up plus, external/internal rotation resistance-band work at side |
+| Phase 3 | Progressive resistance integrating scapular control into functional/overhead patterns; sport/work-specific retraining | Overhead press progressions with scapular control cueing maintained through range, resisted diagonal patterns (PNF D2 flexion/extension), sport-specific overhead retraining (throwing mechanics, swimming stroke correction, racket-sport serve mechanics) with a coach/therapist cueing scapular timing |
+
+- **GIRD-specific stretching** where present: sleeper stretch (posterior capsule stretch in side-lying with the arm internally rotated) dosed cautiously (this stretch is easy to overdose and provoke anterior impingement symptoms if performed with poor scapular stabilization) — always stabilize the scapula against the table/bed during this stretch.
+- **Postural endurance training**: thoracic extension and scapular-retractor endurance work (not just strength) is relevant here because impingement-provoking postures are typically sustained (desk work, driving) rather than single-effort — dose with higher repetitions/holds rather than heavy low-rep loading in Phase 2.
+
+### B3.8 Electrotherapy Detail
+
+- Adjunctive only (Module 2.5) — electrotherapy does not correct scapular kinematics or acromial morphology, the primary drivers targeted by this protocol.
+- Hot pack pre-treatment for soft tissue extensibility before thoracic mobilization and stretching.
+- TENS for symptomatic pain relief in Phase 1 if pain is limiting willingness to engage in postural/scapular retraining exercise.
+- As in B2, therapeutic ultrasound/IFT have weak evidence for this condition specifically and should never substitute for exercise/manual therapy time.
+
+### B3.9 Acupuncture / Dry Needling Detail
+
+- Indicated for myofascial trigger points in pectoralis minor, upper trapezius, levator scapulae, and infraspinatus where these are contributing to the postural pattern and guarding described in B3.1-B3.2.
+- Particularly useful for pectoralis minor specifically in this condition — a tight, trigger-point-laden pectoralis minor is a common and readily-treatable contributor to the protracted scapular position that drives functional impingement, and is not always adequately addressed by stretching alone.
+- As with B1/B2, an adjunct to enable more effective manual therapy and exercise, not a primary treatment for the mechanical impingement itself.
+
+### B3.10 Contraindications and Precautions
+
+- **Structural/outlet impingement** (confirmed hooked/Type III acromion or significant AC joint osteophyte on imaging) that fails to respond to a full, well-executed conservative trial (through Phase 2, ~Day 14) should be flagged for orthopedic referral to discuss subacromial decompression — do not persist indefinitely with a scapular-retraining program against an unchanged bony obstruction.
+- Corticosteroid injection (subacromial) may be considered by the referring physician for an acute, high-irritability presentation not settling with initial conservative care — same post-injection loading caution as B2.10 (gentle loading for ~7-10 days post-injection).
+- Avoid aggressive overhead loading or repeated provocative-arc exercise in Phase 1 — this can worsen bursal/tendon irritation before scapular control has improved enough to reduce mechanical compression.
+- The sleeper stretch and other aggressive posterior-capsule stretches should be avoided or heavily modified in patients with coexisting instability (B4) — stretching an already-lax posterior structure in an unstable shoulder can worsen the underlying problem.
+- Screen for and differentiate from primary AC joint pathology (B3.3) before targeting AC-adjacent structures with manual therapy.
+
+### B3.11 Progression Criteria
+
+Condition-specific thresholds within the Module 2.7 generic framework:
+
+**Progress phase/loading level when:**
+- Phase 1 → 2: Painful-arc range has reduced (document degrees) and the patient can perform scapular setting/positioning cues correctly and consistently.
+- Phase 2 → 3: Scapular Assistance/Retraction Test has converted from positive to negative (or markedly improved), GIRD has reduced toward normal if present, and rotator cuff isometric/light isotonic loading is tolerated with ≤3/10 exercise pain settling within an hour (same pain-monitoring rule as B2.7).
+- Within Phase 3, progress load/complexity when the patient demonstrates maintained scapular control through a full, weighted, or functional-pattern range — losing scapular control under load is a sign to regress load before range/complexity, not to push through.
+
+**Regress or hold when:**
+- Painful arc widens or worsens after a loading progression, or a >24h flare occurs.
+- Scapular control deteriorates under the current exercise load (compensatory shrugging/winging reappears) — this specifically means reduce load/complexity rather than reduce ROM work, since ROM is not usually the limiting factor in functional impingement.
+
+### B3.12 Red Flags Specific to This Condition
+
+In addition to universal red flags (Module 1, 1.2):
+
+- New or progressive true weakness (not pain-limited) on resisted testing — reconsider whether a coexisting/progressing rotator cuff tear (B2) has developed rather than pure impingement.
+- No meaningful improvement in painful-arc range or Scapular Assistance/Retraction Test result by the Phase 2 reassessment point (~Day 14) despite a well-executed program — reconsider whether a structural/outlet cause (B3.10) is present and warrants imaging/referral, since these cases were mislabeled as purely functional at intake.
+- Marked generalized joint hypermobility or a positive apprehension/relocation test discovered during the course of care — reclassify toward B4 (Instability) rather than continuing a pure impingement-focused program, since instability-related impingement needs a different exercise emphasis (dynamic stability, not just scapular control).
+
+### B3.13 Home Exercise Program
+
+| Phase | Home program emphasis | Example content |
+|---|---|---|
+| Phase 1 | Postural awareness throughout the day; pain-free scapular setting practice | Frequent brief posture check-ins (especially desk/driving posture), scapular setting practice, activity modification advice for provocative overhead tasks |
+| Phase 2 | Structured daily scapular control and cuff loading program; GIRD stretching if indicated | Wall slides, prone Y/T/W (light load), resistance-band external/internal rotation, sleeper stretch if GIRD present (taught with careful scapular stabilization cueing) |
+| Phase 3 | Progressive home resistance and return-to-activity practice | Increasing resistance-band/dumbbell load for cuff and scapular stabilizers, sport/work-specific practice with attention to maintaining scapular control under fatigue (a common point of technique breakdown late in a work shift or sport session) |
+
+- Emphasize that this condition responds strongly to consistent postural and scapular-control practice throughout the day, not just during formal exercise sessions — brief, frequent correction (e.g. every time the patient notices slouching) often outperforms an isolated daily exercise block alone.
+- For patients returning to overhead sport/occupation, discharge only once scapular control is demonstrated under fatigue/load conditions similar to the real activity, not just in a rested, low-load clinic setting — this is a common gap between "clinic-ready" and "activity-ready."
+- (Full templated home program handouts will be built in Module 10: Home Exercise Program Templates.)
+
+*End of B3. Next in the tracker's work order: B4 — Shoulder Instability.*
+
+---
+
+*(Remaining Part B conditions and Modules 3-10 not yet started — see Progress Tracker for the full planned list.)*
