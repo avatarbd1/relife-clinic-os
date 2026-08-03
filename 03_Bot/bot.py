@@ -2068,7 +2068,7 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Due": bill_status["due_amount"] if bill_status else "",
             "Payment_Method": p.get("Payment_Method", "") if amount > 0 else "N/A",
             "Received_By": staff.get("Full_Name", "Unknown"),
-            "Remarks": f"Sessions: {sessions}" if sessions else "",
+            "Remarks": f"Sessions: {sessions}" if sessions is not None else "",
         })
 
         if sessions > 0:
