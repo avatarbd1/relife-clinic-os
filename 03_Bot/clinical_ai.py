@@ -19,6 +19,18 @@ OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 OPENROUTER_MODEL_NAME = "openai/gpt-4o-mini"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
+# ক্লিনিকে বাস্তবে যা যা আছে — নতুন কিছু কেনা হলে শুধু এই লিস্টটা আপডেট করলেই হবে,
+# বাকি কোড অপরিবর্তিত থাকবে। AI শুধু এই লিস্ট থেকেই modality/tool recommend করবে।
+CLINIC_EQUIPMENT = [
+    "TENS", "IFT", "Ultrasound", "SWD (Short Wave Diathermy)", "Shockwave Therapy", "EMS",
+    "Dry Needling", "Electroacupuncture",
+    "Hot Pack", "Cold Pack/Ice", "Wax Bath",
+    "ISTM (Myofascial Release tool)", "Mulligan Belt", "Cupping",
+    "Theraband", "Basketball (functional/proprioception training)",
+    "Manual Therapy (hands-on techniques, no equipment needed)",
+    "Exercise Therapy (bodyweight/free exercise, no equipment needed)",
+]
+
 
 def _call_groq(prompt: str) -> str:
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
@@ -84,7 +96,12 @@ def _generate_guidance(case_text: str, matched_conditions: list) -> str:
         return ("দুঃখিত, এই presentation-এর সাথে manual-এর কোনো নির্দিষ্ট condition স্পষ্টভাবে "
                 "মিলছে না। আরও details দিয়ে আবার চেষ্টা করুন, অথবা সিনিয়র থেরাপিস্ট/ডাক্তারের "
                 "সাথে পরামর্শ করুন।")
-    context_blocks = []
+    equipment_line = "ক্লিনিকে বাস্তবে উপলব্ধ যন্ত্রপাতি/টুলস: " + ", ".join(CLINIC_EQUIPMENT) + (
+        "। শুধু এই তালিকা থেকেই modality/tool recommend করো — manual-এ অন্য কিছুর কথা "
+        "থাকলেও তা যদি এই তালিকায় না থাকে, সেটা উল্লেখ না করে বরং তালিকায় থাকা কাছাকাছি "
+        "বিকল্প বা হাতে-করা (manual/exercise-based, equipment ছাড়া) পদ্ধতি suggest করো।"
+    )
+    context_blocks = [equipment_line]
     core_text = _load_core_modules_text()
     if core_text:
         context_blocks.append(core_text)
