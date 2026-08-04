@@ -20,14 +20,14 @@
 | — | **PART A — FOUNDATION MODULES** | | |
 | 1 | Module 1: Patient Assessment | ✅ Complete | 100% |
 | 2 | Module 2: Clinical Management (diagnostic reasoning, goal-setting, treatment planning framework, modality selection, SOAP documentation, progression/regression, reassessment, discharge, referral) | ✅ Complete | 100% |
-| 3 | Module 3: Manual Therapy Library (Maitland, Mulligan, MET, soft tissue techniques — technique-by-technique reference) | ⏳ Not started | 0% |
-| 4 | Module 4: Exercise Prescription Library (stage-based progression models, dosage principles) | ⏳ Not started | 0% |
-| 5 | Module 5: Electrotherapy Parameter Library (modality-by-modality: indication, contraindication, dosage/parameters) | ⏳ Not started | 0% |
-| 6 | Module 6: Acupuncture / Dry Needling Protocol Library | ⏳ Not started | 0% |
-| 7 | Module 7: Contraindications & Precautions (cross-cutting safety reference) | ⏳ Not started | 0% |
-| 8 | Module 8: Differential Diagnosis Matrices (symptom-pattern → likely conditions, by region) | ⏳ Not started | 0% |
-| 9 | Module 9: Outcome Measure Interpretation (score meaning, MCID, red flags in scoring) | ⏳ Not started | 0% |
-| 10 | Module 10: Home Exercise Program Templates | ⏳ Not started | 0% |
+| 3 | Module 3: Manual Therapy Library (Maitland, Mulligan, MET, soft tissue techniques — technique-by-technique reference) | ✅ Complete | 100% |
+| 4 | Module 4: Exercise Prescription Library (stage-based progression models, dosage principles) | ✅ Complete | 100% |
+| 5 | Module 5: Electrotherapy Parameter Library (modality-by-modality: indication, contraindication, dosage/parameters) | ✅ Complete | 100% |
+| 6 | Module 6: Acupuncture / Dry Needling Protocol Library | ✅ Complete | 100% |
+| 7 | Module 7: Contraindications & Precautions (cross-cutting safety reference) | ✅ Complete | 100% |
+| 8 | Module 8: Differential Diagnosis Matrices (symptom-pattern → likely conditions, by region) | ✅ Complete | 100% |
+| 9 | Module 9: Outcome Measure Interpretation (score meaning, MCID, red flags in scoring) | ✅ Complete | 100% |
+| 10 | Module 10: Home Exercise Program Templates | ✅ Complete | 100% |
 | — | **PART B — DISEASE-WISE PROTOCOLS** (each: Anatomy Link → Assessment Clues → Differential → 7-14-28 day phase goals → Session time-block → Manual/Exercise/Electro/Acupuncture detail → Contraindications → Progression criteria → Red flags → Home program) | | |
 | B1 | Shoulder: Frozen Shoulder (stage-based) | ✅ Complete | 100% |
 | B2 | Shoulder: Rotator Cuff Tendinopathy/Tear | ✅ Complete | 100% |
@@ -60,7 +60,7 @@
 | B29 | Fibromyalgia / Chronic Widespread Pain (nociplastic pain approach) | ✅ Complete | 100% |
 | B30 | Postural Syndrome / Upper Crossed Syndrome | ✅ Complete | 100% |
 
-**Overall completion: ~32 of ~40 planned sections (~80%) — updated 2026-08-04 after B30 (Postural Syndrome / Upper Crossed Syndrome) was added. Part B (Disease-Wise Protocols, B1-B30) is now 100% complete. Next up: Module 3 (Manual Therapy Library) — the first of the remaining Part A foundation modules — per tracker order.**
+**Overall completion: 40 of 40 planned sections (100%) — updated 2026-08-05. All ten Part A Foundation Modules (1-10) and all thirty Part B Disease-Wise Protocols (B1-B30) are now complete. The manual is feature-complete per the original plan; future work is refinement/expansion of individual sections (e.g. the review-and-grade process already applied to Module 4) rather than new sections.**
 
 ---
 
@@ -85,14 +85,14 @@
 **PART A — FOUNDATION MODULES**
 - Module 1: Patient Assessment ✅
 - Module 2: Clinical Management ✅
-- Module 3: Manual Therapy Library ⏳
-- Module 4: Exercise Prescription Library ⏳
-- Module 5: Electrotherapy Parameter Library ⏳
-- Module 6: Acupuncture / Dry Needling Protocol Library ⏳
-- Module 7: Contraindications & Precautions ⏳
-- Module 8: Differential Diagnosis Matrices ⏳
-- Module 9: Outcome Measure Interpretation ⏳
-- Module 10: Home Exercise Program Templates ⏳
+- Module 3: Manual Therapy Library ✅
+- Module 4: Exercise Prescription Library ✅
+- Module 5: Electrotherapy Parameter Library ✅
+- Module 6: Acupuncture / Dry Needling Protocol Library ✅
+- Module 7: Contraindications & Precautions ✅
+- Module 8: Differential Diagnosis Matrices ✅
+- Module 9: Outcome Measure Interpretation ✅
+- Module 10: Home Exercise Program Templates ✅
 
 **PART B — DISEASE-WISE PROTOCOLS** (30 conditions listed in Progress Tracker)
 - B1: Shoulder — Frozen Shoulder ✅
@@ -354,6 +354,908 @@ Refer to the supervising clinician/physician when:
 - The presentation falls outside the conditions covered by Part B and the therapist's own scope of confidence — referral (or senior therapist consultation) is the correct action, not improvisation outside the evidence base
 
 *End of Module 2. Module 3 (Manual Therapy Library) and the Part B condition protocols apply this reasoning framework to specific techniques and specific diagnoses.*
+
+---
+## Module 3: Manual Therapy Library
+
+This module is the technique-by-technique reference for every manual therapy intervention used at Relife Physiotherapy Center. Part B condition protocols reference these sections in their "Manual Therapy Detail" subsection rather than re-explaining technique mechanics each time — this module is the authoritative source for grading, dosage, and technique selection.
+
+> **Clinical Note:** Manual therapy technique choice in this manual follows mixed clinical consensus (Maitland, Mulligan, MET, and soft-tissue schools combined pragmatically by presentation) rather than a single school's philosophy applied exclusively. Where schools disagree on mechanism, this is stated explicitly rather than presenting one theory as settled fact.
+
+### 3.1 Joint Mobilization — Maitland Grading System
+
+The Maitland grading system (Grades I–V) classifies passive accessory and physiological joint mobilizations by amplitude and position within available range. It is the primary framework for grading joint mobilization dosage across this manual.
+
+| Grade | Description | Primary Use |
+|---|---|---|
+| I | Small-amplitude oscillation at the very start of range | Pain modulation, highly irritable presentations |
+| II | Large-amplitude oscillation within the mid-range, not reaching resistance | Pain modulation, early Stage 1-2, maintains mobility without provoking |
+| III | Large-amplitude oscillation up to the limit of available range, into resistance | Stiffness with moderate irritability; combines pain relief with some mobility gain |
+| IV | Small-amplitude oscillation at the limit of range, into resistance | Stiffness-dominant presentations, low irritability; primary mobility-gaining grade |
+| V | High-velocity, low-amplitude thrust beyond the limit of available range | Restricted range with a clear mechanical end-feel; requires specific training and is used selectively, not as a default technique in this manual |
+
+**Selection principle:** irritable, painful presentations are treated with Grade I–II (pain gate/neurophysiological effect, minimal mechanical stress); stiff, low-irritability presentations are treated with Grade III–IV (mechanical stretch effect). Reassess irritability every session and move up or down the grade scale accordingly — grade selection is not fixed for the whole episode of care.
+
+**Dosage:** typically 30–60 seconds of oscillation (2–3 oscillations/second) per bout, 3–4 bouts per session, reassessing the target movement/sign after each bout. Grade V thrust techniques are single-application, reassessed immediately, and not repeated more than 1–2 times in a session.
+
+> **Clinical Note:** Grade V (thrust/manipulation) techniques require specific pre-manipulative screening (vertebral artery insufficiency screening for cervical spine, absence of red flags, absence of instability) and should only be performed by therapists with specific training and within their scope of practice.
+
+### 3.2 Mulligan Concept — Mobilization with Movement (MWM)
+
+Mulligan mobilization applies a sustained accessory glide to a joint while the patient actively performs the previously painful or restricted movement, based on the principle that a positional fault or tracking issue is corrected by the glide, allowing pain-free movement.
+
+- **Core rule — the Pain-Free Rule:** the technique must be pain-free during application. If the corrective glide does not immediately reduce or abolish pain with the movement, the technique, direction, or grade of glide is wrong and should be adjusted or abandoned — this is the key diagnostic and treatment-selection feature of Mulligan technique, distinct from Maitland grading.
+- **Application sequence:** identify the painful/restricted active movement → apply a sustained glide (direction determined by trial and reassessment) → have the patient repeat the movement through range while the glide is sustained → reassess pain and range immediately.
+- **Common applications referenced in Part B:** SNAGs (Sustained Natural Apophyseal Glides) for spinal segments, MWM for peripheral joints (e.g., lateral glide for lateral epicondylalgia, taping/self-MWM techniques for home carryover).
+- **Dosage:** typically 3 sets of 6–10 repetitions of the movement under sustained glide, once pain-free movement is confirmed; can be progressed to overpressure at end-range once fully pain-free through range, and to self-administered/taped versions for home carryover (cross-reference Module 10).
+
+> **Clinical Note:** If the movement remains painful despite several attempts at glide direction/grade, do not force the technique — this is a "failed MWM trial," not a technique to push through, and should prompt reconsideration of the working diagnosis.
+
+### 3.3 Muscle Energy Technique (MET)
+
+MET uses a patient-generated, therapist-resisted isometric muscle contraction, followed by a period of relaxation, to achieve either a lengthening effect (post-isometric relaxation) or a facilitation effect (reciprocal inhibition of the antagonist), depending on target and direction.
+
+- **Post-isometric relaxation (PIR) technique:** position the target muscle at its restriction barrier → patient performs a gentle (20–30% effort) isometric contraction against therapist resistance for 5–10 seconds → patient relaxes fully → therapist moves the joint/muscle to the new barrier during the relaxation window → repeat 3–5 times.
+- **Reciprocal inhibition (RI) technique:** the same sequence but the contraction is performed by the muscle *opposite* the restricted one, used when direct contraction of the restricted muscle is painful or contraindicated.
+- **Primary uses in this manual:** hypertonic/shortened muscle length restriction, adjunct to joint mobilization when muscle guarding limits range, and as a lower-irritability alternative to stretching in acute presentations.
+- **Dosage:** 3–5 repetitions per muscle group per session, can be performed daily in early stages given the low mechanical stress involved.
+
+### 3.4 Soft Tissue Mobilization Techniques
+
+A general term covering hands-on techniques applied to muscle, fascia, and other soft tissue for pain modulation, extensibility, and tissue quality.
+
+| Technique | Description | Primary Use |
+|---|---|---|
+| Effleurage | Long, gliding superficial stroke | Warm-up, relaxation, lymphatic/venous flow assistance |
+| Petrissage | Kneading, lifting, rolling of muscle bulk | Muscle tension reduction, circulation |
+| Deep transverse friction massage (Cyriax) | Firm, transverse-to-fiber pressure at a specific lesion site | Localized tendinopathy/ligament lesions — aims to promote a localized therapeutic response and mobilize adherent scar tissue at the specific site |
+| Myofascial release | Sustained, low-load pressure/stretch through fascial planes | Fascial restriction, generalized tightness across a region |
+| Trigger point release | Sustained direct pressure on a hyperirritable palpable nodule until tension reduces | Myofascial trigger points contributing to referred pain patterns |
+
+**Dosage — deep friction massage specifically:** 5–10 minutes at the specific lesion site, applied across (not along) the fiber direction, moderate-to-firm pressure adjusted to patient tolerance and irritability; typically 2–3x/week, not daily, given the more provocative nature of the technique.
+
+**Dosage — general soft tissue work:** 5–15 minutes depending on the area and goal, can be used at the start of a session (preparatory) or end of session (post-exercise), most techniques safe for daily/frequent application at low-moderate pressure.
+
+> **Clinical Note:** Deep friction massage and trigger point release can each provoke a short-lived (24–48 hour) increase in soreness distinct from a true flare — counsel patients on this expected response so it is not misread as treatment failure, but still apply the 24-hour rule (Module 4.4) to distinguish expected soreness from an actual adverse reaction.
+
+### 3.5 Neural Mobilization
+
+Techniques applied to the peripheral nervous system when neurodynamic testing (Module 1.6) suggests adverse neural tension or reduced neural mobility is contributing to the presentation.
+
+- **Sliders (gliding techniques):** movement at one end of the nerve bed is combined with an opposite movement at the other end so the nerve slides relative to surrounding tissue without significant tension increase — lower irritability, used first in most cases.
+- **Tensioners:** movement at both ends of the nerve bed occurs simultaneously in the same direction, increasing tension through the nerve — higher irritability, reserved for later stages once sliders are well-tolerated.
+- **Dosage:** sliders — 2–3 sets of 10–15 repetitions, performed in a pain-free or minimally symptomatic range, can be prescribed for home use daily; tensioners — introduced only once sliders are tolerated without symptom increase, lower reps (2–3 sets of 6–10), monitored closely with the 24-hour rule.
+
+> **Clinical Note:** Neural mobilization should never be performed into significant neurological symptom reproduction (sharp radiating pain, paraesthesia increase). Mild, transient stretch sensation is expected; reproduction of the patient's neurological symptoms is a sign to reduce range or revert to sliders.
+
+### 3.6 Stretching Techniques
+
+| Technique | Description | Primary Use |
+|---|---|---|
+| Static stretching | Sustained end-range hold, no movement | General flexibility maintenance, Stage 2-3 |
+| PNF — hold-relax | Isometric contraction of the target muscle at end-range, followed by relaxation and further passive stretch | Greater range gain than static stretch alone in a single session; used when range is the primary limiting factor |
+| PNF — contract-relax-contract (CRAC) | Hold-relax followed by an active contraction of the antagonist to move further into range | Similar to hold-relax with an added active component |
+| Dynamic stretching | Controlled, movement-based stretch through range, not held | Warm-up before activity, Stage 3-4 |
+
+**Dosage:** static stretch — 3–5 x 30 second holds, mild-to-moderate stretch sensation (not pain), daily; PNF techniques — 3–4 repetitions per muscle group, 2–3x/week given the higher mechanical/neurological demand.
+
+### 3.7 Technique Selection Decision Framework
+
+Match the technique category to the clinical presentation using the SIN framework (Severity, Irritability, Nature — Module 1.10) established at assessment:
+
+1. **High irritability / acute / reactive presentation:** favor Maitland Grade I–II, gentle MET (reciprocal inhibition), sliders (not tensioners), light soft-tissue work. Avoid deep friction massage, Grade IV–V mobilization, tensioners, and aggressive stretching until irritability settles.
+2. **Moderate irritability, stiffness emerging as the dominant feature:** Maitland Grade III, Mulligan MWM (pain-free rule governs dosage regardless of stage), MET (PIR), moderate soft-tissue work.
+3. **Low irritability, stiffness-dominant, chronic:** Maitland Grade IV (± V where trained and indicated), deep friction massage at localized lesions, static and PNF stretching, tensioners where neural component present.
+4. **Painful contractile lesion with a discrete localized site (tendinopathy, ligament):** deep transverse friction massage as a targeted adjunct, combined with the loading progression in Module 4.5 — manual therapy here is adjunctive to loading, not a replacement for it.
+
+### 3.8 Dosage & Progression Principles Across Manual Therapy
+
+- Manual therapy in this manual is applied as an **adjunct** to active exercise/loading (Module 4), not as a standalone treatment strategy — a session combining passive technique with active follow-through (movement/exercise into any range gained) produces a more durable effect than passive technique alone.
+- **Immediate reassessment rule:** reassess the target sign (pain, range, or specific movement) immediately after each manual therapy technique within a session. A technique that does not change the target sign within 2–3 applications should be reconsidered, not repeated by default.
+- **Session frequency:** manual therapy is typically applied at each in-clinic visit during Stage 1–3, tapering in frequency as the patient transitions to independent exercise-based management in Stage 3–4, consistent with the general treatment-planning framework in Module 2.3.
+
+### 3.9 General Contraindications and Precautions
+
+| Category | Examples |
+|---|---|
+| Absolute (do not apply manual therapy at the site) | Fracture (unstable/unhealed), malignancy at or near the site, active infection, acute inflammatory arthropathy flare, cauda equina or other progressive neurological red flag |
+| Relative (modify grade/technique, proceed with caution) | Osteoporosis (avoid Grade V/high-force techniques, use lower-grade mobilization), anticoagulant therapy (reduce force for soft-tissue/friction techniques, monitor for bruising), pregnancy (position and technique modification, avoid certain spinal techniques per trimester), hypermobility (favor stability-oriented technique selection over further mobilization — cross-reference Module 4.14), recent surgery (defer to the surgeon's protocol per Module 4.6) |
+
+> **Clinical Note:** Any positive red flag from Module 1.2 takes precedence over this module — do not proceed with manual therapy at a site with an unresolved red flag pending medical clearance.
+
+*End of Module 3. Module 4 (Exercise Prescription Library) details the active loading progression that manual therapy in this module is designed to support, not replace.*
+
+---
+
+## Module 4: Exercise Prescription Library
+
+*(Stage-based progression models and dosage principles. Every Part B condition protocol references this module's stages and dosage tables in its "Exercise Prescription Detail" section — this module is the authoritative source for how to load, progress, and regress exercise across the healing/rehab timeline. Cross-references Module 2.3 Treatment Planning Framework and Module 2.7 Progression/Regression Criteria.)*
+
+### 4.1 The Four-Stage Progression Model
+
+Every condition in Part B maps its exercise plan onto this same four-stage skeleton, regardless of diagnosis — only the specific exercises, load, and timeline differ by condition and tissue type.
+
+- **Stage 1 — Protection/Pain Control:** goal is to calm the tissue and prevent further irritation while maintaining as much safe motion and muscle activity as possible. Isometric holds, pain-free range-of-motion work, gentle activation.
+- **Stage 2 — Restore Motion & Activation:** goal is to regain full pain-free range and re-establish basic motor control/activation of the target muscle(s). Active-assisted → active range work, low-load isotonic exercise.
+- **Stage 3 — Build Strength & Capacity:** goal is progressive tissue loading to rebuild strength, endurance, and load tolerance toward functional demand. Resisted exercise, progressive overload, endurance work.
+- **Stage 4 — Function & Return to Activity:** goal is to prepare the tissue for the specific demands of the patient's work, sport, or daily activity. Functional movement patterns, sport/task-specific loading, plyometric or high-speed work where relevant, final return-to-activity criteria testing.
+
+**Stage transition rule:** move to the next stage only when the current stage's exit criteria are met (see 4.3), not by a fixed calendar date alone — the 7-14-28 day framework used in Part B is a *typical* timeline expectation, not a rigid rule. If a patient meets criteria early, progress early; if not, hold the stage and address the limiting factor before moving on (cross-reference Module 2.8 Reassessment Protocol).
+
+---
+
+### 4.2 Exercise Type Reference — What Each Type Is and When It's Used
+
+**Isometric exercise:** muscle contraction without joint movement (e.g., wall sit, static quad hold). Used in Stage 1 for pain modulation (isometrics have an analgesic effect, particularly well-documented in tendinopathy) and to maintain strength without provoking irritable tissue. Typical dosage: 5 x 30-45 second holds, sub-maximal to moderate effort (40-70% of maximum voluntary contraction), 1-2x/day.
+
+**Active-assisted range of motion (AAROM):** patient-initiated movement supported by the therapist, a device (pulley, wand), or the unaffected limb. Used early Stage 2 when active control is not yet sufficient to complete full range independently, or when guarding limits active movement despite adequate passive range.
+
+**Active range of motion (AROM):** unassisted, patient-generated movement through available range. Used through Stage 2 as the bridge from assisted movement to loaded movement; also used as a home program mainstay (Module 10).
+
+**Isotonic exercise (concentric/eccentric):** muscle contraction through range against resistance (body weight, band, dumbbell, machine).
+- *Concentric* — muscle shortens while contracting (e.g., lifting phase of a bicep curl).
+- *Eccentric* — muscle lengthens while contracting under load (e.g., lowering phase). Eccentric loading has specific evidence for tendinopathy remodeling (see 4.5) and is emphasized in Achilles, patellar, lateral/medial epicondyle protocols.
+Used from Stage 2 (light isotonic) through Stage 3-4 (progressive overload).
+
+**Isokinetic exercise:** movement at a constant controlled velocity through range, resistance varies to match effort (requires isokinetic dynamometer equipment). Used selectively in Stage 3-4 for objective strength assessment and late-stage loading where equipment is available; not essential to most OPD protocols in this manual, noted for completeness.
+
+**Plyometric / stretch-shortening cycle exercise:** rapid eccentric-to-concentric loading (e.g., jump-landing, bounding). Used only in late Stage 4 for patients returning to sport or high-demand physical work, once strength and control criteria (4.3) are met — introducing this too early is a common cause of re-injury.
+
+**Neuromuscular control / motor control exercise:** low-load exercise focused on movement quality, activation timing, and coordination rather than strength per se (e.g., scapular setting, transversus abdominis activation, single-leg balance). Used throughout Stages 2-4, particularly important early after injury/surgery when the nervous system's control of the area has been disrupted, and in postural/overuse conditions (see B30).
+
+---
+
+### 4.3 Stage Exit Criteria — General Template
+
+*(Applied per-region in the relevant Part B protocol; general pattern given here.)*
+
+**Exit Stage 1 → Stage 2 when:**
+- Resting pain has reduced to mild or absent (≤3/10)
+- Pain-free or near-pain-free passive/active-assisted range is available
+- No increase in swelling, warmth, or irritability with daily activity
+
+**Exit Stage 2 → Stage 3 when:**
+- Full or near-full active range of motion achieved, pain-free
+- Basic activation/motor control of the target muscle(s) demonstrated (e.g., can hold a position without compensatory substitution)
+- Symptoms are stable or improving with activity, not flaring unpredictably
+
+**Exit Stage 3 → Stage 4 when:**
+- Strength reaches an acceptable threshold relative to the uninvolved side (commonly ≥80% on manual or functional comparison, or per condition-specific benchmark stated in the Part B entry)
+- Tissue tolerates progressive loading without a delayed pain flare (i.e., no significant increase in symptoms 24 hours after loading)
+- Functional movement patterns relevant to daily activity are pain-free
+
+**Exit Stage 4 / Discharge readiness when:**
+- Strength and range are within functional limits for the patient's specific demands (occupation, sport, daily activities)
+- Patient demonstrates the activity/movement that originally provoked symptoms without recurrence
+- Meets the condition-specific discharge criteria stated in its Part B entry and Module 2.9 Discharge Criteria
+
+> **Note on return-to-*sport*, specifically:** the ≥80% threshold above governs the general Stage 3→4 transition. Return to *competitive sport* uses a stricter, test-battery-based standard — see 4.15.
+
+---
+
+### 4.4 Dosage Principles — Sets, Reps, Load, Frequency
+
+**General strengthening dosage (Stage 3, most conditions):**
+- Strength/hypertrophy focus: 3 sets of 8-12 repetitions, moderate-to-heavy load (progressing toward 70-85% of estimated 1-rep max or an equivalent perceived-effort scale), 2-3x/week with rest days between sessions targeting the same muscle group
+- Endurance focus: 2-3 sets of 15-25 repetitions, lighter load, can be performed more frequently (up to daily) since fatigue/recovery demand is lower
+
+**Early-stage low-load dosage (Stage 1-2):**
+- 2-3 sets of 10-15 repetitions, light resistance (body weight or light band), daily or near-daily — frequency compensates for low intensity
+
+**Progressive overload rule:** increase one variable at a time — repetitions first, then sets, then load/resistance — rather than increasing several simultaneously. A practical progression sequence: increase reps within the target range → increase to next set → increase load and drop reps back to the bottom of the target range → repeat.
+
+**Session-to-session monitoring (the "24-hour rule"):** pain during exercise up to 3-4/10 that resolves within 24 hours and does not worsen day-to-day is considered acceptable loading. Pain that persists beyond 24 hours, exceeds 5/10 during exercise, or trends upward across sessions indicates the load or exercise selection should be regressed — cross-reference Module 2.7 Progression/Regression Criteria. *(For tendinopathy specifically, see the more detailed Silbernagel pain-monitoring model in 4.10.)*
+
+**Between-session frequency:** most Stage 2-3 strengthening exercise is prescribed 3-4x/week to allow adequate recovery; isometric and low-load neuromuscular control work can be prescribed daily; plyometric/high-intensity Stage 4 work typically limited to 2x/week with 48-72 hours recovery between sessions.
+
+**Load prescription without 1RM testing:** formal 1RM testing is rarely practical or appropriate in OPD rehab (fatigue risk, time, pain-limited patients). Use the RPE/RIR method (4.9) as the standard clinic method for setting and progressing load against the %1RM ranges given above.
+
+---
+
+### 4.5 Tendinopathy-Specific Loading Model (Isometric → Isotonic → Heavy Slow Resistance → Energy Storage)
+
+*(Applies specifically to the tendinopathy conditions in Part B — B2 Rotator Cuff, B19 Tennis Elbow, B20 Golfer's Elbow, B25 Achilles Tendinopathy — referenced from their Exercise Prescription Detail sections.)*
+
+1. **Isometric phase** (reactive/acute tendinopathy, high irritability): sustained isometric holds at mid-range, 5 x 30-45 seconds, 70% effort, primarily for pain reduction and to maintain some loading without provoking reactivity.
+2. **Isotonic phase** (as irritability settles): slow concentric/eccentric loading through range, 3-4 sets of 8-15 repetitions, emphasizing the eccentric (lowering) phase in particular, moderate load.
+3. **Heavy slow resistance (HSR) phase:** heavier load, slow tempo (e.g., 3 seconds up, 3 seconds down), 3-4 sets of 6-8 repetitions, 2-3x/week, progressively increasing load session to session — this is the primary phase for structural tendon remodeling.
+4. **Energy storage/plyometric phase** (return-to-sport/high-demand only): fast stretch-shortening-cycle loading (e.g., hopping for Achilles, fast wrist flick loading for elbow tendons) introduced only after HSR strength and pain criteria are met, mirrors Stage 4 of the general model (4.1, 4.3).
+
+**Key principle specific to tendinopathy:** unlike acute muscle/ligament injury, tendons generally tolerate and benefit from early loading — prolonged rest delays recovery rather than protecting the tendon. The isometric phase is for pain modulation, not tissue protection in the traditional sense.
+
+**Progression between phases is criteria-based, not time-based** — use the Silbernagel pain-monitoring model (4.10) to decide when a patient is ready to move from one phase to the next, the same way 4.3 governs stage transitions in the general model.
+
+---
+
+### 4.6 Post-Surgical Loading Modifications
+
+*(General principles; the specific timeline for any given surgery always follows the operating surgeon's protocol first — see Module 2.10 Referral Criteria and B14, B26, B27 for post-surgical general principles.)*
+
+- Exercise dosage and stage progression in this module are **subordinate to** surgical precautions (weight-bearing status, range restrictions, graft protection timelines) whenever the two conflict.
+- Stage 1 in a post-surgical context is typically longer and more conservative than in a non-surgical soft-tissue presentation of the same region, often driven by tissue-healing timelines (e.g., graft ligamentization after ACL reconstruction) rather than symptom response alone.
+- Always confirm weight-bearing status, range-of-motion limits, and any brace/immobilization requirement from the operative note or surgeon's written protocol before applying this module's general stage criteria.
+
+---
+
+### 4.7 Home Exercise Dosage and Adherence
+
+- Home program exercises (fully detailed templates in Module 10) are generally prescribed at a lower set/rep ceiling than in-clinic sessions to protect against over-loading between visits — typically 2 sets where the clinic session uses 3.
+- Simplicity improves adherence: home programs in this manual are capped at 4-6 exercises per stage; additional exercises are added only after the initial set is well-tolerated and consistently performed.
+- Written/visual instructions with a clear "stop and contact the clinic if..." rule (linked to Module 1.2 Red Flag Screening and the 24-hour pain rule in 4.4) should accompany every home program handout.
+
+---
+
+### 4.8 Quick-Reference Dosage Table
+
+| Exercise type | Sets | Reps/Duration | Load | Frequency | Typical stage |
+|---|---|---|---|---|---|
+| Isometric | 5 | 30-45 sec hold | 40-70% effort | 1-2x/day | 1 (or tendinopathy phase 1) |
+| AAROM/AROM | 2-3 | 10-15 reps | Body weight/assisted | Daily | 1-2 |
+| Light isotonic | 2-3 | 10-15 reps | Light band/body weight | Daily | 1-2 |
+| Moderate isotonic (strength) | 3 | 8-12 reps | Moderate-heavy | 2-3x/week | 3 |
+| Endurance isotonic | 2-3 | 15-25 reps | Light-moderate | Up to daily | 2-3 |
+| Heavy slow resistance | 3-4 | 6-8 reps, 3+3 sec tempo | Heavy | 2-3x/week | 3 (tendinopathy) |
+| Neuromuscular control | 2-3 | 10-15 reps or 20-30 sec hold | Low | Daily | 2-4 |
+| Plyometric/energy storage | 2-3 | 6-10 reps | Body weight/added | 2x/week | 4 only |
+
+---
+
+### 4.9 RPE/RIR-Based Load Progression
+
+Since 1-rep-max testing is rarely practical or safe in an OPD rehab setting, load is prescribed and progressed using **Rating of Perceived Exertion (RPE, 0-10 modified Borg scale)** and **Reps in Reserve (RIR)** rather than measured %1RM. The %1RM figures in 4.4 and 4.8 remain the reference range; RPE/RIR is the practical clinic tool for hitting them without equipment.
+
+| RPE | RIR | Approx. %1RM | Clinical use |
+|---|---|---|---|
+| 10 | 0 (failure) | ~100% | Never targeted in OPD rehab |
+| 8-9 | 2-3 | ~80-85% | Stage 3 strength target (matches 4.4 strength dosing) |
+| 6-7 | 4-5 | ~65-75% | Stage 2→3 transition, endurance-focus work |
+| 4-5 | 6+ | ~50-60% | Stage 1-2 low-load/daily dosing |
+
+**How to use it clinically:**
+- Ask the patient to rate effort immediately after the working set, not from memory afterward.
+- Progress load when the patient reports the *same* prescribed reps at a *lower* RPE than the previous session (i.e., it got easier) — this is the operational trigger for the "increase load" step in the progressive-overload rule (4.4).
+- If RPE is rising session-to-session at the same load/reps, hold or regress rather than adding load — this usually signals inadequate recovery or early symptom flare before it shows up as reported pain.
+
+---
+
+### 4.10 Pain-Monitoring Model (Silbernagel Model)
+
+The general 24-hour rule (4.4) is sufficient for most acute/subacute conditions. For **tendinopathy** (4.5) and other conditions where some exercise-induced discomfort is expected and acceptable, this manual uses the Silbernagel pain-monitoring model as the more precise operational standard.
+
+**During/immediately after loading, using a 0-10 NRS:**
+- **0-2:** safe — may progress load or volume at the next session per the usual progressive-overload rule (4.4)
+- **3-5:** acceptable — continue at the current load, but monitor next-morning symptoms before progressing further
+- **>5:** too much — reduce load or volume at the next session
+
+**Next-morning check (this is the decisive check, not the in-session pain level alone):**
+- Pain/stiffness should return to the patient's pre-exercise baseline by the next morning. If it does, the prior day's load was tolerated and progression can continue.
+- If next-morning pain/stiffness has *not* returned to baseline, hold the current load until it does before progressing further.
+
+**Weekly trend over single-session pain:** a single session with pain in the 3-5 range is not itself a reason to stop progression — what matters is whether resting/morning pain is trending down over 1-2 weeks overall. Isolated exercise-induced discomfort within the acceptable band, alongside an improving weekly trend, is expected and should not be over-interpreted as a setback.
+
+---
+
+### 4.11 Velocity-Based Progression
+
+Applies mainly to **Stage 4** (power, speed-strength, and return-to-sport work) and to facilities with equipment to measure it; not required for standard OPD dosing.
+
+- **Concept:** movement velocity (bar/limb speed) drops predictably as load or fatigue increases, so tracking velocity lets load be autoregulated session-to-session rather than fixed by percentage alone — a patient having a "bad day" will show slower velocity at the same prescribed load, signalling that load should be reduced that session.
+- **Where formal equipment is available** (linear position transducer, VBT smartphone app): approximate reference zones —
+  - **>1.0 m/s** — power/speed-strength work
+  - **0.5-0.75 m/s** — strength-speed work
+  - **<0.5 m/s** — maximal strength work
+  These are reference zones for facilities with VBT tools, not a requirement for standard protocols in this manual.
+- **OPD-practical proxy without equipment:** watch for degradation in movement tempo/control across a set — if the patient cannot maintain the prescribed tempo or control for the full prescribed reps, treat this the same as a velocity drop and reduce load or reps for that session, per the same autoregulation logic.
+
+---
+
+### 4.12 Pediatric Dosage Modification
+
+- **Growth plate (physis) considerations:** avoid heavy axial or maximally resisted loading through open growth plates, particularly in high-risk sports; favor body-weight, band, and neuromuscular-control work over heavy external load even in Stage 3.
+- **Dosage shift:** lower absolute load, higher rep ranges (12-20+), with emphasis on technique and motor learning over load progression per se.
+- **Session design:** shorter, more frequent, game-based or functional exercise selection improves both adherence and movement quality in children compared to adult-style structured sets.
+- **Screening:** watch for pediatric-specific red flags (e.g., unresolving limp, apophysitis patterns such as Osgood-Schlatter or Sever's disease) — cross-reference Module 1.2 Red Flag Screening and the relevant Part B entries.
+- **Home program:** parent/guardian is instructed alongside the child and is responsible for supervision (modify Module 10 home template accordingly).
+
+---
+
+### 4.13 Geriatric Dosage Modification
+
+- **Start lower, progress slower:** begin at roughly 10-20% below the standard adult starting loads in 4.4/4.8, and extend the interval between load increases relative to the standard progressive-overload rule.
+- **Functional priority:** balance, fall-risk, and functionally-patterned strength (sit-to-stand, gait-relevant loading) are prioritized alongside isolated muscle strengthening.
+- **Medical screening before loading:** check for polypharmacy effects (e.g., orthostatic risk), cardiovascular precautions, and osteoporosis/fracture risk before prescribing resisted or higher-impact work; plyometric/Stage 4 loading (4.1, 4.5.4) is generally avoided or heavily modified in frail or osteoporotic patients.
+- **Recovery:** allow longer between-session recovery (48-72 hours) even for moderate-load work, reflecting slower tissue adaptation.
+- **Instructional modification:** fewer exercises per stage than the standard 4-6 in 4.7, with more repeated/visual demonstration.
+
+---
+
+### 4.14 Hypermobile Patient Modification
+
+*(e.g., Ehlers-Danlos spectrum, Beighton-positive/generalized joint hypermobility.)*
+
+- Shift emphasis away from range-of-motion work (already excessive in these patients) toward **neuromuscular control, proprioception, and end-range strength/stability**; do not encourage further stretching into the hypermobile range.
+- Favor **closed-chain and mid-range loading** over end-range or ballistic loading, particularly in Stage 1-2.
+- Progression into Stage 4 plyometric/energy-storage work (4.5.4) is typically slower and more conservative given joint stability concerns — strength and control criteria should be met with a stricter margin before introducing high-velocity loading.
+- Screen with the Beighton score where hypermobility is suspected (cross-reference Module 1 Assessment) and flag it explicitly in the treatment plan so the modification carries through all later stages.
+
+---
+
+### 4.15 Return-to-Sport / Return-to-Activity Objective Testing Criteria
+
+The general Stage 3→4 threshold (≥80% limb symmetry, 4.3) governs everyday function. **Return to competitive sport** uses a stricter, criteria-based test battery rather than any single measure or a calendar date:
+
+- **Strength symmetry:** ≥90% limb symmetry index (LSI) versus the uninvolved side.
+- **Hop testing** (lower-limb conditions): single-leg hop for distance, triple hop, crossover hop, and 6-meter timed hop — each ≥90% LSI.
+- **Movement quality:** functional movement screening or single-leg squat assessment to rule out compensatory patterns under load.
+- **Sport-specific performance:** the actual skill/task performed at full speed without symptom provocation.
+- **Psychological readiness:** a brief readiness screen (e.g., ACL-RSI or equivalent) where relevant — fear of re-injury is an independent predictor of both return-to-sport success and re-injury risk, and should not be assumed to resolve automatically once physical criteria are met.
+
+**Principle:** no single test is sufficient for clearance. Require the patient to pass strength, hop/functional, and sport-specific criteria together, not any one measure in isolation. Condition-specific RTS batteries (where more detail applies, e.g., ACL reconstruction) are detailed in the relevant Part B entry and reference back to this section rather than duplicating it.
+
+---
+
+### 4.16 FITT Principle Integration
+
+The FITT framework (Frequency, Intensity, Time, Type) is used here as an organizing lens over the dosage already specified in 4.4 and 4.8, not a separate dosing system:
+
+| Stage | Frequency | Intensity | Time | Type |
+|---|---|---|---|---|
+| 1 | Daily, 1-2x/day for isometrics | Low (40-70% MVC) | 30-45 sec holds | Isometric, AAROM |
+| 2 | Daily | Low-moderate (RPE 4-6) | 10-15 reps | AROM, light isotonic, motor control |
+| 3 | 2-3x/week (strength) / up to daily (endurance) | Moderate-heavy (RPE 6-9, ~65-85% 1RM) | 8-12 reps (strength) / 15-25 (endurance) | Isotonic, HSR (tendinopathy) |
+| 4 | 2x/week (plyometric) + ongoing strength maintenance | High/sport-specific | Variable, task-based | Functional, plyometric, sport-specific |
+
+---
+
+### 4.17 ACSM Strength-Training Recommendations — Explicit Mapping
+
+- ACSM general-population guidance recommends resistance training on 2-3 non-consecutive days/week, targeting major muscle groups, at 1-3 sets of 8-12 repetitions at moderate-to-high intensity for general strength/hypertrophy — this manual's **Stage 3** dosing (4.4, 4.8) is deliberately aligned with this standard.
+- **Where this manual departs from ACSM general-population guidance, and why:**
+  - Stage 1-2 low-load daily dosing (4.4) sits below ACSM strength/hypertrophy thresholds intentionally — the goal at this point is pain modulation and motor control, not a hypertrophy stimulus; ACSM-aligned strength dosing is deferred to Stage 3.
+  - HSR tendon-loading dosage (4.5.3) uses a slower tempo and lower rep range than standard ACSM hypertrophy guidance by design, per tendon-remodeling evidence rather than general strength-training evidence — it should not be read as a deviation or an error against the ACSM strength table, but as a distinct, tissue-specific protocol.
+- This mapping is included so that any external reviewer comparing this manual against ACSM standards can see explicitly which sections are ACSM-aligned (Stage 3 general strengthening) and which are intentionally evidence-based departures (Stage 1-2, tendinopathy HSR).
+
+---
+
+### 4.18 Contraindications & Exercise Stop Criteria
+
+*(Distinct from, but cross-referenced to, Module 1.2 Red Flag Screening — that section governs whether a patient should be seen/loaded at all; this section governs stopping or modifying exercise once treatment is underway.)*
+
+**Absolute contraindications to loading or stage progression at any point:**
+- Uncontrolled acute inflammation or infection
+- Unstable fracture
+- Suspected DVT
+- Uncontrolled cardiovascular symptoms
+- Any acute red-flag presentation pending medical clearance (Module 1.2)
+
+**Relative contraindications — modify, don't necessarily stop:**
+- Uncontrolled diabetes (wound-healing and neuropathy considerations)
+- Significant osteoporosis (avoid high-impact/end-range loading — see also 4.13)
+- Pregnancy (positioning and intra-abdominal pressure modifications)
+- Anticoagulant therapy (bruising/soft-tissue bleeding risk with aggressive manual therapy or eccentric loading)
+
+**In-session stop criteria (stop immediately, reassess before continuing):**
+- Sharp or severe pain distinct in character from expected exercise discomfort
+- Dizziness or near-syncope
+- Chest pain or unusual shortness of breath
+- An acute instability/loss-of-control event at the joint
+- Sudden onset of swelling during the session
+
+**Between-session hold/regress criteria:**
+- Pain exceeding the 24-hour rule threshold (4.4) on two or more consecutive sessions
+- Progressive loss of range or strength instead of the expected improvement
+- New neurological symptoms
+
+---
+
+*End of Module 4. Module 5 (Electrotherapy Parameter Library) applies modality-specific parameters to the same stage framework established here.*
+
+---
+
+
+## Module 5: Electrotherapy Parameter Library
+
+This module is the modality-by-modality reference for every electrotherapy and physical agent used at Relife Physiotherapy Center. Part B condition protocols reference these sections in their "Electrotherapy Detail" subsection rather than repeating parameters — this module is the authoritative source for indication, contraindication, and dosage per modality.
+
+> **Clinical Note:** Electrotherapy modalities in this manual are used as **adjuncts** to active exercise and manual therapy, not as standalone treatments. Evidence for most electrotherapy modalities as monotherapy is weak-to-moderate; their role here is short-term pain/symptom modulation to enable more effective active treatment, and this should be explained to patients rather than presenting electrotherapy as the primary intervention.
+
+### 5.1 General Principles of Electrotherapy Selection
+
+- Select a modality based on the treatment goal (pain modulation, tissue healing stimulation, muscle re-education, edema/swelling management), not by default habit or patient preference for a specific machine.
+- Electrotherapy is prioritized in Stage 1 (pain-dominant presentations) and tapers as the patient transitions into active loading (Stage 2–4), where exercise dosage (Module 4) becomes the primary driver of outcome.
+- Always screen general electrotherapy contraindications (5.9) before any modality, in addition to the modality-specific contraindications listed under each technique below.
+
+### 5.2 Transcutaneous Electrical Nerve Stimulation (TENS)
+
+| Parameter | Conventional (High-Frequency) TENS | Acupuncture-Like (Low-Frequency) TENS |
+|---|---|---|
+| Frequency | 80–150 Hz | 2–10 Hz |
+| Pulse width | 50–100 microseconds | 150–250 microseconds |
+| Intensity | Strong, comfortable sensory tingling, no muscle contraction | Strong sensory to visible muscle twitch |
+| Duration | 20–30 minutes | 20–30 minutes |
+| Mechanism | Pain-gate mechanism, fast onset, short-lived effect | Endogenous opioid-mediated, slower onset, longer-lasting effect |
+| Primary use | Acute pain, immediate symptomatic relief within a session | More persistent or chronic pain presentations |
+
+**Electrode placement:** over or around the painful area, along the nerve pathway proximal to the site, or at corresponding dermatomal/segmental levels — placement is adjusted based on patient response, not fixed to one location.
+
+### 5.3 Interferential Therapy (IFT)
+
+Two medium-frequency currents (typically ~4000 Hz) are crossed at the target tissue, producing a low-frequency "beat" (interference) effect at the intersection — allows deeper tissue penetration with more comfortable skin tolerance than low-frequency current applied directly.
+
+| Parameter | Setting |
+|---|---|
+| Carrier frequency | ~4000 Hz |
+| Beat frequency | 80–150 Hz for pain modulation; 1–10 Hz (or sweep 1–100 Hz) for muscle stimulation/circulation |
+| Intensity | Strong, comfortable sensory level |
+| Duration | 15–20 minutes |
+| Electrode configuration | 4-pole (crossed) most common; 2-pole (pre-modulated) where 4-pole placement is impractical |
+
+**Primary use:** deeper musculoskeletal pain (e.g., lumbar, hip), edema/swelling management (lower beat frequency settings), and as an alternative to TENS where deeper tissue penetration is desired.
+
+### 5.4 Therapeutic Ultrasound
+
+| Parameter | Continuous Mode | Pulsed Mode |
+|---|---|---|
+| Frequency (probe) | 1 MHz (deeper tissue, 3-5cm) or 3 MHz (superficial tissue, 1-2cm) | Same frequency options |
+| Intensity | 0.5–1.5 W/cm² | 0.5–1.0 W/cm² |
+| Duty cycle | 100% | 20–50% (commonly 1:4, i.e. 20%) |
+| Duration | 5–10 minutes per site | 5–10 minutes per site |
+| Primary effect | Thermal (deep heating) — used for chronic stiffness, tissue extensibility goals | Non-thermal (mechanical/cavitation) — used for acute/subacute soft tissue injury, tissue healing stimulation |
+
+**Technique:** continuous, slow, overlapping circular or longitudinal strokes with adequate coupling gel; static application at one point is avoided (risk of localized tissue overheating).
+
+> **Clinical Note:** Evidence for therapeutic ultrasound's clinical effect beyond placebo is weak-to-mixed across most musculoskeletal conditions in current literature; use it as a minor adjunct where a patient has responded well subjectively, not as a primary evidence-based modality choice.
+
+### 5.5 Low-Level Laser Therapy (LLLT / Photobiomodulation)
+
+| Parameter | Typical Range |
+|---|---|
+| Wavelength | 600–1000 nm (red to near-infrared) |
+| Dose | 2–8 J/cm² per treatment point (condition- and device-dependent) |
+| Application | Direct contact or near-contact, perpendicular to skin, at specific point(s) — tender points, lesion site, or along the tendon/joint line |
+| Duration | Seconds to a few minutes per point depending on device output power |
+| Frequency | 2–3x/week initially |
+
+**Primary use:** tendinopathy, localized joint pain, wound healing adjunct. Evidence quality varies by condition and device parameters — dosage in the literature is inconsistently reported, so device manufacturer guidelines should be followed alongside the general ranges above.
+
+### 5.6 Neuromuscular Electrical Stimulation (NMES) / Russian Current
+
+Used to elicit or augment a muscle contraction electrically, primarily for muscle re-education or strengthening when voluntary activation is inhibited (e.g., post-surgical quadriceps inhibition) or absent (e.g., early nerve injury).
+
+| Parameter | Setting |
+|---|---|
+| Frequency | 35–50 Hz (Russian current, medium-frequency burst-modulated) or 30–80 Hz (standard NMES) |
+| Pulse width | 200–400 microseconds |
+| On:off ratio | 1:3 to 1:5 early stage (more rest); progressing toward 1:2 as tolerance improves |
+| Intensity | To visible, strong tetanic contraction — as high as patient tolerance allows for a strengthening goal |
+| Duration | 10–20 contractions per session |
+| Primary use | Post-surgical/post-injury quadriceps or other target muscle activation deficit (e.g., B14 Post-ACL Reconstruction), muscle re-education where voluntary control is impaired |
+
+> **Clinical Note:** NMES is an adjunct to, not a replacement for, active/voluntary muscle contraction exercise — combine with simultaneous voluntary effort (patient actively contracting along with the stimulated contraction) wherever the patient is able, for the best re-education effect.
+
+### 5.7 Short Wave Diathermy (SWD)
+
+A deep-heating modality using high-frequency electromagnetic energy, generally reserved for chronic, low-irritability, stiffness-dominant presentations where deep tissue heating is the goal and other deep-heat options (ultrasound) are insufficient in area coverage.
+
+| Parameter | Setting |
+|---|---|
+| Mode | Continuous (thermal) or pulsed (non-thermal, lower intensity) |
+| Intensity | Mild, comfortable warmth — patient-reported, not device-standardized, due to variable tissue response |
+| Duration | 15–20 minutes |
+| Primary use | Chronic joint stiffness (e.g., knee/hip OA), deep muscle spasm, large-area deep heating where ultrasound's small treatment area is impractical |
+
+### 5.8 Cryotherapy and Thermotherapy
+
+| Modality | Indication | Parameters | Contraindications |
+|---|---|---|---|
+| Cryotherapy (cold) | Acute injury (first 24-72h), post-exercise soreness management, acute inflammatory flare | 10–15 minutes, ice pack/cold pack with a barrier layer, every 2-3 hours as needed in the acute phase | Cold hypersensitivity/Raynaud's, impaired sensation, cryoglobulinemia, over compromised circulation |
+| Thermotherapy (heat) | Subacute/chronic stiffness, muscle spasm, pre-exercise tissue preparation | 15–20 minutes, moist or dry heat pack, moderate comfortable warmth | Acute inflammation/swelling, impaired sensation, active bleeding/DVT risk, over malignancy, impaired circulation |
+
+> **Clinical Note:** "Ice for acute, heat for chronic" is a simplification, not an absolute rule — the deciding factor is the presence of active inflammation/swelling (favors cold) versus stiffness without active inflammation (favors heat), which can both be present within the same episode of care at different points.
+
+### 5.9 General Contraindications and Precautions Across Electrotherapy
+
+| Category | Applies To | Contraindication |
+|---|---|---|
+| Cardiac | TENS, IFT, NMES, SWD | Cardiac pacemaker or implanted electronic device (electrical modalities), placement across or near the chest/heart |
+| Pregnancy | TENS, IFT, SWD, ultrasound | Avoid over the abdomen/pelvis/lower back; some modalities avoided entirely per local protocol |
+| Malignancy | All modalities | Avoid direct application over a known or suspected malignant site |
+| Impaired sensation | All modalities | Increases risk of burns (thermal modalities) or excessive intensity (electrical stimulation) going unnoticed by the patient |
+| Metal implants | Ultrasound, SWD | Caution over metal implants — device-specific guidance should be followed; TENS/IFT surface application is generally lower risk |
+| Active bleeding/DVT | Thermotherapy, SWD | Avoid — heat increases local blood flow |
+| Skin integrity | All modalities | Avoid over open wounds, active infection, or unhealed surgical incisions unless the modality is specifically indicated for wound healing and applied appropriately |
+
+### 5.10 Modality Selection Quick-Reference
+
+| Treatment Goal | Preferred Modality Options |
+|---|---|
+| Acute pain, immediate relief | Conventional TENS, cryotherapy |
+| Persistent/chronic pain | Acupuncture-like TENS, IFT |
+| Deep tissue heating, chronic stiffness | SWD, continuous ultrasound |
+| Acute soft-tissue injury, non-thermal effect | Pulsed ultrasound |
+| Muscle re-education / inhibited activation | NMES/Russian current |
+| Localized tendinopathy adjunct | LLLT, pulsed ultrasound |
+| Edema/swelling management | IFT (low beat frequency), cryotherapy |
+
+*End of Module 5. Module 6 (Acupuncture / Dry Needling Protocol Library) covers needling-based modalities, which are used alongside — not interchangeably with — the electrotherapy modalities in this module.*
+
+---
+
+## Module 6: Acupuncture / Dry Needling Protocol Library
+
+This module defines the scope, technique, and safety protocol for needling-based interventions at Relife Physiotherapy Center. Part B condition protocols reference this module in their "Acupuncture / Dry Needling Detail" subsection.
+
+> **Clinical Note:** The scope at Relife is **Western trigger-point dry needling**, grounded in musculoskeletal/neurophysiological rationale (trigger point deactivation, local twitch response, pain-gate and diffuse noxious inhibitory control mechanisms) — not Traditional Chinese Medicine meridian-based acupuncture theory. Where a technique historically originates from TCM acupuncture (e.g., needle point locations that overlap with classical acupoints), it is applied and justified here on musculoskeletal/neurophysiological grounds only.
+
+### 6.1 Principles and Evidence Base
+
+- Dry needling targets myofascial trigger points, tight/taut muscle bands, and localized soft-tissue dysfunction using a solid filiform needle without injectate.
+- Evidence supports dry needling as a short-to-medium-term adjunct for myofascial pain and as a component of a broader active-treatment plan (manual therapy + exercise) — it is not supported as a standalone or primary treatment, consistent with the adjunctive role electrotherapy plays in Module 5.
+- Needling is performed only by therapists specifically trained and credentialed in dry needling, within applicable local scope-of-practice regulation.
+
+### 6.2 Indications
+
+- Active myofascial trigger points contributing to the patient's pain pattern (local or referred), identified on palpation as a taut band with a hyperirritable, tender nodule reproducing familiar pain
+- Muscle guarding/hypertonicity limiting range or contributing to a movement dysfunction, where manual techniques (Module 3) have had insufficient effect
+- Chronic or recurrent myofascial pain patterns as an adjunct within the broader condition-specific plan (e.g., B29 Fibromyalgia, B30 Postural Syndrome, and myofascial components of spinal/shoulder conditions)
+
+### 6.3 Contraindications and Precautions
+
+| Category | Absolute Contraindications | Relative Precautions |
+|---|---|---|
+| Patient factors | Needle phobia with inability to consent/cooperate, unable to give informed consent | Anxiety about needling (address with education, consider trial on a less-sensitive site first) |
+| Medical | Active local or systemic infection, lymphedema in the limb to be needled, bleeding disorders/anticoagulant therapy without medical clearance | Diabetes (delayed healing — monitor site), pregnancy (avoid specific point areas per trimester and abdominal/lower back region per standard obstetric precaution) |
+| Anatomical | Needling near the thorax/lung fields without specific training and technique modification (pneumothorax risk) | Needling near major vessels or nerves — requires precise anatomical knowledge and technique adjustment, not avoidance in trained hands |
+| Other | Metal allergy (needle material), first-trimester pregnancy for certain point locations per standard precaution | Patients on immunosuppressive therapy (infection risk — heightened aseptic technique) |
+
+> **Clinical Note:** Needling near the ribcage/thoracic region (e.g., upper trapezius, rhomboids, thoracic paraspinals) carries a recognized pneumothorax risk if angle and depth are not controlled precisely — this is the most serious reportable adverse event associated with dry needling and requires specific technique training, not general manual therapy competence.
+
+### 6.4 Technique — Trigger Point Dry Needling
+
+1. Palpate and confirm the target trigger point (taut band, tender nodule, reproduction of familiar pain, possible local twitch response on snapping palpation).
+2. Prepare the site with appropriate skin antisepsis; use a single-use sterile needle per site/session, disposed of per standard sharps protocol.
+3. Insert the needle through the skin at an angle and depth appropriate to the target muscle and its anatomical relations (avoiding underlying neurovascular/visceral structures).
+4. Advance toward the trigger point, aiming to elicit a local twitch response (LTR) — an involuntary spinal reflex contraction of the muscle fibers — which is associated with (though not required for) a positive treatment effect.
+5. Withdraw partially and redirect within the same insertion (a "pistoning" or fanning technique) to target multiple fibers within the taut band, until LTRs diminish or the desired number of passes is reached.
+6. Remove the needle, apply light pressure to the site, and monitor the patient briefly before they leave the treatment area.
+
+### 6.5 Needling Technique Variants
+
+| Technique | Description | Primary Use |
+|---|---|---|
+| Superficial dry needling | Needle inserted only into subcutaneous tissue above the muscle, not into the muscle belly itself | Lower-irritability presentations, needle-sensitive patients, as an introductory technique |
+| Deep dry needling | Needle advanced into the muscle belly to directly contact the trigger point | Standard technique for established, well-localized trigger points |
+| In-and-out (pistoning) technique | Rapid, repeated shallow insertion/withdrawal within the muscle to elicit multiple LTRs | Larger or more active trigger point areas |
+| Retention technique | Needle left in place for a period without further manipulation | Where a sustained, lower-intensity effect is preferred over the more provocative pistoning technique |
+
+### 6.6 Needling Parameters
+
+| Parameter | Typical Range |
+|---|---|
+| Needle gauge | 0.25–0.30 mm diameter, commonly used sizes for musculoskeletal dry needling |
+| Needle length | 25–75 mm depending on target muscle depth |
+| Retention time (if retained) | 10–20 minutes |
+| Session frequency | 1–2x/week, allowing 48–72 hours between sessions at the same site for post-needling soreness to resolve |
+| Course length | Typically 3–6 sessions before reassessing effect; continue only if a measurable change in the target sign (pain, range, palpation finding) is observed |
+
+### 6.7 Adverse Event Recognition and Management
+
+| Event | Recognition | Management |
+|---|---|---|
+| Post-needling soreness | Localized ache, 24–48 hours, similar in nature to deep friction massage soreness (Module 3.4) | Expected response — counsel in advance; apply the 24-hour rule (Module 4.4) to distinguish from an adverse reaction |
+| Vasovagal/syncopal response | Lightheadedness, pallor, sweating, brief loss of consciousness, typically during or shortly after needle insertion | Stop needling immediately, position patient supine with legs elevated, monitor vitals, do not resume needling that session |
+| Bruising/minor bleeding | Localized bruise at insertion site | Apply direct pressure, reassure patient; more likely in anticoagulated patients (screened per 6.3) |
+| Pneumothorax (rare, serious) | Delayed-onset chest pain, shortness of breath, following needling near the thorax | Refer for emergency medical assessment immediately — this is a medical emergency, not a wait-and-monitor situation |
+| Nerve irritation | Sharp, shooting, or electric sensation with needle contact | Withdraw and redirect immediately; do not needle directly through the sensation |
+
+### 6.8 Post-Needling Care and Patient Education
+
+- Advise the patient of expected post-needling soreness (24–48 hours), similar to post-exercise muscle soreness, and to apply the 24-hour rule (Module 4.4) if it does not resolve as expected.
+- Encourage gentle movement/activity rather than complete rest after needling, consistent with the general early-loading philosophy in Module 4.
+- Advise avoiding strenuous exercise of the needled muscle group for the remainder of the treatment day where a strong local twitch response was elicited.
+- Document needled sites, technique used, and immediate response (including LTR elicited or not) for continuity of care and to inform whether the technique is having the intended effect over successive sessions.
+
+### 6.9 Condition-Specific Application
+
+Dry needling is referenced as an adjunct technique in the relevant Part B condition protocols — most frequently in myofascial and postural presentations (B29 Fibromyalgia/Chronic Widespread Pain, B30 Postural Syndrome), and as an adjunct for muscle guarding components of spinal conditions (B5–B12) and shoulder girdle conditions (B1–B4). Where a Part B protocol specifies dry needling, apply the general technique, dosage, and safety principles in this module rather than repeating them per condition.
+
+*End of Module 6. Module 7 (Contraindications & Precautions) consolidates the safety information scattered across Modules 3, 5, and 6 into a single cross-cutting reference.*
+
+---
+
+## Module 7: Contraindications & Precautions (Cross-Cutting Safety Reference)
+
+This module consolidates safety information referenced throughout Modules 1–6 and Part B into a single cross-cutting reference. It does not replace the modality-specific contraindication tables in Modules 3, 5, and 6 — it is the single place to check when a patient's overall risk profile (a comorbidity, a medication, a special population) needs to be checked against the whole treatment plan at once, rather than modality by modality.
+
+> **Clinical Note:** This module governs when to **withhold, modify, or refer** rather than proceed with a standard protocol. When any content here conflicts with a Part B condition-specific instruction, this module takes precedence, since it reflects patient safety rather than condition-specific technique choice.
+
+### 7.1 Absolute Contraindications to Physiotherapy Treatment
+
+Treatment should not proceed (beyond the assessment itself) until medical clearance is obtained:
+
+- Unstable fracture without surgical or medical stabilization
+- Suspected deep vein thrombosis (calf swelling, warmth, tenderness, especially with recent immobility/surgery)
+- Acute, undiagnosed severe pain out of proportion to the mechanism, or with systemic features (fever, unexplained weight loss)
+- Any positive red flag from Module 1.2 pending medical assessment (cauda equina signs, suspected malignancy, cervical/vertebral artery insufficiency signs, signs of infection)
+- Acute cardiac event or unstable cardiac symptoms (chest pain, unusual shortness of breath) during assessment or treatment
+- Active, uncontrolled infection at or near the treatment site
+
+### 7.2 Relative Contraindications / Precautions Requiring Modification
+
+Treatment can generally proceed with specific modification, not withholding:
+
+| Condition | Modification Required |
+|---|---|
+| Osteoporosis | Avoid high-velocity/high-force manual therapy (Maitland Grade V), avoid high-impact/plyometric loading (Module 4.1 Stage 4) until strength criteria are conservatively confirmed, avoid aggressive end-range stretching |
+| Anticoagulant therapy | Reduce force for soft-tissue/friction techniques and dry needling depth, monitor for bruising, confirm medical clearance for needling where indicated (Module 6.3) |
+| Diabetes (uncontrolled) | Monitor skin/wound healing at needling or manipulation sites, screen for peripheral neuropathy affecting sensation-dependent modalities (Module 5.9), monitor for delayed tissue response |
+| Pregnancy | Position modification (avoid prolonged supine after first trimester), avoid specific electrotherapy application sites (abdomen/lower back — Module 5.9), avoid specific needling point areas (Module 6.3), modify exercise dosage per trimester |
+| Hypermobility (e.g., EDS spectrum) | Favor stability-oriented manual technique and exercise selection over further mobilization (cross-reference Module 3.9, Module 4.14) |
+| Cardiovascular disease (controlled) | Monitor exertion level during higher-intensity Stage 3-4 exercise, avoid unsupervised high-intensity loading without medical clearance where cardiac history is significant |
+| Recent surgery | Defer to the surgeon's specific protocol over this manual's default staging whenever the two conflict (Module 4.6) |
+| Malignancy history (in remission/treated) | Avoid electrotherapy/thermotherapy directly over a previous malignancy site per Module 5.9 unless specifically cleared |
+
+### 7.3 Red Flag Recap and Escalation Pathway
+
+This is the operational escalation sequence when a red flag (Module 1.2) is identified, whether at initial assessment or during ongoing care:
+
+1. **Stop and document** the specific finding precisely (what was found, when, under what circumstances).
+2. **Do not proceed with treatment** of the affected region beyond what is safe pending clarification (unrelated, clearly low-risk complaints in other regions may continue).
+3. **Inform the supervising clinician** the same day the finding is identified — this is not deferred to the next scheduled review.
+4. **Refer** per Module 2.10 Referral Criteria, with clear written communication of the specific finding to the receiving clinician.
+5. **Document the outcome** of the referral in the patient record once available, and do not resume the affected treatment until clearance is documented.
+
+### 7.4 Special Population Quick Reference
+
+| Population | Key Considerations |
+|---|---|
+| Pediatric | Growth plate loading modification (Module 4.12), parent/guardian involvement in consent and home program, pediatric-specific red flags (unresolving limp, apophysitis patterns) |
+| Geriatric | Lower starting loads, longer recovery windows, fall-risk/balance priority, polypharmacy and osteoporosis screening (Module 4.13) |
+| Pregnancy | Position, electrotherapy site, and needling point modifications above; exercise dosage modified per trimester and obstetric guidance |
+| Post-surgical | Surgical protocol takes precedence over this manual's default staging (Module 4.6) |
+| Oncology (active treatment) | Electrotherapy/thermotherapy avoided over the malignancy site; exercise dosage individualized with medical team input; fatigue and immune status considered in session planning |
+| Hypermobile | Stability-oriented technique selection over further mobilization (Module 3.9, Module 4.14) |
+
+### 7.5 Modality-Specific Contraindication Cross-Reference
+
+Rather than duplicating full tables here, this section indexes where each modality's specific contraindications are detailed:
+
+- **Manual therapy (mobilization, MET, soft tissue, neural mobilization, stretching):** Module 3.9
+- **Electrotherapy (TENS, IFT, ultrasound, laser, NMES, SWD, cryo/thermotherapy):** Module 5.9
+- **Dry needling:** Module 6.3
+- **Exercise/loading (including post-surgical, pediatric, geriatric, hypermobile modification):** Module 4.18 (general stop criteria) and Module 4.12–4.14 (population-specific)
+
+Use this module (7.1–7.4) to screen the patient's *overall* risk profile at intake and at any change in status; use the cross-referenced modality-specific sections when selecting or dosing a *specific* technique.
+
+### 7.6 Medical Clearance and Referral Triggers
+
+Obtain medical clearance before proceeding, or refer outright, when any of the following are present:
+
+- Any Module 1.2 red flag, per the escalation pathway in 7.3
+- A comorbidity in 7.2 that is uncontrolled or newly diagnosed (e.g., newly diagnosed or poorly controlled diabetes, osteoporosis without a bone density result on file, cardiovascular disease without recent medical review)
+- Planned use of dry needling or higher-force manual therapy (Grade V) in a patient on anticoagulant therapy
+- No meaningful progress by the second reassessment point despite plan adjustment (Module 2.10)
+- Any presentation outside the conditions covered in Part B and outside the treating therapist's own scope of confidence
+
+### 7.7 Documentation and Consent Requirements for Higher-Risk Interventions
+
+- Obtain and document specific informed consent before dry needling (Module 6) and before Grade V manipulation (Module 3.1), distinct from general treatment consent — explain the specific technique, its purpose, and its specific risks (e.g., pneumothorax risk region for needling, as applicable).
+- Document any relative contraindication identified (7.2) and the specific modification applied, so the reasoning is traceable at reassessment or if care is handed to another therapist.
+- Any adverse event (Module 6.7, or an unexpected reaction to any modality) is documented at the time it occurs, including management taken and outcome, regardless of severity.
+
+*End of Module 7. Module 8 (Differential Diagnosis Matrices) returns to the diagnostic side of practice, organizing the differential reasoning introduced in Module 1.10 by body region.*
+
+---
+
+## Module 8: Differential Diagnosis Matrices
+
+This module organizes symptom-pattern-to-condition reasoning by body region, supporting the clinical reasoning process defined in Module 1.10. Each matrix lists the conditions covered in the corresponding Part B section alongside key distinguishing features and the red-flag mimics to rule out first (cross-reference Module 1.2 and Module 7.3 for the escalation pathway if a mimic is suspected).
+
+> **Clinical Note:** These matrices are a starting-hypothesis tool, not a diagnostic algorithm to apply mechanically. Confirm any working diagnosis with the correlated objective findings described in Module 1.10 (at least two to three congruent findings), not a single symptom-pattern match.
+
+### 8.1 Shoulder Pain Differential Matrix
+
+| Presentation Pattern | Likely Condition (Part B ref.) | Key Distinguishing Feature |
+|---|---|---|
+| Global loss of active and passive ROM, capsular pattern, insidious onset | Frozen Shoulder (B1) | Passive ROM restricted proportionally to active — true capsular pattern |
+| Pain with overhead activity, weakness on resisted testing, night pain | Rotator Cuff Tendinopathy/Tear (B2) | Positive resisted testing for the involved tendon, normal passive ROM |
+| Painful arc (60-120°), positive Neer's/Hawkins-Kennedy | Subacromial Impingement (B3) | Pain reproduced specifically in mid-range arc, not at end-range |
+| Apprehension with abduction/external rotation, history of dislocation or repetitive overhead sport | Instability (B4) | Positive apprehension/relocation test, often younger patient with trauma or overuse history |
+| **Red flag mimics to rule out first** | Cardiac referred pain (left shoulder + chest symptoms), cervical radiculopathy referring to shoulder, malignancy (unremitting night pain, no mechanical pattern) | — |
+
+### 8.2 Neck Pain Differential Matrix
+
+| Presentation Pattern | Likely Condition (Part B ref.) | Key Distinguishing Feature |
+|---|---|---|
+| Localized neck pain/stiffness, mechanical (movement-related), no neurological signs | Mechanical Neck Pain (B5) | No dermatomal/myotomal findings, pain reproduced by specific movement/position |
+| Neck pain with radiating arm pain, dermatomal sensory change, myotomal weakness | Cervical Radiculopathy (B6) | Positive Spurling's test, correlating myotome/dermatome/reflex findings |
+| Chronic, insidious, age-related stiffness, may have intermittent radicular flares | Cervical Spondylosis (B7) | Gradual onset over years, imaging-consistent degenerative change where available |
+| **Red flag mimics to rule out first** | Cervical/vertebral artery insufficiency (5 D's/3 N's — Module 1.2), cervical myelopathy (gait change, hand clumsiness, hyperreflexia), inflammatory arthropathy | — |
+
+### 8.3 Low Back Pain Differential Matrix
+
+| Presentation Pattern | Likely Condition (Part B ref.) | Key Distinguishing Feature |
+|---|---|---|
+| Non-specific mechanical pain, no radiation, no neurological signs | Non-specific LBP (B8) | Diagnosis of exclusion once specific patterns and red flags are ruled out |
+| Leg pain often worse than back pain, dermatomal pattern, positive SLR/slump | Sciatica / Disc Prolapse (B9) | Neural tension test positive, correlating dermatome/myotome |
+| Pain worse with extension/rotation, localized to one side, better with flexion | Facet Joint Syndrome (B10) | Extension-quadrant pain pattern, no neurological signs |
+| Pain localized to the SIJ region, positive SIJ provocation cluster | SIJ Dysfunction (B11) | Pain below L5, positive cluster of SIJ-specific special tests, no radicular pattern |
+| Chronic, gradual onset, older patient, possible neurogenic claudication pattern | Lumbar Spondylosis/Spondylolisthesis (B12) | Symptoms worse with extended walking, relieved by flexion/sitting (if stenotic component present) |
+| **Red flag mimics to rule out first** | Cauda equina syndrome (saddle anesthesia, bladder/bowel dysfunction — emergency), malignancy, spinal infection, ankylosing spondylitis/inflammatory pattern (morning stiffness >1 hour, age <40) | — |
+
+### 8.4 Knee Pain Differential Matrix
+
+| Presentation Pattern | Likely Condition (Part B ref.) | Key Distinguishing Feature |
+|---|---|---|
+| Older patient, gradual onset, crepitus, morning stiffness <30 min | Osteoarthritis (B13) | Radiographic/clinical joint space narrowing pattern, activity-related pain |
+| History of ACL reconstruction surgery | Post-ACL Reconstruction (B14) | Surgical history drives staging (Module 4.6), not symptom pattern alone |
+| Twisting mechanism, joint line tenderness, positive McMurray's/joint line pain, mechanical locking/catching | Meniscus Injury (B15) | Mechanical symptoms (locking, catching) more prominent than in OA or PFPS |
+| Anterior knee pain, worse with stairs/squatting/prolonged sitting, younger/active patient | Patellofemoral Pain Syndrome (B16) | Pain around/behind the patella, provoked by patellofemoral loading tasks specifically |
+| **Red flag mimics to rule out first** | Septic arthritis (hot, swollen, systemically unwell), fracture (significant trauma), DVT (calf swelling/tenderness), malignancy | — |
+
+### 8.5 Hip Pain Differential Matrix
+
+| Presentation Pattern | Likely Condition (Part B ref.) | Key Distinguishing Feature |
+|---|---|---|
+| Groin-dominant pain, gradual onset, reduced internal rotation, older patient | Osteoarthritis (B17) | Groin location, capsular pattern restriction (IR/flexion most affected) |
+| Lateral hip pain, tender over greater trochanter, worse lying on the side | Trochanteric Bursitis/Gluteal Tendinopathy (B18) | Lateral (not groin) location, positive resisted abduction/single-leg stance test |
+| **Red flag mimics to rule out first** | Referred pain from lumbar spine or SIJ (screen per 8.3), stress fracture (younger athletic patient, insidious worsening groin pain), avascular necrosis (risk factors: steroid use, alcohol use) | — |
+
+### 8.6 Elbow Pain Differential Matrix
+
+| Presentation Pattern | Likely Condition (Part B ref.) | Key Distinguishing Feature |
+|---|---|---|
+| Lateral elbow pain, worse with gripping/wrist extension, tender at lateral epicondyle | Tennis Elbow / Lateral Epicondylalgia (B19) | Pain on resisted wrist/finger extension, tenderness at common extensor origin |
+| Medial elbow pain, worse with gripping/wrist flexion, tender at medial epicondyle | Golfer's Elbow / Medial Epicondylalgia (B20) | Pain on resisted wrist flexion/pronation, tenderness at common flexor origin |
+| **Red flag mimics to rule out first** | Cervical radiculopathy referring to the elbow/forearm (screen per 8.2), ulnar nerve entrapment (medial-sided cases — check for ulnar distribution sensory change) | — |
+
+### 8.7 Wrist/Hand Pain Differential Matrix
+
+| Presentation Pattern | Likely Condition (Part B ref.) | Key Distinguishing Feature |
+|---|---|---|
+| Numbness/tingling in thumb-index-middle fingers, worse at night, positive Tinel's/Phalen's | Carpal Tunnel Syndrome (B21) | Median nerve distribution specifically, night symptoms prominent |
+| Pain at the radial wrist, worse with thumb/wrist movement, positive Finkelstein's test | De Quervain's Tenosynovitis (B22) | Pain localized to the first dorsal compartment, no neurological symptoms |
+| **Red flag mimics to rule out first** | Cervical radiculopathy (C6 pattern can mimic median distribution — screen per 8.2), inflammatory arthropathy (multiple joint involvement, morning stiffness) | — |
+
+### 8.8 Ankle/Foot Pain Differential Matrix
+
+| Presentation Pattern | Likely Condition (Part B ref.) | Key Distinguishing Feature |
+|---|---|---|
+| Recent inversion/eversion trauma, swelling, positive anterior drawer/talar tilt | Ankle Sprain (B23) | Clear traumatic mechanism, ligamentous special test correlation |
+| Heel/plantar pain, worst with first steps in the morning, improves then worsens with prolonged standing | Plantar Fasciitis (B24) | Classic first-step pain pattern, tenderness at the medial calcaneal tubercle |
+| Posterior heel/ankle pain, worse with push-off, tender/thickened Achilles tendon | Achilles Tendinopathy (B25) | Location at or near the tendon itself, pain with resisted plantarflexion |
+| **Red flag mimics to rule out first** | Fracture (use Ottawa Ankle Rules to screen), Achilles rupture (positive Thompson test, palpable gap), DVT (calf swelling/tenderness), peripheral vascular disease in at-risk patients | — |
+
+### 8.9 Cross-Cutting and Special Conditions — Reasoning Notes
+
+The remaining Part B conditions are less region-specific pattern matches and more presentation-type recognitions:
+
+- **Post-Fracture Stiffness (B26) / Post-Surgical General Rehab (B27):** identified by history (known fracture/surgery), not by symptom-pattern differential — staging follows the surgical/healing timeline (Module 4.6) rather than this module's matrices.
+- **TMJ Dysfunction (B28):** jaw/facial pain with clicking, locking, or restricted opening — differentiate from dental pathology (refer to dental colleagues where indicated, relevant given the shared Relife Dental & Physiotherapy setting) and from cervicogenic referral (screen per 8.2).
+- **Fibromyalgia / Chronic Widespread Pain (B29):** widespread pain not following a single regional or dermatomal pattern, disproportionate to any single tissue finding — differentiate from inflammatory arthropathy (screen for systemic/inflammatory red flags) and from a missed regional diagnosis before attributing symptoms to a central/nociplastic pattern.
+- **Postural Syndrome / Upper Crossed Syndrome (B30):** diffuse neck/upper back discomfort correlating with sustained posture and observable muscle imbalance pattern (tight upper trapezius/pectorals, weak deep neck flexors/lower trapezius) rather than a single provocative special test.
+
+*End of Module 8. Module 9 (Outcome Measure Interpretation) provides the scoring and interpretation detail for the outcome measures listed in Module 1.9 and used to track the conditions differentiated in this module.*
+
+---
+
+## Module 9: Outcome Measure Interpretation
+
+Module 1.9 defines which outcome measure to use per region. This module defines how to interpret the resulting scores — what they mean, what change is clinically meaningful (Minimal Clinically Important Difference, MCID), and how to read scores that don't fit the expected clinical picture.
+
+> **Clinical Note:** A raw score alone is not a clinical finding — always interpret change relative to the MCID for that instrument, not any change at all. A 2-point change on a 0-50 scale may be measurement noise, not true improvement.
+
+### 9.1 General Principles of Outcome Measure Interpretation
+
+- **Baseline first:** always record the outcome measure at initial assessment before treatment begins — without a baseline, later scores cannot be interpreted as change.
+- **Same instrument throughout:** use the same outcome measure for the same patient/complaint across the episode of care (Module 1.9) — switching instruments partway through breaks comparability.
+- **MCID, not statistical significance:** the relevant threshold for a patient-meaningful change is the MCID for that instrument, not any numerical movement in the score.
+- **Direction of scoring varies by instrument:** some instruments score higher = worse (e.g., ODI, NDI, DASH), others score higher = better (e.g., KOOS, LEFS, PSFS) — confirm the scoring direction of the specific instrument in use before interpreting a change as improvement or decline.
+- **Trend over single time-points:** a single reassessment score is a snapshot; the trend across the reassessment schedule (Module 2.8, every 7 visits/14 days) is what should drive clinical decision-making.
+
+### 9.2 Region-Specific Outcome Measures — Scoring and MCID Reference
+
+| Instrument | Region | Score Range | Direction | Approximate MCID |
+|---|---|---|---|---|
+| Oswestry Disability Index (ODI) | Low back | 0–100% | Higher = worse | ~10 points |
+| Roland-Morris Disability Questionnaire | Low back | 0–24 | Higher = worse | ~5 points |
+| Neck Disability Index (NDI) | Neck | 0–50 (or 0–100%) | Higher = worse | ~5 points (raw) |
+| Shoulder Pain and Disability Index (SPADI) | Shoulder | 0–100% | Higher = worse | ~10-13 points |
+| DASH (Disabilities of Arm, Shoulder, Hand) | Shoulder/elbow/wrist-hand | 0–100 | Higher = worse | ~10-15 points |
+| Knee injury and Osteoarthritis Outcome Score (KOOS) | Knee | 0–100 (5 subscales) | Higher = better | ~8-10 points per subscale |
+| Lysholm Score | Knee | 0–100 | Higher = better | ~8-10 points |
+| Lower Extremity Functional Scale (LEFS) | Lower limb (general) | 0–80 | Higher = better | ~9 points |
+| Patient-Specific Functional Scale (PSFS) | Any region | 0–10 per activity (avg. of 3-5 activities) | Higher = better | ~2 points |
+| Numeric Pain Rating Scale (NPRS) | Any region | 0–10 | Higher = worse | ~2 points |
+
+> **Clinical Note:** MCID values above are approximate and drawn from general musculoskeletal rehabilitation literature; where a specific Part B condition entry states a condition-specific MCID (e.g., a post-surgical population may have a different MCID than a degenerative OA population on the same instrument), the condition-specific figure in that Part B entry takes precedence over this general table.
+
+### 9.3 Global Rating of Change (GROC)
+
+A single-item patient-reported measure of perceived overall change since a reference point (typically the start of treatment), scored on a -7 to +7 scale (or a simplified -5 to +5 in some versions), from "a very great deal worse" to "a very great deal better."
+
+- **Use:** as a simple cross-check against the condition-specific instrument — a patient reporting strong GROC improvement (+4 or higher) with minimal change on the condition-specific instrument, or vice versa, warrants closer clinical review (9.5).
+- **Administration:** ask the patient to rate their change compared to when they started treatment, not compared to the previous visit — this avoids the score drifting to always read near zero.
+
+### 9.4 Interpreting Scores in Context
+
+- **Ceiling effects:** a patient scoring very well (e.g., KOOS near 100, ODI near 0) at intake has little room to show further improvement on that instrument even with a good clinical response — supplement with PSFS (patient-selected, individualized activities) in mild presentations where a regional instrument may ceiling out quickly.
+- **Floor effects:** a patient with a very severe initial presentation may show large early percentage gains that don't yet reflect meaningful functional change — interpret early large swings in context of the absolute functional level, not the percentage change alone.
+- **Non-response:** if scores are not improving by the expected trajectory at the first reassessment point (Module 2.8), this is a trigger to revisit the differential diagnosis and plan (Module 2.1), not simply to continue the same plan for longer.
+- **Instrument mismatch:** if a patient's functional complaint doesn't map well to any regional instrument (e.g., a multi-region or atypical presentation), rely more heavily on PSFS with patient-selected activities and NPRS, rather than forcing a regional instrument that doesn't capture the patient's actual limitation.
+
+### 9.5 Red Flags Within Outcome Scoring
+
+A pattern of scoring that is disproportionate to, or inconsistent with, the objective clinical findings is itself a clinical signal worth noting — not necessarily a red flag in the Module 1.2 sense, but a prompt for broader clinical reasoning:
+
+- **Disproportionate disability relative to objective findings:** very high disability scores with minimal objective impairment (ROM, strength, special test findings) may suggest significant psychosocial contribution to the pain experience (fear-avoidance, catastrophizing) — this changes the treatment emphasis (education, graded exposure) rather than indicating the objective assessment was performed incorrectly. Document the mismatch rather than resolving it in the score's favor.
+- **Inconsistent or contradictory responses across an instrument:** may suggest the patient did not understand the instrument, or a language/literacy barrier — re-administer with verbal clarification rather than accepting an internally inconsistent score at face value.
+- **Sudden large negative change without a corresponding clinical event:** re-screen for a new red flag (Module 1.2) or a missed complication (e.g., new injury, post-surgical complication) before attributing the change to treatment failure alone.
+- **Persistently flat score despite subjective patient report of improvement (or vice versa):** revisit whether the instrument in use still matches the patient's primary complaint (9.4), before concluding the treatment plan itself is ineffective.
+
+*End of Module 9. Module 10 (Home Exercise Program Templates) closes Part A by detailing the home program structure that patient-reported outcome measures in this module are, in part, tracking the effect of.*
+
+---
+
+## Module 10: Home Exercise Program Templates
+
+This module details the structure, design principles, and delivery standards for home exercise programs (HEPs) referenced throughout Part B and in Module 4.7. It closes Part A — every foundation module from here on is applied per-condition in Part B.
+
+> **Clinical Note:** A home program is only as effective as the patient's ability to understand and adhere to it. Simplicity and clarity are weighted at least as heavily as clinical completeness when designing a HEP — an exercise the patient does not do correctly (or does not do at all) has zero therapeutic effect regardless of how well-chosen it was.
+
+### 10.1 Home Program Design Principles
+
+Restating and expanding on Module 4.7's dosage principles from the design/delivery side:
+
+- **Cap at 4–6 exercises per stage** (Module 4.7) — additional exercises are added only once the initial set is well-tolerated and consistently performed, confirmed at the next visit, not assumed.
+- **Match dosage to the current stage**, using the stage-based dosage tables in Module 4.4/4.8 as the source — home dosage is generally 2 sets where the clinic session uses 3, per Module 4.7.
+- **One new skill/movement pattern taught per visit** where possible, rather than teaching multiple new complex exercises in a single session — this improves both understanding and correct technique carryover.
+- **Progress the home program at the same criteria-based pace as in-clinic treatment** (Module 4.3 stage exit criteria) — do not leave a home program static for multiple weeks once the patient has met exit criteria for the current stage.
+
+### 10.2 Template Structure (Per Stage)
+
+Every home program handout follows this structure, regardless of condition:
+
+1. **Header:** patient name, date, treating therapist, current stage (per Module 4.1), review/next-visit date
+2. **Exercise list (4–6 items):** name, an image or clear description, sets/reps/hold time (per Module 4.4/4.8), frequency
+3. **Technique cues:** the 1–2 most important form cues per exercise — not an exhaustive technique essay, just what most commonly goes wrong
+4. **Dosage monitoring guidance:** a plain-language version of the 24-hour rule (Module 4.4) or, for tendinopathy patients, the Silbernagel pain-monitoring bands (Module 4.10)
+5. **"Stop and contact the clinic if..." rule:** linked to the relevant red flags (Module 1.2) and in-session/between-session stop criteria (Module 4.18), written in plain patient-facing language, not clinical jargon
+6. **Next review date/criteria:** when the patient will be reassessed and, where relevant, what would trigger an earlier return visit
+
+### 10.3 Adherence Strategies
+
+- **Explain the "why," not just the "what":** briefly link each exercise to the patient's stated functional goal (Module 2.2) — adherence improves when patients understand purpose, not just instruction.
+- **Teach-back method:** have the patient demonstrate the exercise back before leaving the session, correcting technique in the clinic rather than assuming the handout alone is sufficient.
+- **Realistic frequency:** a program the patient can realistically fit into their day is followed more consistently than an ideal-but-unrealistic one — where there is a dosage range in Module 4.4/4.8, prefer the end of the range more compatible with the patient's routine, provided it still meets the minimum effective dose.
+- **Review adherence explicitly at every visit**, not just clinical response — ask what was actually done, not only "how did it go," and adjust the program based on the honest answer rather than assuming full compliance.
+- **Involve a caregiver/family member** where relevant (pediatric per Module 4.12, geriatric per Module 4.13, or any patient with a support person attending) so home supervision and encouragement is available between visits.
+
+### 10.4 Patient Education Handout Standards
+
+- Written in plain language, avoiding clinical jargon (e.g., "bend your knee" rather than "achieve knee flexion") — the handout is for the patient, not for another clinician.
+- Visual aids (images/diagrams) accompany every exercise where possible, since visual instruction improves both understanding and correct execution over text description alone.
+- Available in the patient's preferred language (Bangla or English) — do not default to a single language template regardless of the patient's comprehension.
+- Include clinic contact information directly on the handout, alongside the "stop and contact the clinic if..." rule (10.2), so the patient does not need to search for it in a moment of concern.
+
+### 10.5 Region-Specific Home Program Quick Templates
+
+The following default exercise categories map each Part B region onto the exercise types defined in Module 4.2, as a starting point for building the specific per-condition, per-stage HEP referenced in each Part B entry's "Home Exercise Program" subsection:
+
+| Region | Stage 1–2 Default Focus | Stage 3–4 Default Focus |
+|---|---|---|
+| Shoulder (B1–B4) | Pendulum/AAROM, isometric rotator cuff activation | Resisted rotator cuff/scapular strengthening, overhead functional loading |
+| Neck (B5–B7) | Gentle AROM, deep neck flexor activation, postural correction cues | Isotonic neck/scapular strengthening, endurance holds |
+| Low Back (B8–B12) | Pain-free AROM, core/trunk activation (transversus abdominis, multifidus) | Progressive functional lifting patterns, endurance-based core work |
+| Knee (B13–B16) | Isometric quad/hamstring activation, pain-free AROM | Progressive resisted strengthening, functional squat/step/stair patterns |
+| Hip (B17–B18) | Isometric gluteal activation, pain-free AROM | Resisted hip abduction/extension, single-leg functional loading |
+| Elbow (B19–B20) | Isometric wrist flexor/extensor holds, pain-free AROM | Eccentric-emphasis isotonic loading, HSR per Module 4.5 |
+| Wrist/Hand (B21–B22) | Tendon/nerve gliding, splinting adherence where indicated, pain-free AROM | Progressive grip/pinch strengthening, functional task loading |
+| Ankle/Foot (B23–B25) | Pain-free AROM, isometric calf/peroneal activation, protected weight-bearing per stage | Progressive resisted strengthening, balance/proprioception, plyometric per Module 4.1 Stage 4 |
+
+> **Clinical Note:** This table is a starting orientation only — the specific exercises, dosage, and progression criteria for each condition are defined in that condition's own Part B "Exercise Prescription Detail" and "Home Exercise Program" subsections, which take precedence over this general table.
+
+*End of Module 10. This completes Part A — Foundation Modules. All ten modules are now referenced collectively by the thirty Part B disease-wise protocols.*
 
 ---
 
@@ -7064,8 +7966,4 @@ In addition to the universal red flags (Module 1, 1.2) and those in B5.12 (Cervi
 - **Home Exercise Summary:** Chin-tuck (supine) and scapular setting (Phase 1) → upright chin-tuck, Y/T/W, rows, and thoracic extension (Phase 2) → progressive strengthening, functional integration, and endurance (Phase 3)
 - **Typical Duration:** 4-8 weeks for a focused rehabilitation "block"; long-term maintenance is required (this is a lifestyle change, not a 4-week cure); progression is criterion-based
 
-*End of B30. This completes Part B (Disease-Wise Protocols, B1-B30) in full. Next in the tracker's work order: Module 3 — Manual Therapy Library (Maitland, Mulligan, MET, soft tissue techniques — technique-by-technique reference), the first of the remaining Part A foundation modules.*
-
----
-
-*(Modules 3-10 not yet started — see Progress Tracker for the full planned list.)*
+*End of B30. This completes Part B (Disease-Wise Protocols, B1-B30) in full. All ten Part A foundation modules (1-10) are also complete — see the Progress Tracker at the top of this document. The manual is feature-complete per the original plan (40 of 40 sections); future work is review/expansion of individual sections rather than new ones.*
