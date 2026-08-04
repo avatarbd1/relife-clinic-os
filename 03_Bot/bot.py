@@ -55,6 +55,7 @@ import text_extract
 import intent_router
 import ai_helper
 import assessment_defs
+import clinical_ai
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -129,6 +130,7 @@ _ALL_MENU_ITEMS = [
     roles.MENU_BACK_MAIN,
     roles.MENU_STAFF_AI_QUERY,
     roles.MENU_CASE_STUDY,
+    roles.MENU_CLINICAL_AI,
     roles.MENU_INVENTORY,
 ]
 _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
@@ -150,6 +152,7 @@ _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 (CASESTUDY_SEARCH, CASESTUDY_EXTRA) = range(40, 42)
 (CASESTUDY_QUESTION,) = range(42, 43)  # আর ব্যবহার হয় না (patch22 revert) — future reuse-এর জন্য number সংরক্ষিত
 (REG_FIELDS,) = range(43, 44)  # রেজিস্ট্রেশনে missing fields একসাথে জিজ্ঞাসার state (patch38)
+(CLINICALAI_QUESTION,) = range(44, 45)  # AI Clinical Assistant state (patch40)
 (PAYDEL_LIST, PAYDEL_CONFIRM) = range(300, 302)  # আজকের এন্ট্রি মুছার ফ্লো
 (INV_UPDATE,) = range(310, 311)  # ইনভেন্টরি স্টক আপডেট ফ্লো
 
@@ -4188,6 +4191,41 @@ async def staffai_cancel(update, context):
     return ConversationHandler.END
 
 
+async def clinicalai_start(update, context):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return ConversationHandler.END
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_CLINICAL_AI):
+        return ConversationHandler.END
+    await update.message.reply_text(
+        "\U0001FA7A রোগীর presentation লেখো (উপসর্গ, history, যা যা দেখেছো/জেনেছো)।\n"
+        "বাতিল করতে /cancel লেখো।"
+    )
+    return CLINICALAI_QUESTION
+
+
+async def clinicalai_receive(update, context):
+    staff = context.user_data.get("staff", {})
+    case_text = update.message.text.strip()
+    await update.message.reply_text("\U0001F914 Manual খুঁজছি...")
+    answer, matched_summary = clinical_ai.get_clinical_guidance(case_text)
+    prefix = f"📖 প্রাসঙ্গিক condition: {matched_summary}\n\n" if matched_summary else ""
+    await update.message.reply_text(
+        prefix + answer,
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
+    return ConversationHandler.END
+
+
+async def clinicalai_cancel(update, context):
+    staff = context.user_data.get("staff", {})
+    await update.message.reply_text(
+        "\u274c বাতিল করা হলো।",
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
+    return ConversationHandler.END
+
+
 def _build_case_study_context(patient_id: str) -> str | None:
     """রোগীর Chief Complaint + Assessment + সাম্প্রতিক Treatment Note + Report লিস্ট
     একত্র করে Case Study AI-কে দেওয়ার জন্য একটা সংক্ষিপ্ত context বানায়।"""
@@ -4827,6 +4865,23 @@ def main():
         ],
     )
     app.add_handler(staffai_conv)
+
+    clinicalai_conv = ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_CLINICAL_AI}$"), clinicalai_start)
+        ],
+        states={
+            CLINICALAI_QUESTION: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), clinicalai_receive)
+            ],
+        },
+        fallbacks=[
+            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
+            CommandHandler("cancel", clinicalai_cancel),
+            CommandHandler("start", _restart_via_start),
+        ],
+    )
+    app.add_handler(clinicalai_conv)
 
     casestudy_conv = ConversationHandler(
         entry_points=[
