@@ -2802,6 +2802,7 @@ async def _assessment_advance(update: Update, context: ContextTypes.DEFAULT_TYPE
             )
         except Exception:
             logger.exception("_assessment_advance: assessment সেভ করতে ব্যর্থ হয়েছে")
+        context.user_data["tplan_assessment_snapshot"] = {"category": category, "answers": dict(answers)}
         context.user_data.pop("assessment_queue", None)
         context.user_data.pop("assessment_current", None)
         context.user_data.pop("assessment_answers", None)
@@ -2981,7 +2982,41 @@ async def tplan_total(update: Update, context: ContextTypes.DEFAULT_TYPE):
     prev_ex = prev.get("Exercise_Plan", "")
     hint = f" (আগেরটা: {prev_ex} — একই রাখতে - দাও)" if prev_ex else " (না থাকলে - দাও)"
     await update.message.reply_text(f"এক্সারসাইজ প্ল্যান লেখো{hint}:", reply_markup=_skip_keyboard())
+    await update.message.reply_text(
+        "চাইলে প্রথমে AI-এর সাজেশন দেখে নিতে পারো:",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("🤖 AI সাজেশন দেখো", callback_data="tplan_ai_suggest")]]
+        ),
+    )
     return TPLAN_EXERCISE
+
+
+def _build_tplan_case_text(context: ContextTypes.DEFAULT_TYPE) -> str:
+    """Diagnosis + assessment answers একত্র করে AI Clinical Assistant-কে দেওয়ার জন্য একটা
+    সংক্ষিপ্ত case description বানায়।"""
+    t = context.user_data.get("tplan", {})
+    snap = context.user_data.get("tplan_assessment_snapshot", {})
+    lines = [f"Diagnosis/Chief Complaint: {t.get('Diagnosis', '')}"]
+    category = snap.get("category", "")
+    if category:
+        lines.append(f"Assessment Category: {category}")
+    for k, v in snap.get("answers", {}).items():
+        if v:
+            lines.append(f"{k}: {v}")
+    return "\n".join(lines)
+
+
+async def tplan_ai_suggest_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await query.message.reply_text("🤔 Manual খুঁজছি...")
+    case_text = _build_tplan_case_text(context)
+    answer, matched_summary = clinical_ai.get_clinical_guidance(case_text)
+    prefix = f"📖 প্রাসঙ্গিক condition: {matched_summary}\n\n" if matched_summary else ""
+    await query.message.reply_text(
+        prefix + answer + "\n\n(এখান থেকে দরকারি অংশ copy করে Exercise/Electrotherapy/Manual Therapy "
+        "ধাপে বসাতে পারো — এখন Exercise Plan লেখো।)"
+    )
 
 
 async def tplan_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3064,6 +3099,7 @@ async def tplan_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     context.user_data.pop("tplan", None)
     context.user_data.pop("tplan_prev", None)
+    context.user_data.pop("tplan_assessment_snapshot", None)
     return ConversationHandler.END
 
 
@@ -4788,7 +4824,10 @@ def main():
             ],
             TPLAN_DIAGNOSIS: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_diagnosis)],
             TPLAN_TOTAL: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_total)],
-            TPLAN_EXERCISE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_exercise)],
+            TPLAN_EXERCISE: [
+                CallbackQueryHandler(tplan_ai_suggest_callback, pattern="^tplan_ai_suggest$"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_exercise),
+            ],
             TPLAN_ELECTRO: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_electro)],
             TPLAN_MANUAL: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_manual)],
             TPLAN_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_confirm)],
