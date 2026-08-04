@@ -9,6 +9,7 @@ import requests
 
 CONDITIONS_DIR = os.path.join(os.path.dirname(__file__), "clinical_conditions")
 INDEX_PATH = os.path.join(CONDITIONS_DIR, "index.json")
+CORE_MODULES_PATH = os.path.join(CONDITIONS_DIR, "core_modules.md")
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 GROQ_MODEL_NAME = "llama-3.3-70b-versatile"
@@ -48,6 +49,18 @@ def _load_condition_text(filename: str) -> str:
         return f.read()
 
 
+def _load_core_modules_text() -> str:
+    """Manual Therapy / Exercise / Contraindications modules — always included
+    alongside the matched condition, since these hold the actual technique-level
+    detail (grip, dosage, Mulligan/MET protocols etc.) that condition sections only
+    reference by name rather than repeat in full."""
+    try:
+        with open(CORE_MODULES_PATH, encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return ""
+
+
 def _pick_relevant_conditions(case_text: str, top_n: int = 2) -> list:
     index = _load_index()
     listing = "\n".join(f"{c['id']}: {c['title']}" for c in index)
@@ -72,6 +85,9 @@ def _generate_guidance(case_text: str, matched_conditions: list) -> str:
                 "মিলছে না। আরও details দিয়ে আবার চেষ্টা করুন, অথবা সিনিয়র থেরাপিস্ট/ডাক্তারের "
                 "সাথে পরামর্শ করুন।")
     context_blocks = []
+    core_text = _load_core_modules_text()
+    if core_text:
+        context_blocks.append(core_text)
     for c in matched_conditions:
         text = _load_condition_text(c["file"])
         context_blocks.append(f"### {c['id']} — {c['title']}\n{text}")
