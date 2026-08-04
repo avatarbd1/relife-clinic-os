@@ -919,7 +919,298 @@ In addition to universal red flags (Module 1, 1.2):
 - Educate the patient explicitly that instability — particularly AMBRI/MDI presentations — is managed as an ongoing conditioning need, not a short course that ends recurrence risk permanently; frame the home program as a long-term habit, especially for those returning to overhead sport or heavy manual work.
 - For patients who opted for or underwent surgical stabilization, this B4 home program does not apply as-is post-operatively — follow the surgeon's specific post-stabilization protocol (cross-reference B27: Post-Surgical General Rehab Principles once written) and reintroduce this protocol's later-phase content only once the surgeon clears progressive loading.
 
-*End of B4. Next in the tracker's work order: B5 — Neck: Mechanical Neck Pain.*
+## B5. Neck: Mechanical Neck Pain
+
+> **Format note:** This protocol applies the standard Module 2.3 7-14-28 day phase framework to mechanical/idiopathic neck pain — the most common cervical presentation in outpatient physiotherapy. Mechanical neck pain is defined as pain originating in the cervical musculoskeletal structures (muscles, ligaments, zygapophyseal/facet joints, intervertebral discs) without radicular/neurological involvement, structural instability, or systemic disease. It is a diagnosis of exclusion after ruling out red flags (B5.12) and neurological involvement (B6 — Cervical Radiculopathy). The terms "mechanical neck pain," "non-specific neck pain," and "cervicalgia" are used interchangeably in the literature; this protocol uses "mechanical" to emphasize the movement- and posture-responsive nature that makes it highly responsive to physiotherapy.
+
+### B5.1 Anatomy Link
+
+The cervical spine comprises seven vertebrae (C1-C7), with complex articulations: the occipito-atlantoaxial complex (C0-C1-C2) provides ~50% of cervical rotation and ~30% of flexion-extension; the subaxial spine (C2-C7) provides the remainder. Mechanical neck pain can arise from any of the following structures, often in combination:
+
+- **Zygapophyseal (facet) joints:** paired synovial joints between adjacent cervical vertebrae; the most common source of mechanical neck pain in many epidemiological studies (often responsible for 50-60% of chronic post-whiplash pain and a substantial proportion of non-traumatic neck pain). Pain referral patterns are segmental and predictable: C2-3 → occipital headache; C3-4 → posterior neck; C5-6 → shoulder; C6-7 → interscapular/mid-thoracic.
+- **Intervertebral discs:** the annulus fibrosus is innervated in its outer third; discogenic pain is typically axial, deep, and may be aggravated by sustained loading/postures. Unlike lumbar discs, cervical disc protrusions commonly cause radiculopathy (B6) via foraminal stenosis; mechanical axial pain from disc pathology alone is less common.
+- **Cervical muscles:** the deep stabilizers (longus colli, longus capitis, multifidus) and superficial movers (upper trapezius, levator scapulae, sternocleidomastoid, scalenes) — pain arises from sustained contraction, trigger points, fatigue, or reflex guarding in response to other cervical pathologies.
+- **Ligaments** (posterior longitudinal, ligamentum flavum, interspinous): typically sprained in whiplash or acute hyperextension/hyperflexion injuries.
+- **Neural structures:** mechanical neck pain itself is not radicular, but dural/nerve root irritation may coexist or develop — screen thoroughly (Module 1.6, B5.2).
+
+> **Clinical Note:** Mobility testing is the single most useful discriminator for mechanical neck pain — if segmental mobility testing (central posterior-anterior pressures, unilateral PA pressures) reproduces familiar pain at a specific level, you have strong evidence for the facet/disc source. Pain that is purely global/non-segmental with no reproduction on segmental testing suggests a myofascial or postural primary driver (cross-reference B30: Postural Syndrome/Upper Crossed Syndrome once written), and the treatment emphasis shifts accordingly toward postural and soft tissue approaches rather than segmental mobilization.
+
+### B5.2 Assessment Clues
+
+Building on Module 1's standard assessment, with mechanical-neck-pain-specific additions:
+
+| Finding | Typical Mechanical Neck Pain pattern |
+|---|---|
+| Onset | Often insidious, related to sustained poor posture (desk work, smartphone use, driving), or following a minor trauma/whiplash; may wake with pain in the morning (mechanical, often from poor sleep posture) |
+| Location | Posterior/lateral neck; may refer to the occiput (headache), upper trapezius, interscapular region, or shoulder — but not radiating below the elbow (which suggests radiculopathy, B6) |
+| Pain behavior | Mechanical: provoked by sustained positions (sitting, looking down, driving), specific movements (especially extension/rotation), and relieved by changing position/movement — this mechanical pattern is the defining feature and differentiates it from inflammatory (morning stiffness >1 hour) or systemic pathology |
+| AROM | Restricted in one or more planes; pain-limited rather than weakness-limited; extension and rotation are often the most restricted/painful directions in facet-mediated pain, while flexion may be more provocative in discogenic pain |
+| PROM | PROM mirrors AROM restrictions; end-feel is typically muscular guarding/spasm or capsular (firm) rather than bony/empty — do not force PROM to pain; compare segmental mobility actively and passively |
+| Muscle testing | Should be full and painless (or only mildly painful in late range) for upper extremity myotomes — this is the key discriminator against radiculopathy (B6), where myotomal weakness is a hallmark; cervical flexor and extensor endurance may be reduced (not MMT strength in the traditional sense, but endurance) |
+| Neurological exam | Normal — no myotomal weakness, no dermatomal sensory loss, normal reflexes — this must be confirmed before committing to a mechanical neck pain label (B5.3) |
+| Special tests | Spurling's test is negative (no reproduction of radicular symptoms); upper limb neurodynamic tests (ULNT) may be mildly positive bilaterally due to nerve trunk tension, but not reproducing unilateral radicular pain |
+| Posture | Frequently associated with forward head posture, protracted shoulder girdles (Upper Crossed Syndrome — cross-reference B30 once written), and poor ergonomic setup |
+
+> **Clinical Note:** The single most important rule-out in this condition is a full neurological examination (Module 1.6). Any neurological deficit, any unilateral radiating pain below the elbow, or a positive Spurling's test means you are not dealing with pure mechanical neck pain — these patients belong to B6 (Cervical Radiculopathy) or a neurological referral pathway, not this protocol. Mechanical neck pain is a diagnosis of exclusion, and the exclusion of radicular/neurological involvement is non-negotiable.
+
+### B5.3 Differential Diagnosis
+
+| Differential | Distinguishing feature against Mechanical Neck Pain |
+|---|---|
+| Cervical Radiculopathy (B6) | Positive Spurling's test; dermatomal sensory loss; myotomal weakness; reflex changes; pain radiates below the elbow into the arm/hand; ULNT reproduces unilateral radicular symptoms |
+| Cervical Spondylosis (B7) | Typically older patients (>50); X-ray shows degenerative changes (osteophytes, disc space narrowing); often a mixed mechanical/radicular presentation; not purely mechanical in younger patients |
+| Whiplash-Associated Disorder (WAD) | History of motor vehicle accident or significant acceleration-deceleration trauma; may have a broader symptom complex (headache, dizziness, cognitive fog) beyond pure neck pain; in the acute phase, treated with a modified (more irritable) approach, then transitions to mechanical neck pain principles once the acute irritability settles |
+| Facet Joint Arthropathy | Younger patients may have traumatic facet injury; older patients often have facet degeneration; the distinguishing factor is the reproduction of familiar pain on unilateral facet joint provocation (unilateral PA pressures) — if this is your primary positive finding, consider this a facet-predominant mechanical neck pain and emphasize rotation/extension mobilization and postural correction |
+| Myofascial Pain / Trigger Points | Pain is more regional than segmental; active trigger points in upper trapezius, levator scapulae, scalenes reproduce the patient's pain pattern on palpation; segmental mobility testing is relatively normal — this suggests postural/upper crossed syndrome (B30) rather than segmental mechanical neck pain, and treatment should emphasize soft tissue work, dry needling, and postural correction over joint mobilization |
+| Cervical Myelopathy | Bilateral upper extremity paresthesia/weakness; gait disturbance; bowel/bladder involvement (late); UMN signs (hyperreflexia, clonus, positive Hoffman's/Babinski) — these are red flags (B5.12) requiring immediate referral |
+| Headache (Tension/Cervicogenic) | Cervicogenic headache is a subtype of mechanical neck pain where pain originates from C1-3 (especially C2-3 facet) and refers to the occiput/head; treat with the same principles but emphasize upper cervical (C1-3) mobility and deep neck flexor endurance |
+
+### B5.4 Phase Goals (7-14-28 Day Framework)
+
+| Phase | Typical window | Primary aim | Key metrics to track |
+|---|---|---|---|
+| Phase 1 — Acute/Protective | Day 1-7 | Reduce pain, reduce irritability, educate on activity/postural modification to avoid provocation, begin pain-free range of motion and gentle muscle activation | NPRS trend (rest and movement); ability to identify and modify provocative postures; reduction in muscle spasm/guarding |
+| Phase 2 — Sub-acute/Restorative | Day 7-14 | Restore full pain-free AROM, improve cervical flexor endurance, address postural dysfunction, begin segmental stabilization | Full cervical AROM (or within 10° of age-based norms); reduced pain during end-range movements; improved deep neck flexor endurance; documented ergonomic changes |
+| Phase 3 — Remodeling/Functional | Day 14-28 | Build endurance and strength of cervical stabilizers and scapular muscles, integrate into functional/occupational demands, return to full activity | Pain-free completion of previously provocative occupational/sport tasks; independent postural self-management; return to full daily activity without limitation |
+| Phase 4 — Discharge/Maintenance | Beyond Day 28 (chronic/recurrent cases, or slow-responders) | Independent self-management, relapse-prevention education, ergonomic optimization, ongoing conditioning for recurrent mechanical neck pain | Patient demonstrates independent home program and understands relapse-prevention principles; outcome measure (NDI) approaching normative score |
+
+### B5.5 Session Time-Block Application
+
+| Phase | Opening electro (~10 min) | Manual therapy (~10-12 min) | Exercise (~15-20 min) | Closing electro (~10 min) |
+|---|---|---|---|---|
+| Phase 1 | Hot pack or TENS for pain modulation (if high irritability); avoid hot pack if there is acute inflammation/tenderness (use ice instead in the first 24-48 hours post-acute injury) | Gentle soft tissue release to cervical and upper thoracic muscles (suboccipitals, upper trapezius, levator, scalenes if tolerated); Grade I-II oscillations to symptomatic segments in a pain-free or minimally symptomatic position; avoid aggressive segmental mobilization in the first session if very irritable | Pain-free AROM (gentle neck movements within the non-painful range); gentle cervical retraction and chin-tuck exercises; postural/ergonomic education (workstation setup, sleep posture) | Ice (if acute/inflammatory) or TENS (if irritability remains) |
+| Phase 2 | Hot pack before manual therapy (to relax guarding and improve tissue extensibility) | Progress to Grade III-IV mobilization to restricted segments (unilateral and central PA pressures, rotation, side-flexion) based on findings; MET (muscle energy technique) for cervical/upper thoracic restriction; soft tissue release to trigger points | Active ROM to full available (incorporating stretching into restricted directions if tolerated); deep neck flexor endurance training (craniocervical flexion); cervicoscapular strengthening (rows, shoulder blade control) | Minimal; optional ice if stretching provoked soreness |
+| Phase 3 | Minimal/optional; shift to exercise-dominant sessions | Maintenance mobilization only for residual restrictions; hands-on time shifts to guided exercise form and functional training | Progressive cervicoscapular and postural strengthening; endurance training for deep neck flexors and scapular stabilizers; work/sport-specific postural drills; graded return to provocative activities | Minimal; taper out in favor of exercise-dominant care |
+
+> **Clinical Note:** The most clinically useful manual therapy technique specific to this condition is unilateral posterior-anterior (PA) pressure testing and mobilization at the symptomatic segment — identifying the specific level(s) (e.g., C5-6) where pain is reproduced and treating that segment with matched mobilization grade. Central PA pressures are less specific but useful for discogenic pain; unilateral PA pressures are more specific for facet-mediated pain and are the most discriminating assessment and treatment tool in this condition (consistent with the Maitland approach to cervical mobilization).
+
+### B5.6 Manual Therapy Detail
+
+Mechanical neck pain is one of the conditions where manual therapy has the strongest evidence base among all musculoskeletal conditions — include it as a standard component, not an optional adjunct.
+
+- **Phase 1:** Maitland Grade I-II oscillatory mobilizations — central PA pressures, unilateral PA pressures, and transverse pressures (side-flexion/rotation glides) — applied to the symptomatic segment(s) identified in assessment. Technique: oscillate at 2-3 Hz, low amplitude at the onset of resistance (not at end-range), pain-relief/irritability-reduction grade. Gentle soft tissue release to suboccipital muscles, upper trapezius, levator scapulae, scalenes (palpate for trigger points/tension; apply ischemic compression for 30-60 seconds to active trigger points if not too irritable — if very irritable, avoid deep pressure and use gentle sustained pressure instead). Do not perform high-velocity thrust manipulation on the first visit until the patient's irritability and suitability for manipulation is fully assessed.
+- **Phase 2:** Progress to Grade III-IV mobilizations — larger amplitude oscillations reaching into the tissue resistance/restriction (end-range, but not pushing into sharp pain). Apply unilateral PA pressures at the segment(s) most restricted (reduced mobility on passive segmental testing). Combine with rotation and side-flexion mobilizations as indicated. MET for the upper cervical spine (C1-2 rotation restriction) and cervicothoracic junction (C7-T1): contract-relax with gentle pre-positioning into restriction, 5-second hold, 30% effort, repeat 3-5 times with increasing pre-positioning. Cervicothoracic junction mobilization (especially T1-3) — a frequently overlooked contributor to mechanical neck pain that limits full cervical extension and rotation; extension and rotation mobilization to the upper thoracic segments can dramatically improve cervical ROM in patients with a stiff upper thoracic spine.
+- **Phase 3:** Manual therapy tapers to maintenance and residual restriction targeting; the therapist's hands-on time increasingly shifts to guiding exercise form, particularly reinforcing correct craniocervical flexion and cervical retraction during loaded exercises.
+
+> **Clinical Note on Cervicothoracic Junction:** The cervicothoracic junction (CTJ, C7-T1 to T3-4) is a common site of stiffness in mechanical neck pain patients, particularly those with forward head/postural syndrome presentations. Addressing CTJ restriction (extension and rotation mobilization to T1-3) is often the missing manual-therapy component that allows full cervical range to be achieved — if cervical mobilizations alone are not producing the expected ROM improvement, add CTJ mobilization in the next session.
+
+### B5.7 Exercise Prescription Detail
+
+Exercise for mechanical neck pain has three priority categories, in order of clinical emphasis: (1) cervical motor control and endurance, (2) scapular and postural muscle strengthening, (3) cervical mobility and range.
+
+| Phase | Exercise focus | Example progressions |
+|---|---|---|
+| Phase 1 | Pain-free AROM within the non-painful range; cervical retraction/chin-tuck (low-load, high-repetition, pain-free); postural and ergonomic education | Gentle cervical retraction (chin-tuck) performed supine or sitting; "ear-to-shoulder" side-flexion within the pain-free arc; gentle rotation within the pain-free arc; no end-range stretching if it provokes pain |
+| Phase 2 | Deep neck flexor endurance training (the Jull/Falla protocol — craniocervical flexion); full active ROM to tolerance; scapular and cervicoscapular strengthening introduced | Craniocervical flexion: patient performs gentle nodding of the head (craniocervical, not cervical flexion) against a pressure biofeedback unit (if available) or using tactile feedback, aiming for 5-10 second holds, multiple repetitions; progress to independent functional positions (sitting) once supine is mastered. Cervical retraction with band (light resistance, high reps). Scapular stabilization: rows, wall slides, prone Y/T/W for lower trapezius/serratus |
+| Phase 3 | Progressive resistance for cervical and scapular stabilizers; functional/occupational endurance training; sport-specific retraining | Resistance-band neck exercises (flexion, extension, side-flexion, rotation) introduced once Phase 2 criteria met; sport-specific postural and endurance work (e.g. cycling posture, desk-work endurance); functional lifting/carrying with postural cueing; graded return to provocative occupational tasks |
+
+- **Craniocervical flexion (CCF) is the single most important exercise for mechanical neck pain** — it trains the deep cervical flexors (longus colli, longus capitis) to co-contract with the superficial flexors, reducing dysfunctional over-activity of sternocleidomastoid and scalenes. It is low-load, low-risk, and directly addresses the motor control deficit common in chronic mechanical neck pain. Teach it in every mechanical neck pain patient who does not have a contraindication to neck flexion.
+- **Dosage principle for CCF:** start with 5-10 second holds, progress to 15-20 second holds as endurance improves; aim for 3-5 sets of 8-10 repetitions daily; progress from supine (easiest — gravity assists) to sitting (neutral) to standing (most challenging).
+- **Pain-monitoring rule:** Pain during exercise is acceptable up to 3/10 NPRS if it settles promptly (within 1 hour); pain after exercise that persists >1 hour or appears the next day means reduce load/complexity.
+
+### B5.8 Electrotherapy Detail
+
+- **TENS:** Indicated for symptomatic pain relief in Phase 1, particularly for patients with high irritability or those who are not yet engaging effectively with active exercises due to pain. Conventional TENS (high-frequency, 80-120 Hz, low-intensity) applied to the posterior cervical/upper trapezius region — teach the patient home-use TENS if night pain or prolonged desk-work pain is a barrier to sleep/work function.
+- **Hot pack:** Useful before manual therapy and exercise in Phase 1-2 to relax guarding and improve tissue extensibility — a routine precursor to cervical mobilization.
+- **Therapeutic ultrasound:** Weak evidence for mechanical neck pain specifically, similar to the shoulder protocols (B2/B3) — may be used as an adjunct for pain relief and muscle relaxation if the clinic includes it, but never substitutes for manual therapy or exercise time.
+- **IFT:** Adjunctive for pain relief; following the same adjunctive principle as B2/B3 — not a substitute for active care.
+- **Laser/LLLT:** Some evidence for short-term pain relief in neck pain, but current evidence does not support it as a primary driver of recovery — use only as an adjunct where it is available and the patient responds symptomatically.
+
+### B5.9 Acupuncture / Dry Needling Detail
+
+- Indicated for myofascial trigger points in the posterior cervical/upper trapezius/levator scapulae/scalene musculature, which are common in mechanical neck pain and contribute significantly to the pain and guarding.
+- Particularly useful for the upper trapezius trigger point (often palpable in the upper shoulder/neck angle) and levator scapulae trigger point (just medial to the medial border of the scapula at the C5-6 level) — these are clinically common and highly responsive to needling.
+- Rationale: reducing myofascial guarding can improve pain-free cervical ROM, reduce referral symptoms (e.g. occipital headache), and allow more effective manual therapy and exercise in the same or following session — consistent with Module 2.5's acupuncture principle of enabling primary interventions.
+- Not indicated as a primary treatment for mechanical joint dysfunction (facet/disc pathology) — it addresses the muscular component only, which is often secondary; if segmental mobility testing demonstrates a clear joint source, joint mobilization must also be performed; dry needling alone is insufficient.
+- (Full needle selection, depth, technique, and safety precautions for each cervical muscle will be detailed in Module 6: Acupuncture/Dry Needling Protocol Library.)
+
+### B5.10 Contraindications and Precautions
+
+- **Cervical manipulation (high-velocity thrust):** This is a high-risk intervention with a small but nonzero risk of serious neurovascular complications (vertebral artery dissection/stroke). At Relife, cervical manipulation is performed only by clinicians specifically trained and certified in cervical manipulation technique, and only after a full pre-manipulative safety screen (vertebral artery assessment, including the 5 D's and 3 N's from Module 1.2). No cervical manipulation should be performed in the absence of such training. For non-certified clinicians, use Maitland mobilizations (Grade I-IV) as the primary manual therapy technique and do not substitute with thrust manipulation.
+- **Pre-manipulative safety screen** (Module 1.2, vascular/vertebral artery red flags) must be performed and documented for every patient receiving cervical manual therapy, not just those receiving thrust manipulation — Grade III-IV mobilizations also involve end-range positions and could theoretically stress the vertebral artery. Document the screen result (negative or positive) in every initial cervical assessment note.
+- **Acute whiplash/hyperextension injury:** Do not push into full extension or perform aggressive posterior-to-anterior mobilizations in the acute phase (first 7-10 days) — the soft tissues may be inflamed/hematomous; use gentle, pain-free ranges and low-grade oscillatory techniques until acute irritability settles.
+- **Cervical radiculopathy (B6) red flags** — if a patient develops neurological symptoms (radiating pain, paresthesia, weakness) at any point during care, they should be reclassified to B6 and managed according to that protocol, not continued under the mechanical neck pain label.
+- **Cervical myelopathy red flags** — any UMN signs (hyperreflexia, clonus, positive Hoffman's/Babinski, gait disturbance) are absolute contraindications to cervical manual therapy; refer immediately for neurological assessment.
+- **Inflammatory arthritis** (e.g. rheumatoid, ankylosing spondylitis) — a relative contraindication to high-velocity cervical manipulation; use only gentle, low-grade mobilization techniques and coordinate with the patient's rheumatologist if manipulation is considered.
+- **Osteoporosis** — use lower-grade mobilizations (Grade I-II) and avoid high-velocity thrust manipulation; patients with known osteoporosis and cervical pain should be managed with exercise and low-intensity manual techniques only.
+
+### B5.11 Progression Criteria
+
+**Progress to the next phase/loading level when:**
+- Phase 1 → 2: NPRS at rest reduced to ≤3/10; pain-free AROM improved; patient can correctly perform chin-tuck/CCF exercises without symptom reproduction.
+- Phase 2 → 3: Full cervical AROM is achieved (or within 10° of age-based norms); CCF endurance improved (can hold 20 seconds in sitting); cervicoscapular strengthening introduced without provoking symptoms.
+- Within Phase 3, progress load/complexity when current exercise load is tolerated with ≤3/10 exercise pain that settles within 1 hour and no >24h flare.
+
+**Regress or hold when:**
+- Pain during exercise exceeds 3/10 or persists >1 hour post-exercise; or a >24h flare occurs (return to the prior tolerated load level).
+- New neurological symptoms appear (radiating pain, paresthesia, weakness) — halt cervical mobilization and re-classify toward B6/neurological referral immediately.
+- Cervical ROM worsens on reassessment — screen for a new aggravating factor or alternate diagnosis before continuing.
+
+### B5.12 Red Flags Specific to This Condition
+
+In addition to the universal red flags (Module 1, 1.2):
+
+- **Cervical myelopathy signs:** bilateral upper extremity paresthesia/weakness, gait disturbance, bowel/bladder involvement, hyperreflexia, positive Hoffman's/Babinski — immediate neurological referral; do not perform cervical manual therapy.
+- **Vertebral artery insufficiency signs** (5 D's and 3 N's: dizziness, diplopia, dysarthria, dysphagia, drop attacks, nausea, nystagmus, numbness) — immediate vascular/neurological referral; do not perform cervical manual therapy.
+- **Rapidly progressive neck pain with systemic symptoms** (fever, night sweats, weight loss) — consider infection or malignancy; refer for imaging and medical review.
+- **New neurological symptoms developing during care** — stop cervical mobilization; re-assess for radiculopathy (B6) or myelopathy; if symptoms are significant (weakness, progressive), refer to neurology/orthopedics.
+- **No meaningful improvement by the second reassessment point (~Day 28)** despite appropriately dosed manual therapy and exercise — reconsider differential diagnosis (B5.3), re-screen for red flags, consider imaging/referral.
+
+### B5.13 Home Exercise Program
+
+| Phase | Home program emphasis | Example content |
+|---|---|---|
+| Phase 1 | Frequent, brief, pain-free movement throughout the day; postural/ergonomic self-correction; gentle chin-tucks | Deep neck flexor activation (supine chin-tucks, 10 reps, 5-second holds, several times daily); ergonomic/workstation check; "take a break every 30 minutes" guidance |
+| Phase 2 | Structured daily CCF endurance program; full ROM mobility (without provoking pain); initial scapular stabilization | Supine CCF progression (progressing holds to 15-20 seconds); cervical retraction (sitting) with tactile feedback; resistance-band rows; wall slides |
+| Phase 3 | Progressive home strengthening program; functional and occupational retraining; long-term posture maintenance | Resistance-band neck exercises (flexion, extension, rotation) with documented load progression; postural endurance (shoulder blade squeeze holds); sport/occupation-specific drills (e.g. computer work endurance, cycling posture) |
+
+- Emphasize that postural self-management is the single most important long-term factor in preventing recurrence — many patients who respond well in-clinic relapse because they return to the same desk/phone posture that caused the initial problem. Include active, explicit training in workstation setup, phone/tablet use, and sleep posture in the home program education.
+- Worst-case expectation: if the patient has a highly sedentary desk job and a history of long-standing postural syndrome, the exercise program is a permanent lifestyle change, not a temporary course — frame it as "you're retraining the posture you've built over years, so the home program is your ongoing maintenance tool, not just a 4-week fix."
+- (Full templated home program handouts will be built in Module 10: Home Exercise Program Templates.)
+
+*End of B5. Next in the tracker's work order: B6 — Neck: Cervical Radiculopathy.*
+
+---
+
+## B6. Neck: Cervical Radiculopathy
+
+> **Format note:** This protocol applies the standard Module 2.3 7-14-28 day phase framework to cervical radiculopathy — nerve root pathology arising from foraminal or central compromise (disc herniation, spondylotic foraminal stenosis, or a combination of both) that produces radicular symptoms in a dermatomal/myotomal distribution. It differs fundamentally from B5 (Mechanical Neck Pain) in that neurological involvement is present rather than excluded, and the treatment emphasis shifts toward nerve root decompression/unloading, neurodynamic management, and monitoring for progression, alongside the same manual therapy and exercise foundations.
+
+### B6.1 Anatomy Link
+
+Cervical nerve roots exit above their corresponding vertebra (C1-C7 exit above C1-C7; C8 exits below C7, above T1), through the intervertebral foramen bordered anteriorly by the uncovertebral joint and disc, and posteriorly by the facet joint. Radiculopathy results from mechanical compression, chemical irritation (inflammatory mediators from disc material), or both:
+
+- **Foraminal stenosis (spondylotic):** the most common cause overall, especially in patients >50 — osteophyte formation at the uncovertebral joints and facet hypertrophy narrow the foramen, most often affecting C5-6 and C6-7.
+- **Disc herniation (soft disc):** more common in younger patients (30s-40s) — posterolateral protrusion/extrusion compresses the exiting nerve root; C6-7 and C5-6 are the most frequently involved levels.
+- **Combined pathology:** many patients, particularly middle-aged, have a mixed picture of disc bulge superimposed on pre-existing spondylotic narrowing.
+- **Segmental correlation:** C5 → deltoid/shoulder pain, weakness in shoulder abduction, diminished biceps reflex; C6 → radial forearm/thumb-index pain, biceps/wrist extensor weakness, diminished biceps/brachioradialis reflex; C7 → middle finger/dorsal forearm pain, triceps/wrist flexor weakness, diminished triceps reflex; C8 → ulnar forearm/ring-little finger pain, intrinsic hand/finger flexor weakness, no reliable reflex change.
+
+> **Clinical Note:** Unlike lumbar radiculopathy, the majority of cervical radiculopathy cases (roughly 90%) improve with conservative management within several months, even in the presence of a confirmed disc herniation — this natural history should inform patient education and expectation-setting from the first visit.
+
+### B6.2 Assessment Clues
+
+Building on Module 1's standard assessment and B5's mechanical neck pain findings, with radiculopathy-specific additions:
+
+| Finding | Typical Cervical Radiculopathy pattern |
+|---|---|
+| Onset | May be insidious (spondylotic) or more acute (disc herniation, sometimes after a lifting/rotation/extension movement); neck pain often precedes arm symptoms by days to weeks |
+| Location | Pain, paresthesia, or numbness radiating from the neck into the shoulder and down the arm, typically past the elbow, following a dermatomal pattern — this distal radiation below the elbow is the key distinguishing feature from B5 |
+| Pain behavior | Often worsened by neck extension, ipsilateral rotation/side-flexion (foraminal closing positions), and Valsalva-type activities (cough, sneeze, straining); relieved by neck flexion, contralateral rotation, or shoulder abduction (hand-on-head relief sign) |
+| AROM | Restricted, especially extension and ipsilateral rotation/side-flexion (reproduces or worsens radicular symptoms — foraminal compression maneuver) |
+| Muscle testing | Myotomal weakness may be present, corresponding to the affected level(s) — graded formally (0-5 MMT); this is a hallmark finding differentiating radiculopathy from B5 |
+| Sensory testing | Dermatomal sensory change (hypoesthesia, paresthesia) corresponding to the affected root |
+| Reflexes | Diminished or absent reflex corresponding to the level (biceps = C5/6, brachioradialis = C6, triceps = C7) |
+| Special tests | Spurling's test positive (extension + ipsilateral side-flexion + axial compression reproduces radicular arm pain); shoulder abduction/hand-on-head relief sign often positive; ULNT reproduces unilateral radicular symptoms and is relieved by proximal structure slackening; distraction test often relieves symptoms |
+| Neurological progression | Screen at every visit for progression — increasing weakness, expanding sensory loss, or new myelopathic signs change management immediately (B6.10, B6.12) |
+
+> **Clinical Note:** A cluster of four findings — positive Spurling's test, positive ULNT, cervical distraction test relief, and reduced ipsilateral cervical rotation (<60°) — has good diagnostic accuracy for cervical radiculopathy when three or more are positive (Wainner et al.). Use this cluster to support the clinical diagnosis before committing to this protocol rather than B5.
+
+### B6.3 Differential Diagnosis
+
+| Differential | Distinguishing feature against Cervical Radiculopathy |
+|---|---|
+| Mechanical Neck Pain (B5) | No myotomal weakness, no dermatomal sensory loss, negative Spurling's, pain does not radiate below the elbow |
+| Cervical Myelopathy | Bilateral limb involvement, gait disturbance, UMN signs (hyperreflexia, clonus, Hoffman's/Babinski), bowel/bladder changes — an absolute red flag requiring urgent referral, not managed under this protocol |
+| Peripheral Nerve Entrapment (e.g. carpal tunnel, cubital tunnel) | Symptom distribution follows a peripheral nerve territory rather than a dermatome; provocative tests are positive distally (Tinel's/Phalen's at the wrist, elbow flexion test) rather than at the neck; cervical special tests are negative |
+| Thoracic Outlet Syndrome | Symptoms provoked by arm elevation/positional maneuvers (Roos, Adson's); often affects the ulnar distribution with vascular signs (color change, pulse diminution) rather than a strict cervical dermatome |
+| Brachial Plexopathy | Multi-level/non-dermatomal pattern not confined to a single nerve root; may follow trauma, radiation, or have a systemic/neoplastic cause; EMG helps distinguish root-level from plexus-level lesions |
+| Rotator Cuff Pathology | Pain localized to the shoulder, provoked by shoulder-specific tests (empty can, Neer, Hawkins) rather than cervical movements; no dermatomal sensory loss or reflex change |
+
+### B6.4 Phase Goals (7-14-28 Day Framework)
+
+| Phase | Typical window | Primary aim | Key metrics to track |
+|---|---|---|---|
+| Phase 1 — Acute/Protective | Day 1-7 | Reduce nerve root irritability, identify and use symptom-easing positions (often flexion/contralateral rotation), education on activity modification, monitor neurological status closely | NPRS trend for both neck and arm pain; direction of centralization/peripheralization; stability of neurological exam (no new weakness/sensory loss) |
+| Phase 2 — Sub-acute/Restorative | Day 7-14 | Progress pain-free cervical ROM, begin gentle neurodynamic mobilization, introduce postural correction and deep neck flexor activation as tolerated | Symptom centralization (arm symptoms retreating toward the neck); improving myotomal strength; reduced paresthesia frequency/intensity |
+| Phase 3 — Remodeling/Functional | Day 14-28 | Restore functional cervical ROM and strength, progress neurodynamic mobility, integrate cervicoscapular strengthening, return to occupational/functional demands | Resolution or substantial improvement of radicular symptoms; myotomal strength approaching full; return to functional tasks without symptom provocation |
+| Phase 4 — Discharge/Maintenance | Beyond Day 28 (slow-responders, or those managed alongside spondylosis) | Independent self-management, long-term postural and ergonomic strategy, monitoring for recurrence; if no meaningful improvement by Day 28, escalate for imaging/surgical consult | Patient demonstrates independent home program; NDI approaching normative score; if plateaued, referral pathway initiated |
+
+### B6.5 Session Time-Block Application
+
+| Phase | Opening electro (~10 min) | Manual therapy (~10-12 min) | Exercise (~15-20 min) | Closing electro (~10 min) |
+|---|---|---|---|---|
+| Phase 1 | TENS for symptomatic relief; hot pack only if not increasing irritability (avoid if extension-sensitive) | Gentle traction (manual or mechanical, in a symptom-easing position — often slight flexion) if it reduces arm symptoms on trial; avoid Grade III-IV mobilization into extension/ipsilateral rotation if these provoke radicular symptoms; soft tissue work to secondary muscle guarding | Positioning education (symptom-easing postures); gentle pain-free AROM avoiding provocative extension/rotation; nerve "sliders" only if trial tolerated well, not tensioners at this stage | Ice or TENS depending on irritability |
+| Phase 2 | Hot pack if tolerated and not extension-provocative | Continue traction trials if beneficial; central PA mobilization to non-provocative segments; MET/soft tissue to secondary guarding; begin cautious segmental mobilization to adjacent non-symptomatic levels | Progress neurodynamic mobilization (sliders progressing toward gentle tensioners as tolerated, monitoring symptom response); deep neck flexor activation; gentle cervicoscapular activation | Minimal; optional ice if provoked |
+| Phase 3 | Minimal/optional | Maintenance traction/mobilization as needed; hands-on time shifts to guiding exercise form and neurodynamic technique | Progressive cervicoscapular and postural strengthening; continued neurodynamic mobility work; functional/occupational retraining; graded return to provocative postures/tasks | Minimal; taper in favor of exercise-dominant care |
+
+> **Clinical Note:** Mechanical cervical traction (manual or via a traction unit) has reasonable supporting evidence specifically for radiculopathy, unlike for B5's mechanical neck pain — trial it early (Phase 1-2) in a comfortable, symptom-easing position and continue only if it produces a clear, reproducible reduction in arm symptoms during or immediately after the session; discontinue if it has no effect or worsens symptoms.
+
+### B6.6 Manual Therapy Detail
+
+- **Phase 1:** Trial cervical traction (manual, sustained or intermittent, in slight flexion/neutral — avoid extension) for 5-10 minutes; assess immediate symptom response and continue only if beneficial. Central PA pressures Grade I-II to non-provocative segments for general pain modulation. Avoid unilateral PA pressures or mobilization directions that reproduce radicular symptoms (commonly extension and ipsilateral rotation/side-flexion — the same foraminal-closing positions that provoke symptoms on Spurling's testing). Soft tissue release to secondary muscle guarding in the upper trapezius/levator scapulae, which is common as a compensatory response to nerve root pain.
+- **Phase 2:** Continue traction if beneficial, potentially progressing duration/intensity as tolerated. Introduce gentle segmental mobilization to adjacent, non-symptomatic levels to address compensatory stiffness, while continuing to avoid aggressive mobilization directly into the symptomatic level's provocative direction unless reassessment shows the segment has become non-irritable. Cervicothoracic and upper thoracic mobilization (as in B5.6) to reduce compensatory stiffness and support overall cervical mechanics.
+- **Phase 3:** Manual therapy tapers to maintenance; hands-on time shifts to reinforcing neurodynamic mobilization technique and cervicoscapular exercise form, mirroring B5's Phase 3 approach.
+
+> **Clinical Note:** Grade III-IV mobilization and any form of manipulation directly into extension/rotation at the symptomatic segment should be withheld until the radicular component has substantially settled (myotomal strength recovering, sensory symptoms reducing) — pushing into these positions while nerve root irritability is high risks provoking a flare and is a common clinical error when transferring B5 technique directly onto a radiculopathy presentation.
+
+### B6.7 Exercise Prescription Detail
+
+| Phase | Exercise focus | Example progressions |
+|---|---|---|
+| Phase 1 | Symptom-easing positioning; gentle pain-free AROM avoiding provocative directions; nerve sliders only if well tolerated on trial | Neck retraction in a flexion-biased range if this centralizes symptoms; gentle rotation/side-flexion only within the pain-free arc; median/radial/ulnar nerve slider technique trialed cautiously (a few reps, monitor for symptom change before/after) |
+| Phase 2 | Progress neurodynamic mobility (sliders → gentle tensioners); deep neck flexor activation; introduce gentle cervicoscapular activation | Nerve slider progression per the affected nerve trunk (e.g. median nerve slider for C6-7 involvement); craniocervical flexion as in B5.7, introduced once radicular irritability has reduced; scapular setting exercises (light, non-provocative) |
+| Phase 3 | Full neurodynamic mobility; progressive cervicoscapular and postural strengthening; functional/occupational retraining | Full nerve tensioner technique if tolerated; resistance-band cervicoscapular strengthening as in B5.7 Phase 3; graded return to provocative postures (e.g. prolonged desk work, driving) with structured pacing |
+
+- **Nerve sliders vs. tensioners:** sliders (one joint moving to lengthen the nerve bed while another shortens it, producing gliding without tension) are the lower-risk starting point; tensioners (moving both ends to increase overall nerve tension) are introduced later and only once sliders are well tolerated — this progression sequence is the key structural difference from B5's exercise approach.
+- **Centralization is the guiding principle:** if a movement or position causes the arm symptoms to retreat toward the neck (even if neck pain temporarily increases), this is a favorable sign and that direction/position should be incorporated into the home program; peripheralization (symptoms extending further down the arm) is a sign to stop and reassess technique or direction.
+- **Pain-monitoring rule:** as in B5, exercise-related pain up to 3/10 NPRS that settles within an hour is acceptable; any new or increased weakness, numbness, or symptoms that persist/worsen beyond the session should prompt regression of the exercise and closer neurological monitoring.
+
+### B6.8 Electrotherapy Detail
+
+- **TENS:** Useful for symptomatic relief in Phase 1, applied to the cervical and/or referred pain region as tolerated, particularly helpful for patients with sleep disruption from radicular pain.
+- **Mechanical/manual traction:** The most specifically indicated electro/manual-adjunct modality for this condition (see B6.5 Clinical Note) — trial early and continue only if it demonstrates a reproducible benefit.
+- **Hot pack:** Same adjunctive role as B5 — used before manual therapy/exercise to reduce secondary muscle guarding, avoided if it aggravates symptoms.
+- **Therapeutic ultrasound/IFT/Laser:** Same weak, adjunctive evidence base as in B5 — may be used for secondary muscle pain relief but never substitutes for traction trial, manual therapy, or neurodynamic exercise.
+
+### B6.9 Acupuncture / Dry Needling Detail
+
+- Indicated for secondary myofascial guarding in the upper trapezius, levator scapulae, and scalenes that commonly develops as a compensatory response to nerve root pain — same rationale and technique as B5.9.
+- Not indicated as a treatment for the nerve root compression itself; needling addresses the secondary muscular component only and should always be paired with traction trial, appropriate manual therapy, and neurodynamic exercise, not used as a substitute for them.
+- Exercise caution needling near the cervical paraspinal region in patients with significant radicular irritability — prioritize resolving irritability through positioning and traction before adding needling if the region is highly reactive.
+- (Full needle selection, depth, technique, and safety precautions will be detailed in Module 6: Acupuncture/Dry Needling Protocol Library.)
+
+### B6.10 Contraindications and Precautions
+
+- **Cervical manipulation (high-velocity thrust):** Contraindicated at the symptomatic level in active radiculopathy; the same certification and pre-manipulative safety screen requirements from B5.10 apply, and thrust manipulation should not be used as a substitute for the traction/mobilization approach described here.
+- **Progressive neurological deficit:** Any patient with worsening motor weakness, expanding sensory loss, or new myelopathic signs (bilateral involvement, gait change, UMN signs) requires urgent referral for imaging and specialist assessment — do not continue conservative management under this protocol if progression is documented.
+- **Traction contraindications:** Do not use cervical traction in patients with rheumatoid arthritis affecting the cervical spine, os odontoideum, vertebral fracture/instability, or acute inflammatory conditions of the neck; use caution and lower forces in osteoporosis.
+- **No improvement by Day 28:** As with B5, lack of meaningful progress by the second reassessment point should prompt escalation — for radiculopathy specifically, this includes considering MRI (if not already obtained) and surgical/specialist referral, since a subset of cases with significant or progressive compression do not resolve with conservative care alone.
+- **Severe or progressive weakness at presentation** (e.g. significant deltoid or triceps weakness limiting function) — consider earlier specialist referral in parallel with conservative management rather than waiting the full 28-day window, given the greater urgency of motor-dominant presentations.
+
+### B6.11 Progression Criteria
+
+**Progress to the next phase/loading level when:**
+- Phase 1 → 2: Radicular symptoms show centralization or reduction in intensity/frequency; neurological exam is stable or improving (no new deficit); patient tolerates gentle nerve sliders without peripheralization.
+- Phase 2 → 3: Myotomal strength improving toward full; sensory symptoms substantially reduced; nerve tensioner technique tolerated without symptom flare; cervical AROM improving in previously restricted/provocative directions.
+- Within Phase 3, progress load/complexity when current exercise/functional demand is tolerated with ≤3/10 exercise pain settling within 1 hour, no peripheralization, and no >24h flare.
+
+**Regress or hold when:**
+- Peripheralization occurs (arm symptoms extending further/more distally) — stop the provoking technique, return to the prior tolerated approach, and reassess direction of movement.
+- New or worsening motor weakness or sensory loss — halt progression, re-examine neurologically, and consider escalation per B6.10.
+- A >24h flare of radicular symptoms occurs — return to the prior tolerated phase and reintroduce progression more gradually.
+
+### B6.12 Red Flags Specific to This Condition
+
+In addition to the universal red flags (Module 1, 1.2) and B5.12:
+
+- **Progressive or significant motor weakness** — particularly if affecting function (e.g. inability to raise the arm, grip weakness affecting daily tasks) — warrants closer monitoring and consideration of earlier specialist referral.
+- **Signs of evolving myelopathy** (bilateral limb symptoms, gait disturbance, hyperreflexia, clonus, positive Hoffman's/Babinski, bowel/bladder change) — immediate referral; discontinue conservative cervical treatment.
+- **Cauda equina-equivalent urgency is not applicable to cervical levels**, but rapidly progressive bilateral or four-limb involvement should be treated with the same urgency as a surgical emergency and referred immediately.
+- **No meaningful improvement by Day 28**, or any point of clear deterioration despite appropriate conservative management — reconsider differential diagnosis (B6.3), re-image if not already done, and refer for surgical/specialist opinion.
+
+### B6.13 Home Exercise Program
+
+| Phase | Home program emphasis | Example content |
+|---|---|---|
+| Phase 1 | Symptom-easing positioning throughout the day; gentle, cautious nerve sliders if well tolerated in clinic; activity modification education | Identify and use the position that centralizes/reduces arm symptoms (often slight flexion, away from extension/ipsilateral rotation); brief, gentle nerve slider reps if cleared in-session; avoidance of sustained provocative postures (e.g. prolonged neck extension, looking up) |
+| Phase 2 | Structured neurodynamic mobility progression; deep neck flexor activation once irritability allows; posture/ergonomic correction | Nerve slider → gentle tensioner progression per clinic guidance; supine CCF as in B5.13 once tolerated; ergonomic changes to reduce sustained extension/rotation postures (screen height, phone use) |
+| Phase 3 | Progressive home strengthening and neurodynamic maintenance; functional/occupational retraining; long-term monitoring | Full nerve tensioner routine if tolerated; resistance-band cervicoscapular strengthening as in B5.13; structured pacing plan for returning to provocative occupational tasks (e.g. prolonged desk work, driving) |
+
+- Emphasize the generally favorable natural history of cervical radiculopathy (B6.1 Clinical Note) to support adherence and reduce fear-avoidance, while being clear that new or worsening neurological symptoms should be reported immediately rather than waiting for the next visit.
+- As in B5, frame the home program as an ongoing postural/ergonomic strategy rather than a temporary course, particularly for patients with a spondylotic (degenerative) contribution, since foraminal narrowing itself does not reverse and long-term posture management reduces recurrence risk.
+- (Full templated home program handouts will be built in Module 10: Home Exercise Program Templates.)
+
+*End of B6. Next in the tracker's work order: B7 — Neck: Cervical Spondylosis.*
 
 ---
 
