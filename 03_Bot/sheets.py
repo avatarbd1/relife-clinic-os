@@ -1308,3 +1308,31 @@ def get_case_study_lessons(session_id: str) -> list[dict]:
     lessons = [r for r in all_rows if str(r.get("Session_ID", "")).strip() == str(session_id).strip()]
     lessons.sort(key=lambda r: int(r.get("Lesson_Number", 0) or 0))
     return lessons
+
+
+def get_all_staff() -> list[dict]:
+    """সব সক্রিয় (Status != Inactive) স্টাফের রেকর্ড রিটার্ন করে।"""
+    ws = _worksheet(config.SHEET_STAFF)
+    records = safe_get_all_records(ws)
+    return [r for r in records if str(r.get("Status", "")).strip().lower() != "inactive"]
+
+
+def get_staff_needing_break_reminder(date_str: str) -> list[dict]:
+    """যাদের আজ Check-In আছে কিন্তু এখনো Break Out নেই এবং Check-Out ও নেই — এমন স্টাফের
+    রেকর্ড রিটার্ন করে (দুপুর ১টার বিরতি reminder job-এর জন্য)।"""
+    ws = _worksheet(config.SHEET_ATTENDANCE)
+    records = safe_get_all_records(ws)
+    today_by_staff = {}
+    for row in records:
+        if str(row.get("Date", "")).strip() == date_str:
+            today_by_staff[str(row.get("Staff_ID", "")).strip()] = row
+
+    pending = []
+    for staff in get_all_staff():
+        staff_id = str(staff.get("Staff_ID", "")).strip()
+        att = today_by_staff.get(staff_id)
+        if not att:
+            continue
+        if att.get("Check_In") and not att.get("Break_Out") and not att.get("Check_Out"):
+            pending.append(staff)
+    return pending

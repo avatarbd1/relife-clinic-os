@@ -25,7 +25,7 @@ bot.py — Relife Clinic OS Telegram Bot (প্রথম ভার্সন)
 
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time as dt_time, timezone
 from telegram import (
     Update,
     ReplyKeyboardMarkup,
@@ -1720,11 +1720,11 @@ async def attendance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         buttons.append([InlineKeyboardButton("✅ Check In", callback_data="att_checkin")])
         status_line = "🟡 এখনো Check In করোনি।"
     elif not record.get("Break_Out"):
-        buttons.append([InlineKeyboardButton("☕ Break Out", callback_data="att_breakout")])
+        buttons.append([InlineKeyboardButton("☕ বিরতি শুরু", callback_data="att_breakout")])
         buttons.append([InlineKeyboardButton("🚪 Check Out", callback_data="att_checkout")])
         status_line = f"🟢 Check In: {record.get('Check_In')}"
     elif not record.get("Break_In"):
-        buttons.append([InlineKeyboardButton("🔙 Break In", callback_data="att_breakin")])
+        buttons.append([InlineKeyboardButton("🔙 বিরতি শেষ", callback_data="att_breakin")])
         status_line = f"☕ Break Out: {record.get('Break_Out')}"
     elif not record.get("Check_Out"):
         buttons.append([InlineKeyboardButton("🚪 Check Out", callback_data="att_checkout")])
@@ -4536,8 +4536,37 @@ async def casestudy_cancel(update, context):
     return ConversationHandler.END
 
 
+async def send_break_reminder(context: ContextTypes.DEFAULT_TYPE):
+    """প্রতিদিন দুপুর ১টায় (Bangladesh time) চলে — যারা Check-In করেছে কিন্তু এখনো
+    Break নেয়নি এবং Check-Out করেনি, তাদের বিরতি নেওয়ার reminder পাঠায়।"""
+    date_str = bd_now().strftime("%Y-%m-%d")
+    try:
+        pending = sheets.get_staff_needing_break_reminder(date_str)
+    except Exception:
+        logger.exception("send_break_reminder: pending স্টাফ লিস্ট আনতে ব্যর্থ হয়েছে")
+        return
+    for staff in pending:
+        telegram_id = staff.get("Telegram_ID", "")
+        if not telegram_id:
+            continue
+        try:
+            await context.bot.send_message(
+                chat_id=int(telegram_id),
+                text=(
+                    "⏰ আপনি এখনো বিরতি শুরু করেননি।\n"
+                    "বিরতিতে গেলে '☕ বিরতি শুরু' চাপুন।"
+                ),
+            )
+        except Exception:
+            logger.exception(f"send_break_reminder: {telegram_id}-কে মেসেজ পাঠাতে ব্যর্থ হয়েছে")
+
+
 def main():
     app = Application.builder().token(config.BOT_TOKEN).build()
+    app.job_queue.run_daily(
+        send_break_reminder,
+        time=dt_time(hour=13, minute=0, tzinfo=timezone(timedelta(hours=6))),
+    )
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("search", search_patient))
     app.add_handler(
