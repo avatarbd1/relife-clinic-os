@@ -38,6 +38,8 @@ MENU_INVENTORY = "📦 ইনভেন্টরি"
 MENU_SALARY = "💰 স্টাফ বেতন"
 MENU_SALARY_HISTORY = "📜 বেতন হিস্টোরি"
 MENU_MY_PAYMENTS = "🧾 আমি যা দিয়েছি"
+MENU_ADD_EXPENSE = "➕ খরচ যোগ করুন"
+MENU_EXPENSE_TRACKER = "💸 দৈনিক খরচ ট্র্যাকার"
 
 ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
     Role.OWNER: [
@@ -51,6 +53,7 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_INVENTORY, MENU_SALARY],
         [MENU_SALARY_HISTORY],
         [MENU_MY_PAYMENTS],
+        [MENU_ADD_EXPENSE, MENU_EXPENSE_TRACKER],
         [MENU_SETTINGS],
     ],
     Role.RECEPTIONIST: [
@@ -77,6 +80,7 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_REPORTS],
         [MENU_DELETE_ENTRY],
         [MENU_INVENTORY],
+        [MENU_ADD_EXPENSE, MENU_EXPENSE_TRACKER],
     ],
 }
 

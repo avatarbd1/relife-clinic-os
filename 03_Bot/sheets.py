@@ -1436,3 +1436,58 @@ def add_salary_payment(staff_id: str, month: str, amount: float, paid_by: str, n
     ]
     ws.append_row(row, value_input_option="RAW")
     return payment_id
+
+
+EXPENSE_CATEGORIES = ["ভাড়া", "ইউটিলিটি", "সরঞ্জাম/মেডিসিন", "মেইনটেন্যান্স", "মার্কেটিং", "অন্যান্য"]
+
+
+def _next_expense_id(ws) -> str:
+    ids = ws.col_values(1)[1:]
+    numbers = []
+    for v in ids:
+        if v.startswith("EX"):
+            try:
+                numbers.append(int(v[2:]))
+            except ValueError:
+                pass
+    next_num = (max(numbers) + 1) if numbers else 1
+    return f"EX{next_num:04d}"
+
+
+def add_expense(category: str, amount: float, added_by: str, note: str = "") -> str:
+    """07_Expenses শীটে একটা খরচের এন্ট্রি সেভ করে।"""
+    ws = _worksheet(config.SHEET_EXPENSES)
+    expense_id = _next_expense_id(ws)
+    now = bd_now()
+    row = [
+        expense_id,
+        now.strftime("%Y-%m-%d"),
+        category,
+        amount,
+        added_by,
+        now.strftime("%Y-%m-%d %I:%M %p"),
+        note,
+    ]
+    ws.append_row(row, value_input_option="RAW")
+    return expense_id
+
+
+def get_expenses_for_date(date_str: str) -> list[dict]:
+    """নির্দিষ্ট তারিখের সব খরচের এন্ট্রি রিটার্ন করে (নতুন থেকে পুরনো)। date_str ফরম্যাট: 'YYYY-MM-DD'"""
+    ws = _worksheet(config.SHEET_EXPENSES)
+    records = safe_get_all_records(ws)
+    rows = [r for r in records if str(r.get("Date", "")).strip() == date_str]
+    rows.sort(key=lambda r: str(r.get("Timestamp", "")), reverse=True)
+    return rows
+
+
+def get_expense_total_for_month(month: str) -> float:
+    """নির্দিষ্ট মাসের মোট খরচ রিটার্ন করে। month ফরম্যাট: 'YYYY-MM'"""
+    ws = _worksheet(config.SHEET_EXPENSES)
+    records = safe_get_all_records(ws)
+    total = sum(
+        float(r.get("Amount", 0) or 0)
+        for r in records
+        if str(r.get("Date", "")).strip().startswith(month)
+    )
+    return round(total, 2)

@@ -135,6 +135,8 @@ _ALL_MENU_ITEMS = [
     roles.MENU_SALARY,
     roles.MENU_SALARY_HISTORY,
     roles.MENU_MY_PAYMENTS,
+    roles.MENU_ADD_EXPENSE,
+    roles.MENU_EXPENSE_TRACKER,
 ]
 _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 
@@ -157,6 +159,7 @@ _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 (REG_FIELDS,) = range(43, 44)  # রেজিস্ট্রেশনে missing fields একসাথে জিজ্ঞাসার state (patch38)
 (CLINICALAI_QUESTION,) = range(44, 45)  # AI Clinical Assistant state (patch40)
 (SALARY_SELECT_STAFF, SALARY_ENTER_AMOUNT, SALARY_NOTE, SALARY_CONFIRM) = range(45, 49)  # Staff Salary System
+(COST_CATEGORY, COST_AMOUNT, COST_NOTE, COST_CONFIRM) = range(49, 53)  # Daily Cost Tracker
 (PAYDEL_LIST, PAYDEL_CONFIRM) = range(300, 302)  # আজকের এন্ট্রি মুছার ফ্লো
 (INV_UPDATE,) = range(310, 311)  # ইনভেন্টরি স্টক আপডেট ফ্লো
 
@@ -4843,6 +4846,156 @@ async def mypayments_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(lines))
 
 
+async def cost_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return ConversationHandler.END
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_ADD_EXPENSE):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return ConversationHandler.END
+    buttons = [
+        [InlineKeyboardButton(cat, callback_data=f"costcat_{cat}")]
+        for cat in sheets.EXPENSE_CATEGORIES
+    ]
+    await update.message.reply_text("খরচের ক্যাটাগরি বেছে নাও:", reply_markup=InlineKeyboardMarkup(buttons))
+    return COST_CATEGORY
+
+
+async def cost_category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    category = query.data.replace("costcat_", "", 1)
+    context.user_data["cost"] = {"Category": category}
+    await query.edit_message_text(f"ক্যাটাগরি: {category}\n\nকত টাকা খরচ হয়েছে লেখো:")
+    return COST_AMOUNT
+
+
+async def cost_amount_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    c = context.user_data.get("cost", {})
+    try:
+        amount = float(text)
+    except ValueError:
+        await update.message.reply_text("❌ শুধু সংখ্যা লেখো (যেমন: 500):")
+        return COST_AMOUNT
+    if amount <= 0:
+        await update.message.reply_text("❌ Amount অবশ্যই ০-এর বেশি হতে হবে:")
+        return COST_AMOUNT
+    c["Amount"] = amount
+    context.user_data["cost"] = c
+    await update.message.reply_text("কোনো নোট থাকলে লেখো, না থাকলে '-' দাও:")
+    return COST_NOTE
+
+
+async def cost_note_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    c = context.user_data.get("cost", {})
+    c["Note"] = "" if text == "-" else text
+    context.user_data["cost"] = c
+    category = c.get("Category", "")
+    amount = c.get("Amount", 0)
+    note = c.get("Note") or "-"
+    summary = (
+        f"💸 ক্যাটাগরি: {category}\n"
+        f"পরিমাণ: ৳{amount:.0f}\n"
+        f"নোট: {note}\n\n"
+        "নিশ্চিত করো:"
+    )
+    confirm_keyboard = ReplyKeyboardMarkup([["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True)
+    await update.message.reply_text(summary, reply_markup=confirm_keyboard)
+    return COST_CONFIRM
+
+
+async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip().lower()
+    staff = context.user_data.get("staff", {})
+    c = context.user_data.get("cost", {})
+
+    if text not in ("হ্যাঁ", "yes", "y", "হা", "ha"):
+        context.user_data.pop("cost", None)
+        await update.message.reply_text("❌ বাতিল করা হয়েছে।", reply_markup=_menu_keyboard(staff.get("Role", "")))
+        return ConversationHandler.END
+
+    added_by_name = staff.get("Full_Name") or staff.get("Name") or str(staff.get("Staff_ID", ""))
+    category = c.get("Category", "")
+    amount = c.get("Amount", 0)
+
+    try:
+        expense_id = sheets.add_expense(
+            category, amount,
+            added_by=added_by_name,
+            note=c.get("Note", ""),
+        )
+        await update.message.reply_text(
+            f"✅ খরচ সেভ হয়েছে! Expense ID: {expense_id}",
+            reply_markup=_menu_keyboard(staff.get("Role", "")),
+        )
+        try:
+            for o in sheets.get_all_staff():
+                if str(o.get("Role", "")).strip() != "Owner":
+                    continue
+                if str(o.get("Staff_ID", "")) == str(staff.get("Staff_ID", "")):
+                    continue
+                owner_telegram_id = o.get("Telegram_ID")
+                if not owner_telegram_id:
+                    continue
+                try:
+                    await context.bot.send_message(
+                        chat_id=int(owner_telegram_id),
+                        text=(
+                            f"💸 নতুন খরচ যোগ হয়েছে ({added_by_name})।\n"
+                            f"ক্যাটাগরি: {category}\n"
+                            f"পরিমাণ: ৳{amount:.0f}"
+                        ),
+                    )
+                except Exception:
+                    logger.exception(f"cost_confirm_receive: Owner {owner_telegram_id}-কে notify করতে ব্যর্থ")
+        except Exception:
+            logger.exception("cost_confirm_receive: Owner লিস্ট আনতে ব্যর্থ")
+
+    except Exception as e:
+        logger.exception("cost_confirm_receive ব্যর্থ হয়েছে")
+        await update.message.reply_text(
+            f"❌ সেভ করতে সমস্যা হয়েছে।\nError: {e}",
+            reply_markup=_menu_keyboard(staff.get("Role", "")),
+        )
+    context.user_data.pop("cost", None)
+    return ConversationHandler.END
+
+
+async def cost_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff", {})
+    context.user_data.pop("cost", None)
+    await update.message.reply_text("❌ বাতিল করা হলো।", reply_markup=_menu_keyboard(staff.get("Role", "")))
+    return ConversationHandler.END
+
+
+async def costtracker_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_EXPENSE_TRACKER):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    today_str = bd_now().strftime("%Y-%m-%d")
+    month_str = bd_now().strftime("%Y-%m")
+    today_rows = sheets.get_expenses_for_date(today_str)
+    month_total = sheets.get_expense_total_for_month(month_str)
+    today_total = sum(float(r.get("Amount", 0) or 0) for r in today_rows)
+
+    lines = [f"💸 দৈনিক খরচ ট্র্যাকার — {today_str}\n"]
+    if not today_rows:
+        lines.append("আজ এখনো কোনো খরচ যোগ হয়নি।")
+    else:
+        for r in today_rows:
+            lines.append(
+                f"• {r.get('Category', '')} — ৳{r.get('Amount', 0)} "
+                f"({r.get('Added_By', '')}) {('| ' + r.get('Note', '')) if r.get('Note') else ''}"
+            )
+    lines.append(f"\nআজকের মোট: ৳{today_total:.0f}")
+    lines.append(f"এই মাসের ({month_str}) মোট: ৳{month_total:.0f}")
+    await update.message.reply_text("\n".join(lines))
+
 def main():
     app = Application.builder().token(config.BOT_TOKEN).build()
     app.job_queue.run_daily(
@@ -4879,6 +5032,34 @@ def main():
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_SALARY_HISTORY}$"), salhist_start))
     app.add_handler(CallbackQueryHandler(salhist_select_callback, pattern="^salhist_"))
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_MY_PAYMENTS}$"), mypayments_start))
+
+    cost_conv = ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_ADD_EXPENSE}$"), cost_start)
+        ],
+        states={
+            COST_CATEGORY: [
+                CallbackQueryHandler(cost_category_callback, pattern="^costcat_")
+            ],
+            COST_AMOUNT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), cost_amount_receive)
+            ],
+            COST_NOTE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), cost_note_receive)
+            ],
+            COST_CONFIRM: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), cost_confirm_receive)
+            ],
+        },
+        fallbacks=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
+            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
+            CommandHandler("cancel", cost_cancel),
+            CommandHandler("start", _restart_via_start),
+        ],
+    )
+    app.add_handler(cost_conv)
+    app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_EXPENSE_TRACKER}$"), costtracker_start))
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("search", search_patient))
     app.add_handler(
