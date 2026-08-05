@@ -209,6 +209,13 @@ async def _cancel_on_menu_press(update: Update, context: ContextTypes.DEFAULT_TY
     return ConversationHandler.END
 
 
+async def _cancel_and_go_home(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """কনভারসেশনের মাঝখানে 🔙 মূল মেনু চাপলে চলমান কাজ বাতিল করে সরাসরি মূল মেনু দেখায়।"""
+    context.user_data.clear()
+    await back_to_main_menu(update, context)
+    return ConversationHandler.END
+
+
 def _menu_keyboard(role_str: str) -> ReplyKeyboardMarkup:
     rows = roles.get_menu_rows_for_role(role_str)
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
@@ -4862,6 +4869,7 @@ def main():
             ],
         },
         fallbacks=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
             MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
             CommandHandler("cancel", salary_cancel),
             CommandHandler("start", _restart_via_start),
@@ -4916,6 +4924,7 @@ def main():
             ],
         },
         fallbacks=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
             MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
             CommandHandler("cancel", patient_list_cancel),
             CommandHandler("start", _restart_via_start),
@@ -4945,6 +4954,7 @@ def main():
             ],
         },
         fallbacks=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
             MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
             CommandHandler("cancel", treat_cancel),
             CommandHandler("start", _restart_via_start),
@@ -4979,6 +4989,7 @@ def main():
             REG_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), reg_confirm)],
         },
         fallbacks=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
             MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),CommandHandler("cancel", reg_cancel),
             CommandHandler("start", _restart_via_start),],
     )
@@ -5020,6 +5031,7 @@ def main():
             APT_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_confirm)],
         },
         fallbacks=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
             MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),CommandHandler("cancel", apt_cancel),
             CommandHandler("start", _restart_via_start),],
     )
@@ -5052,6 +5064,7 @@ def main():
             PAY_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_confirm)],
         },
         fallbacks=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
             MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),CommandHandler("cancel", pay_cancel),
             CommandHandler("start", _restart_via_start),],
     )
@@ -5072,6 +5085,7 @@ def main():
             ],
         },
         fallbacks=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
             MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
             CommandHandler("cancel", pay_cancel),
             CommandHandler("start", _restart_via_start),
@@ -5087,6 +5101,7 @@ def main():
             INV_UPDATE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), inventory_update)],
         },
         fallbacks=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
             MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
             CommandHandler("cancel", inventory_cancel),
             CommandHandler("start", _restart_via_start),
@@ -5141,6 +5156,7 @@ def main():
             ],
         },
         fallbacks=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
             MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
             CommandHandler("cancel", treat_cancel),
             CommandHandler("start", _restart_via_start),],
@@ -5180,6 +5196,7 @@ def main():
             TPLAN_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_confirm)],
         },
         fallbacks=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
             MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
             CommandHandler("cancel", tplan_cancel),
             CommandHandler("start", _restart_via_start),
@@ -5205,6 +5222,7 @@ def main():
             ],
         },
         fallbacks=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
             MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),CommandHandler("cancel", hist_cancel),
             CommandHandler("start", _restart_via_start),],
     )
@@ -5245,6 +5263,7 @@ def main():
             ],
         },
         fallbacks=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
             MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
             CommandHandler("cancel", staffai_cancel),
             CommandHandler("start", _restart_via_start),
@@ -5262,6 +5281,7 @@ def main():
             ],
         },
         fallbacks=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
             MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
             CommandHandler("cancel", clinicalai_cancel),
             CommandHandler("start", _restart_via_start),
@@ -5287,6 +5307,7 @@ def main():
             ],
         },
         fallbacks=[
+            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
             MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
             CommandHandler("cancel", casestudy_cancel),
             CommandHandler("start", _restart_via_start),
