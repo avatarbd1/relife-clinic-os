@@ -1372,6 +1372,40 @@ def get_salary_summary(staff_id: str, month: str) -> dict:
     }
 
 
+def get_payments_made_by(paid_by_name: str, limit: int = 30) -> list[dict]:
+    """একজন Owner নিজে যতগুলো বেতন কিস্তি দিয়েছে, তার পুরো লিস্ট রিটার্ন করে (নতুন থেকে পুরনো)।
+    প্রতিটা রেকর্ডে সংশ্লিষ্ট স্টাফের Full_Name ও যোগ করে দেয়।"""
+    ws = _worksheet(config.SHEET_SALARY)
+    records = safe_get_all_records(ws)
+    rows = [
+        r for r in records
+        if str(r.get("Paid_By", "")).strip() == str(paid_by_name).strip()
+    ]
+    rows.sort(key=lambda r: str(r.get("Timestamp", "")), reverse=True)
+    rows = rows[:limit]
+
+    staff_records = safe_get_all_records(_worksheet(config.SHEET_STAFF))
+    name_by_id = {
+        str(s.get("Staff_ID", "")).strip(): s.get("Full_Name", "")
+        for s in staff_records
+    }
+    for r in rows:
+        r["Staff_Full_Name"] = name_by_id.get(str(r.get("Staff_ID", "")).strip(), r.get("Staff_ID", ""))
+    return rows
+
+
+def get_staff_salary_history(staff_id: str, limit: int = 20) -> list[dict]:
+    """একজন স্টাফের সব বেতন কিস্তির হিস্টোরি রিটার্ন করে (নতুন থেকে পুরনো)।"""
+    ws = _worksheet(config.SHEET_SALARY)
+    records = safe_get_all_records(ws)
+    rows = [
+        r for r in records
+        if str(r.get("Staff_ID", "")).strip() == str(staff_id).strip()
+    ]
+    rows.sort(key=lambda r: str(r.get("Timestamp", "")), reverse=True)
+    return rows[:limit]
+
+
 def _next_salary_payment_id(ws) -> str:
     ids = ws.col_values(1)[1:]
     numbers = []

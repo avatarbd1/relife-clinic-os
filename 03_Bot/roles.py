@@ -36,6 +36,8 @@ MENU_CLINICAL_AI = "🩺 ক্লিনিক্যাল অ্যাসিস
 MENU_DELETE_ENTRY = "🗑️ আজকের এন্ট্রি মুছুন"
 MENU_INVENTORY = "📦 ইনভেন্টরি"
 MENU_SALARY = "💰 স্টাফ বেতন"
+MENU_SALARY_HISTORY = "📜 বেতন হিস্টোরি"
+MENU_MY_PAYMENTS = "🧾 আমি যা দিয়েছি"
 
 ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
     Role.OWNER: [
@@ -47,6 +49,8 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_DELETE_ENTRY],
         [MENU_AI_TOOLS],
         [MENU_INVENTORY, MENU_SALARY],
+        [MENU_SALARY_HISTORY],
+        [MENU_MY_PAYMENTS],
         [MENU_SETTINGS],
     ],
     Role.RECEPTIONIST: [

@@ -133,6 +133,8 @@ _ALL_MENU_ITEMS = [
     roles.MENU_CLINICAL_AI,
     roles.MENU_INVENTORY,
     roles.MENU_SALARY,
+    roles.MENU_SALARY_HISTORY,
+    roles.MENU_MY_PAYMENTS,
 ]
 _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 
@@ -4758,6 +4760,82 @@ async def send_break_reminder(context: ContextTypes.DEFAULT_TYPE):
             logger.exception(f"send_break_reminder: {telegram_id}-কে মেসেজ পাঠাতে ব্যর্থ হয়েছে")
 
 
+async def salhist_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_SALARY_HISTORY):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    all_staff = [s for s in sheets.get_all_staff() if s.get("Staff_ID")]
+    if not all_staff:
+        await update.message.reply_text("❌ কোনো স্টাফ পাওয়া যায়নি।")
+        return
+    buttons = []
+    for s in all_staff:
+        name = s.get("Full_Name", "")
+        role = s.get("Role", "")
+        sid = s.get("Staff_ID")
+        buttons.append([InlineKeyboardButton(f"{name} ({role})", callback_data=f"salhist_{sid}")])
+    await update.message.reply_text(
+        "কোন স্টাফের বেতন হিস্টোরি দেখবে?",
+        reply_markup=InlineKeyboardMarkup(buttons),
+    )
+
+
+async def salhist_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    staff_id = query.data.replace("salhist_", "", 1)
+    month = bd_now().strftime("%Y-%m")
+    summary = sheets.get_salary_summary(staff_id, month)
+    history = sheets.get_staff_salary_history(staff_id, limit=15)
+
+    name = summary.get("Full_Name", "") if summary else staff_id
+    lines = [f"📜 {name} — বেতন হিস্টোরি\n"]
+
+    if summary:
+        lines.append(
+            f"এই মাস ({month}): বেতন ৳{summary.get('Monthly_Salary', 0):.0f} | "
+            f"পরিশোধিত ৳{summary.get('Paid', 0):.0f} | বাকি ৳{summary.get('Due', 0):.0f}\n"
+        )
+
+    if not history:
+        lines.append("কোনো কিস্তির রেকর্ড পাওয়া যায়নি।")
+    else:
+        for r in history:
+            lines.append(
+                f"• {r.get('Date', '')} | ৳{r.get('Amount', 0)} | "
+                f"মাস: {r.get('Month', '')} | দিয়েছেন: {r.get('Paid_By', '')}"
+            )
+
+    await query.edit_message_text("\n".join(lines))
+
+
+async def mypayments_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if staff is None:
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_MY_PAYMENTS):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    my_name = staff.get("Full_Name") or staff.get("Name") or str(staff.get("Staff_ID", ""))
+    rows = sheets.get_payments_made_by(my_name, limit=30)
+    if not rows:
+        await update.message.reply_text("🧾 তুমি এখনো কাউকে বেতন দাওনি।")
+        return
+    lines = [f"🧾 তুমি ({my_name}) যা দিয়েছো —\n"]
+    total = 0.0
+    for r in rows:
+        amt = float(r.get("Amount", 0) or 0)
+        total += amt
+        lines.append(
+            f"• {r.get('Date', '')} | {r.get('Staff_Full_Name', '')} | ৳{amt:.0f} | মাস: {r.get('Month', '')}"
+        )
+    lines.append(f"\nসর্বমোট: ৳{total:.0f}")
+    await update.message.reply_text("\n".join(lines))
+
+
 def main():
     app = Application.builder().token(config.BOT_TOKEN).build()
     app.job_queue.run_daily(
@@ -4790,6 +4868,9 @@ def main():
         ],
     )
     app.add_handler(salary_conv)
+    app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_SALARY_HISTORY}$"), salhist_start))
+    app.add_handler(CallbackQueryHandler(salhist_select_callback, pattern="^salhist_"))
+    app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_MY_PAYMENTS}$"), mypayments_start))
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("search", search_patient))
     app.add_handler(
