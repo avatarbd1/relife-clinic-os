@@ -137,6 +137,7 @@ _ALL_MENU_ITEMS = [
     roles.MENU_MY_PAYMENTS,
     roles.MENU_ADD_EXPENSE,
     roles.MENU_EXPENSE_TRACKER,
+    roles.MENU_FINANCE,
 ]
 _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 
@@ -1709,6 +1710,10 @@ async def treatment_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def ai_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _generic_submenu(update, context, roles.ROLE_AI_TOOLS_ITEMS, "🤖 AI টুলস — কী করতে চাও?")
+
+
+async def finance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _generic_submenu(update, context, roles.ROLE_FINANCE_ITEMS, "💰 চলতি হিসাব — কী করতে চাও?")
 
 
 async def back_to_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -5079,6 +5084,9 @@ def main():
     )
     app.add_handler(
         MessageHandler(filters.Regex(f"^{roles.MENU_AI_TOOLS}$"), ai_tools_menu)
+    )
+    app.add_handler(
+        MessageHandler(filters.Regex(f"^{roles.MENU_FINANCE}$"), finance_menu)
     )
     app.add_handler(
         MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), back_to_main_menu)
