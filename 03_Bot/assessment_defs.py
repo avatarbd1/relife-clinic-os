@@ -6,10 +6,10 @@ tplan (ট্রিটমেন্ট প্ল্যান) ফ্লো-তে
 
 প্রতিটা টেস্ট একটা dict:
   key     -> শীটে সেভ হওয়া ছোট নাম (ইউনিক, ইংরেজি/সংখ্যা)
-  label   -> টেলিগ্রামে যা দেখানো হবে
+  label   -> টেলিগ্রামে যা দেখানো হবে (normal range থাকলে সরাসরি এখানেই দেখা যাবে)
   type    -> "buttons" অথবা "text"
   options -> শুধু "buttons" টাইপে লাগবে
-  info    -> (ঐচ্ছিক) normal range / কীভাবে মাপবে/করবে — "ℹ️" বাটনে popup হিসেবে দেখানো হয়
+  info    -> (ঐচ্ছিক) কীভাবে মাপবে/করবে — "ℹ️" বাটনে popup হিসেবে দেখানো হয়
              (Telegram popup-এর ক্যারেক্টার লিমিট আছে, তাই সংক্ষিপ্ত রাখা হয়েছে)
 """
 
@@ -57,8 +57,11 @@ def _posneg(key, label, info=None):
     return {"key": key, "label": label, "type": "buttons", "options": POSNEG_OPTIONS, "info": info}
 
 
-def _text(key, label, info=None):
-    return {"key": key, "label": label, "type": "text", "info": info}
+def _text(key, label, normal=None, info=None):
+    """normal দিলে সরাসরি prompt-এর মধ্যেই '(Normal: ...)' যোগ হয়ে যাবে — বাটন চাপার দরকার নেই।
+    info দিলে সেটা আলাদা 'ℹ️' বাটনে (কীভাবে মাপবে/করবে — technique) popup হিসেবে দেখানো হয়।"""
+    full_label = f"{label} (Normal: {normal})" if normal else label
+    return {"key": key, "label": full_label, "type": "text", "info": info}
 
 
 PAIN_VAS = {
@@ -71,8 +74,8 @@ ASSESSMENT_CATEGORIES = {
     "lbp": {
         "label": "🦴 Low Back Pain / PLID / Sciatica",
         "tests": [
-            _text("SLR", "SLR — পাশ ও ডিগ্রি লেখো (যেমন: Right 40°)",
-                  "Normal: pain-free ~80-90°। 30-70°-এর মধ্যে ব্যথা হলে +ve (neural tension)"),
+            _text("SLR", "SLR — পাশ ও ডিগ্রি লেখো (যেমন: Right 40°)", normal="pain-free ~80-90°",
+                  info="30-70°-এর মধ্যে ব্যথা reproduce হলে +ve (neural tension sign)"),
             _mmt("MMT_HipFlexor", "Hip Flexor"),
             _mmt("MMT_KneeExt", "Knee Extensor"),
             _mmt("MMT_AnkleDorsi", "Ankle Dorsiflexor"),
@@ -84,7 +87,7 @@ ASSESSMENT_CATEGORIES = {
             _reflex("Reflex_Knee", "Knee Jerk"),
             _reflex("Reflex_Ankle", "Ankle Jerk"),
             _text("Lumbar_ROM", "Lumbar ROM লেখো",
-                  "Normal: Flexion 40-60°, Extension 20-35°, Lateral flex 15-20°, Rotation 3-18°"),
+                  normal="Flex 40-60°, Ext 20-35°, Lat.flex 15-20°, Rotation 3-18°"),
             PAIN_VAS,
         ],
     },
@@ -92,7 +95,7 @@ ASSESSMENT_CATEGORIES = {
         "label": "🧠 Neck Pain / Cervical Radiculopathy",
         "tests": [
             _posneg("Spurling", "Spurling's Test",
-                    "মাথা affected দিকে কাত+extension+axial compression। +ve হলে radicular pain reproduce হয়"),
+                    info="মাথা affected দিকে কাত+extension+axial compression। +ve হলে radicular pain reproduce হয়"),
             _mmt("MMT_ShoulderAbd", "Shoulder Abduction"),
             _mmt("MMT_ElbowFlex", "Elbow Flexion"),
             _mmt("MMT_ElbowExt", "Elbow Extension"),
@@ -101,27 +104,27 @@ ASSESSMENT_CATEGORIES = {
             _dermatome("Dermatome_C6", "C6"),
             _dermatome("Dermatome_C7", "C7"),
             _text("Cervical_ROM", "Cervical ROM লেখো",
-                  "Normal: Flexion 45-50°, Extension 55-60°, Lateral flex 40-45°, Rotation 70-90°"),
+                  normal="Flex 45-50°, Ext 55-60°, Lat.flex 40-45°, Rotation 70-90°"),
             PAIN_VAS,
         ],
     },
     "shoulder": {
         "label": "💪 Shoulder (Frozen/Rotator Cuff)",
         "tests": [
-            _text("ROM_Flexion", "ROM — Flexion লেখো",
-                  "Normal: 0-180°। Goniometer: acromion-এ axis, humerus বরাবর arm"),
-            _text("ROM_Abduction", "ROM — Abduction লেখো",
-                  "Normal: 0-180°। Goniometer: acromion-এ axis, coronal plane-এ measure"),
-            _text("ROM_IR", "ROM — Internal Rotation লেখো",
-                  "Normal: ~70°। 90° abduction position-এ measure করা সবচেয়ে নির্ভরযোগ্য"),
-            _text("ROM_ER", "ROM — External Rotation লেখো",
-                  "Normal: ~90°। কনুই ৯০° বাঁকা রেখে, শরীরের পাশে রেখে measure করো"),
+            _text("ROM_Flexion", "ROM — Flexion লেখো", normal="0-180°",
+                  info="Goniometer: acromion-এ axis, humerus বরাবর arm"),
+            _text("ROM_Abduction", "ROM — Abduction লেখো", normal="0-180°",
+                  info="Goniometer: acromion-এ axis, coronal plane-এ measure"),
+            _text("ROM_IR", "ROM — Internal Rotation লেখো", normal="~70°",
+                  info="90° abduction position-এ measure করা সবচেয়ে নির্ভরযোগ্য"),
+            _text("ROM_ER", "ROM — External Rotation লেখো", normal="~90°",
+                  info="কনুই ৯০° বাঁকা রেখে, শরীরের পাশে রেখে measure করো"),
             _posneg("Neers", "Neer's Test",
-                    "Scapula স্থির রেখে shoulder পূর্ণ passive flexion করাও। +ve হলে ব্যথা = impingement"),
+                    info="Scapula স্থির রেখে shoulder পূর্ণ passive flexion করাও। +ve হলে ব্যথা = impingement"),
             _posneg("Hawkins", "Hawkins-Kennedy Test",
-                    "কনুই ৯০°, shoulder ৯০° flex করে জোরে internal rotation করাও। +ve = impingement"),
+                    info="কনুই ৯০°, shoulder ৯০° flex করে জোরে internal rotation করাও। +ve = impingement"),
             _posneg("EmptyCan", "Empty Can Test",
-                    "৯০° abduction, ৩০° horizontal flex, thumb নিচে করে resist করাও। দুর্বলতা/ব্যথা = supraspinatus tear/impingement"),
+                    info="৯০° abduction, ৩০° horizontal flex, thumb নিচে করে resist করাও। দুর্বলতা/ব্যথা = supraspinatus tear/impingement"),
             _mmt("MMT_Supraspinatus", "Supraspinatus"),
             _mmt("MMT_Deltoid", "Deltoid"),
             PAIN_VAS,
@@ -130,14 +133,14 @@ ASSESSMENT_CATEGORIES = {
     "knee": {
         "label": "🦵 Knee (OA/Ligament/Post-op)",
         "tests": [
-            _text("ROM_Flexion", "ROM — Flexion লেখো", "Normal: 0-135°/150°"),
-            _text("ROM_Extension", "ROM — Extension লেখো", "Normal: 0° (কারো কারো 5-10° hyperextension স্বাভাবিক)"),
+            _text("ROM_Flexion", "ROM — Flexion লেখো", normal="0-135°/150°"),
+            _text("ROM_Extension", "ROM — Extension লেখো", normal="0° (কারো কারো 5-10° hyperextension স্বাভাবিক)"),
             _posneg("Lachman", "Lachman Test",
-                    "হাঁটু ২০-৩০° flex, femur স্থির রেখে tibia সামনে টানো। বেশি excursion/soft end-feel = ACL tear"),
+                    info="হাঁটু ২০-৩০° flex, femur স্থির রেখে tibia সামনে টানো। বেশি excursion/soft end-feel = ACL tear"),
             _posneg("McMurray", "McMurray Test",
-                    "হাঁটু পূর্ণ flex করে tibia-তে rotation দিয়ে ধীরে extend করো। click/pain = meniscus tear"),
+                    info="হাঁটু পূর্ণ flex করে tibia-তে rotation দিয়ে ধীরে extend করো। click/pain = meniscus tear"),
             _posneg("ValgusVarus", "Valgus/Varus Stress Test",
-                    "হাঁটু ৩০° flex করে পাশ থেকে চাপ দাও। Valgus laxity=MCL, Varus laxity=LCL injury"),
+                    info="হাঁটু ৩০° flex করে পাশ থেকে চাপ দাও। Valgus laxity=MCL, Varus laxity=LCL injury"),
             _mmt("MMT_Quad", "Quadriceps"),
             _mmt("MMT_Hamstring", "Hamstring"),
             {"key": "Swelling", "label": "Swelling আছে কি?", "type": "buttons", "options": YESNO_OPTIONS, "info": None},
@@ -161,7 +164,8 @@ ASSESSMENT_CATEGORIES = {
     "postop": {
         "label": "🩹 Post-Fracture / Post-Op Ortho",
         "tests": [
-            _text("ROM", "ROM লেখো", "সংশ্লিষ্ট জয়েন্টের normal range-এর সাথে তুলনা করো (surgeon protocol অনুযায়ী restriction থাকতে পারে)"),
+            _text("ROM", "ROM লেখো",
+                  info="সংশ্লিষ্ট জয়েন্টের normal range-এর সাথে তুলনা করো (surgeon protocol অনুযায়ী restriction থাকতে পারে)"),
             {"key": "Swelling", "label": "Swelling আছে কি?", "type": "buttons", "options": YESNO_OPTIONS, "info": None},
             {"key": "WeightBearing", "label": "Weight-Bearing Status", "type": "buttons",
              "options": ["Full", "Partial", "Non"], "info": None},
@@ -172,7 +176,7 @@ ASSESSMENT_CATEGORIES = {
         "label": "📋 General / Others",
         "tests": [
             _text("ChiefComplaint", "Chief Complaint লেখো"),
-            _text("ROM", "ROM (আক্রান্ত জয়েন্ট) লেখো", "সংশ্লিষ্ট জয়েন্টের normal range-এর সাথে তুলনা করো"),
+            _text("ROM", "ROM (আক্রান্ত জয়েন্ট) লেখো", info="সংশ্লিষ্ট জয়েন্টের normal range-এর সাথে তুলনা করো"),
             PAIN_VAS,
         ],
     },
