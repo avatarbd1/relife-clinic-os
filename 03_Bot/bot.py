@@ -4390,7 +4390,7 @@ async def casestudy_select_callback(update, context):
     context.user_data["cs_session_id"] = f"CS-{patient_id}-{int(time.time())}"
     await query.edit_message_text(
         "\u2705 রোগীর ডেটা লোড হয়েছে।\n"
-        "কেসের বাড়তি কোনো তথ্য/অবজারভেশন থাকলে লেখো, না থাকলে শুধু 'না' লিখো।"
+        "কেসের বাড়তি কোনো তথ্য/অবজারভেশন থাকলে লেখো — X-ray/MRI রিপোর্টের লেখা/ফাইন্ডিংস থাকলে এখানেই টাইপ করে দাও (ছবি থেকে AI film ঠিকমতো পড়তে না পারলে টাইপ করে দেওয়াই সবচেয়ে নির্ভরযোগ্য), না থাকলে শুধু 'না' লিখো।"
     )
     return CASESTUDY_EXTRA
 
