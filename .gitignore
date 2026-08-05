@@ -22,3 +22,10 @@ __pycache__/
 # Temporary files
 repo_files.txt
 repo_dirs.txt
+
+# patch/backup ফাইল — এগুলো repo-তে থাকার দরকার নেই
+03_Bot/patch*.py
+03_Bot/*.bak
+03_Bot/*.bak.*
+03_Bot/*.bak_*
+*.zip
