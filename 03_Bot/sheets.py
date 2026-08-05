@@ -1336,3 +1336,69 @@ def get_staff_needing_break_reminder(date_str: str) -> list[dict]:
         if att.get("Check_In") and not att.get("Break_Out") and not att.get("Check_Out"):
             pending.append(staff)
     return pending
+
+
+def get_salary_summary(staff_id: str, month: str) -> dict:
+    """একজন স্টাফের নির্দিষ্ট মাসের বেতন সারাংশ রিটার্ন করে (Monthly Salary, Paid, Due)।
+    month ফরম্যাট: 'YYYY-MM'"""
+    staff_ws = _worksheet(config.SHEET_STAFF)
+    staff_records = safe_get_all_records(staff_ws)
+    staff = next(
+        (r for r in staff_records if str(r.get("Staff_ID", "")).strip() == str(staff_id).strip()),
+        None,
+    )
+    if not staff:
+        return {}
+    try:
+        monthly_salary = float(staff.get("Salary", 0) or 0)
+    except (TypeError, ValueError):
+        monthly_salary = 0
+
+    ws = _worksheet(config.SHEET_SALARY)
+    records = safe_get_all_records(ws)
+    paid = sum(
+        float(r.get("Amount", 0) or 0)
+        for r in records
+        if str(r.get("Staff_ID", "")).strip() == str(staff_id).strip()
+        and str(r.get("Month", "")).strip() == month
+    )
+    return {
+        "Staff_ID": staff_id,
+        "Full_Name": staff.get("Full_Name", ""),
+        "Telegram_ID": staff.get("Telegram_ID", ""),
+        "Monthly_Salary": monthly_salary,
+        "Paid": paid,
+        "Due": round(monthly_salary - paid, 2),
+    }
+
+
+def _next_salary_payment_id(ws) -> str:
+    ids = ws.col_values(1)[1:]
+    numbers = []
+    for v in ids:
+        if v.startswith("SP"):
+            try:
+                numbers.append(int(v[2:]))
+            except ValueError:
+                pass
+    next_num = (max(numbers) + 1) if numbers else 1
+    return f"SP{next_num:04d}"
+
+
+def add_salary_payment(staff_id: str, month: str, amount: float, paid_by: str, note: str = "") -> str:
+    """13_Salary শীটে একটা কিস্তি সেভ করে।"""
+    ws = _worksheet(config.SHEET_SALARY)
+    payment_id = _next_salary_payment_id(ws)
+    now = bd_now()
+    row = [
+        payment_id,
+        now.strftime("%Y-%m-%d"),
+        month,
+        staff_id,
+        amount,
+        paid_by,
+        now.strftime("%Y-%m-%d %I:%M %p"),
+        note,
+    ]
+    ws.append_row(row, value_input_option="RAW")
+    return payment_id

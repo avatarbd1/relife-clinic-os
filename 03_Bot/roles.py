@@ -35,6 +35,7 @@ MENU_CASE_STUDY = "📚 কেস স্টাডি"
 MENU_CLINICAL_AI = "🩺 ক্লিনিক্যাল অ্যাসিস্ট্যান্ট"
 MENU_DELETE_ENTRY = "🗑️ আজকের এন্ট্রি মুছুন"
 MENU_INVENTORY = "📦 ইনভেন্টরি"
+MENU_SALARY = "💰 স্টাফ বেতন"
 
 ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
     Role.OWNER: [
@@ -45,7 +46,7 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
         [MENU_PAYMENT, MENU_REPORTS],
         [MENU_DELETE_ENTRY],
         [MENU_AI_TOOLS],
-        [MENU_INVENTORY],
+        [MENU_INVENTORY, MENU_SALARY],
         [MENU_SETTINGS],
     ],
     Role.RECEPTIONIST: [
