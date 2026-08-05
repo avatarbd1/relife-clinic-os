@@ -2820,14 +2820,19 @@ async def _assessment_advance(update: Update, context: ContextTypes.DEFAULT_TYPE
     test = queue.pop(0)
     context.user_data["assessment_queue"] = queue
     context.user_data["assessment_current"] = test
+    info_row = [InlineKeyboardButton("ℹ️ নরমাল রেঞ্জ/টেকনিক", callback_data=f"ainfo_{test['key']}")] if test.get("info") else None
     if test["type"] == "buttons":
         buttons = [
             [InlineKeyboardButton(opt, callback_data=f"atest_{test['key']}__{opt}")]
             for opt in test["options"]
         ]
+        if info_row:
+            buttons.append(info_row)
         await send(test["label"], reply_markup=InlineKeyboardMarkup(buttons))
     else:
         await send(test["label"], reply_markup=ReplyKeyboardRemove())
+        if info_row:
+            await send("চাইলে নিচে থেকে দেখো:", reply_markup=InlineKeyboardMarkup([info_row]))
     return TPLAN_TESTS
 
 
@@ -2871,6 +2876,14 @@ async def atest_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
     answers = context.user_data.setdefault("assessment_answers", {})
     answers[current["key"]] = update.message.text.strip()
     return await _assessment_advance(update, context)
+
+
+async def atest_info_callback(update, context):
+    """টেস্টের ইনফো বাটনে চাপলে popup-এ তথ্য দেখায়, state/queue অপরিবর্তিত থাকে।"""
+    query = update.callback_query
+    key = query.data.replace("ainfo_", "", 1)
+    info = assessment_defs.TEST_INFO_BY_KEY.get(key, "এই টেস্টের জন্য তথ্য পাওয়া যায়নি।")
+    await query.answer(text=info, show_alert=True)
 
 
 async def tplan_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4820,6 +4833,7 @@ def main():
             ],
             TPLAN_TESTS: [
                 CallbackQueryHandler(atest_callback, pattern="^atest_"),
+                CallbackQueryHandler(atest_info_callback, pattern="^ainfo_"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), atest_text_receive),
             ],
             TPLAN_DIAGNOSIS: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_diagnosis)],
