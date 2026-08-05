@@ -169,11 +169,9 @@ def process_task(bridge, executor, validator, gate, logger, row):
             content=exec_result["output"],
             target_path=output_path,
         )
-        if not gate_result.get("blocked"):
-            gate.approve(row["task_id"])
-            gate_result["auto_approved"] = True
-        else:
-            gate_result["auto_approved"] = False
+        # আগে auto-approve হতো, এখন সব সময় owner রিভিউ করে approve করবে
+        # (confirm_gate.py list / preview / approve <task_id> দিয়ে)
+        gate_result["auto_approved"] = False
 
     logger.log(
         task_id=row["task_id"],
@@ -216,9 +214,7 @@ def process_task(bridge, executor, validator, gate, logger, row):
         if retry_result.get("status") == "SUCCESS":
             validation = validator.validate(retry_result["output"], output_path) if retry_result.get("output") else None
             gate_result = gate.propose(row["task_id"], retry_result["output"], output_path)
-            if not gate_result.get("blocked"):
-                gate.approve(row["task_id"])
-                gate_result["auto_approved"] = True
+            gate_result["auto_approved"] = False
 
             logger.log(
                 task_id=row["task_id"],
