@@ -1491,3 +1491,32 @@ def get_expense_total_for_month(month: str) -> float:
         if str(r.get("Date", "")).strip().startswith(month)
     )
     return round(total, 2)
+
+
+def add_learning_event(staff_id: str, full_name: str, role: str, event_type: str,
+                        item_id: str, category: str, selected: str = "", correct: str = "") -> None:
+    """18_Learning_Progress শীটে quiz/tip দেখানো বা উত্তর দেওয়ার একটা লগ-এন্ট্রি যোগ করে।
+    event_type: "Quiz" অথবা "Tip"।"""
+    ws = _worksheet(config.SHEET_LEARNING_PROGRESS)
+    now = bd_now()
+    row = [
+        staff_id,
+        full_name,
+        role,
+        now.strftime("%Y-%m-%d"),
+        event_type,
+        item_id,
+        category,
+        selected,
+        correct,
+        now.strftime("%Y-%m-%d %I:%M %p"),
+    ]
+    ws.append_row(row, value_input_option="RAW")
+    _invalidate_cache(ws)
+
+
+def get_learning_events_for_staff(staff_id: str) -> list[dict]:
+    """একজন স্টাফের সব quiz/tip ইতিহাস রিটার্ন করে।"""
+    ws = _worksheet(config.SHEET_LEARNING_PROGRESS)
+    records = safe_get_all_records(ws)
+    return [r for r in records if str(r.get("Staff_ID", "")).strip() == str(staff_id).strip()]

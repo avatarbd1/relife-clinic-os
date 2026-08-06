@@ -56,6 +56,7 @@ import intent_router
 import ai_helper
 import assessment_defs
 import clinical_ai
+from learning import learning_engine
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -935,10 +936,68 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["staff"] = staff
     role = staff.get("Role", "")
     name = staff.get("Full_Name", "")
-    await update.message.reply_text(
-        f"স্বাগতম, {name}! ({role})\nনিচের মেনু থেকে বেছে নাও 👇",
+    staff_id = staff.get("Staff_ID", "")
+
+    await update.message.reply_text(f"স্বাগতম, {name}! ({role})")
+
+    if staff_id and not learning_engine.has_seen_quiz_today(staff_id):
+        quiz = learning_engine.get_next_quiz(staff_id)
+        context.user_data["pending_quiz"] = quiz
+        buttons = [
+            [InlineKeyboardButton(opt, callback_data=f"lquiz:{i}")]
+            for i, opt in enumerate(quiz["options"])
+        ]
+        await update.message.reply_text(
+            f"🧠 আজকের প্রশ্ন:\n\n{quiz['question']}",
+            reply_markup=InlineKeyboardMarkup(buttons),
+        )
+        return
+
+    await _send_daily_tip_and_menu(update.message, context, staff)
+
+
+async def _send_daily_tip_and_menu(message, context: ContextTypes.DEFAULT_TYPE, staff: dict):
+    role = staff.get("Role", "")
+    name = staff.get("Full_Name", "")
+    staff_id = staff.get("Staff_ID", "")
+
+    if not staff_id:
+        await message.reply_text(
+            "নিচের মেনু থেকে বেছে নাও 👇", reply_markup=_menu_keyboard(role)
+        )
+        return
+
+    if learning_engine.has_seen_tip_today(staff_id):
+        tip = learning_engine.get_todays_tip(staff_id, role)
+    else:
+        tip = learning_engine.get_next_tip(staff_id, role)
+        learning_engine.record_tip_shown(staff_id, name, role, tip)
+
+    await message.reply_text(
+        f"💡 আজকের টিপ ({tip['category']}):\n{tip['text']}\n\nনিচের মেনু থেকে বেছে নাও 👇",
         reply_markup=_menu_keyboard(role),
     )
+
+
+async def learning_quiz_answer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    quiz = context.user_data.pop("pending_quiz", None)
+    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    if quiz is None or staff is None:
+        return
+    selected_index = int(query.data.split(":")[1])
+    role = staff.get("Role", "")
+    name = staff.get("Full_Name", "")
+    staff_id = staff.get("Staff_ID", "")
+
+    correct = learning_engine.record_quiz_answer(staff_id, name, role, quiz, selected_index)
+    mark = "✅ সঠিক!" if correct else "❌ ভুল।"
+    chosen = quiz["options"][selected_index]
+    await query.edit_message_text(
+        f"🧠 {quiz['question']}\n\nতোমার উত্তর: {chosen}\n{mark}\n\n📖 ব্যাখ্যা: {quiz['explanation']}"
+    )
+    await _send_daily_tip_and_menu(query.message, context, staff)
 
 
 async def go_home(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -5066,6 +5125,7 @@ def main():
     app.add_handler(cost_conv)
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_EXPENSE_TRACKER}$"), costtracker_start))
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(learning_quiz_answer_callback, pattern="^lquiz:"))
     app.add_handler(CommandHandler("search", search_patient))
     app.add_handler(
         MessageHandler(filters.Regex(f"^{roles.MENU_MY_PATIENTS}$"), my_patients)
