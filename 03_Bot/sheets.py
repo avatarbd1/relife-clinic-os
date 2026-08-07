@@ -45,7 +45,18 @@ def safe_get_all_records(ws, _retries: int = 2, _use_cache: bool = True):
             result = []
         else:
             first_row = ws.row_values(1)
-            result = [] if not first_row else ws.get_all_records()
+            if not first_row:
+                result = []
+            else:
+                dupes = {h for h in first_row if h and first_row.count(h) > 1}
+                if dupes:
+                    _sheet_warnings[ws.title] = (
+                        f"শীট '{ws.title}'-এ ডুপ্লিকেট হেডার কলাম আছে: {', '.join(dupes)} — "
+                        f"ডেটা ভুল/খালি দেখাতে পারে। হেডার রো ঠিক করো।"
+                    )
+                else:
+                    _sheet_warnings.pop(ws.title, None)
+                result = ws.get_all_records()
         _records_cache[cache_key] = (time.time(), result)
         return result
     except gspread.exceptions.APIError as e:
@@ -53,9 +64,20 @@ def safe_get_all_records(ws, _retries: int = 2, _use_cache: bool = True):
         if _retries > 0 and status in (429, 500, 503):
             time.sleep(1.5)
             return safe_get_all_records(ws, _retries - 1, _use_cache)
+        _sheet_warnings[ws.title] = f"শীট '{ws.title}' পড়তে API এরর: {e}"
         return []
-    except Exception:
+    except Exception as e:
+        _sheet_warnings[ws.title] = f"শীট '{ws.title}' পড়তে সমস্যা: {e}"
         return []
+
+
+_sheet_warnings: dict = {}
+
+
+def get_sheet_warning(sheet_name: str) -> str:
+    """সংশ্লিষ্ট শীটে সবশেষ কোনো read-warning (যেমন duplicate header) থাকলে সেটা রিটার্ন করে ও মুছে দেয়।
+    bot.py-এর কোনো ফাংশন এটা ইউজারকে দেখাতে চাইলে reply-তে জুড়ে দিতে পারে।"""
+    return _sheet_warnings.pop(sheet_name, "")
 
 
 def _invalidate_cache(ws) -> None:

@@ -5058,6 +5058,9 @@ async def costtracker_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
     lines.append(f"\nআজকের মোট: ৳{today_total:.0f}")
     lines.append(f"এই মাসের ({month_str}) মোট: ৳{month_total:.0f}")
+    warning = sheets.get_sheet_warning(config.SHEET_EXPENSES)
+    if warning:
+        lines.append(f"\n⚠️ {warning}")
     await update.message.reply_text("\n".join(lines))
 
 def main():
