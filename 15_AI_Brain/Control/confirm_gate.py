@@ -2,6 +2,7 @@
 """
 confirm_gate.py — BrainOS Phase 2, Item 2: Dry-Run + Confirm Gate
 Relife Clinic OS
+(Reorganized: Pending / Approved / Rejected lifecycle folders)
 """
 
 import os
@@ -20,6 +21,12 @@ BLOCKED_PREFIX = "03_Bot"
 PROPOSALS_DIR = Path("15_AI_Brain/Proposals")
 GATE_LOG = Path("15_AI_Brain/Logs/confirm_gate.log")
 
+STATUS_SUBDIR = {
+    "PENDING": "Pending",
+    "APPROVED": "Approved",
+    "REJECTED": "Rejected",
+}
+
 
 def _is_blocked(target_path: str) -> bool:
     return target_path.replace("\\", "/").lstrip("./").startswith(BLOCKED_PREFIX)
@@ -34,10 +41,17 @@ def _log(entry: Dict):
 
 class ConfirmGate:
     def __init__(self):
-        PROPOSALS_DIR.mkdir(parents=True, exist_ok=True)
+        for sub in STATUS_SUBDIR.values():
+            (PROPOSALS_DIR / sub).mkdir(parents=True, exist_ok=True)
 
-    def _proposal_path(self, task_id: str) -> Path:
-        return PROPOSALS_DIR / f"{task_id}.proposal.json"
+    def _proposal_path(self, task_id: str, status: str = None) -> Path:
+        if status:
+            return PROPOSALS_DIR / STATUS_SUBDIR[status] / f"{task_id}.proposal.json"
+        for sub in ("Pending", "Approved", "Rejected"):
+            p = PROPOSALS_DIR / sub / f"{task_id}.proposal.json"
+            if p.exists():
+                return p
+        return PROPOSALS_DIR / STATUS_SUBDIR["PENDING"] / f"{task_id}.proposal.json"
 
     def propose(self, task_id: str, content: str, target_path: str) -> Dict:
         proposal = {
@@ -49,7 +63,7 @@ class ConfirmGate:
             "created_at": datetime.now().isoformat(),
         }
 
-        proposal_path = self._proposal_path(task_id)
+        proposal_path = self._proposal_path(task_id, status="PENDING")
         proposal_path.write_text(json.dumps(proposal, indent=2, ensure_ascii=False), encoding="utf-8")
 
         _log({"action": "PROPOSE", "task_id": task_id, "target_path": target_path,
@@ -59,7 +73,7 @@ class ConfirmGate:
 
     def list_pending(self) -> list:
         pending = []
-        for f in PROPOSALS_DIR.glob("*.proposal.json"):
+        for f in (PROPOSALS_DIR / STATUS_SUBDIR["PENDING"]).glob("*.proposal.json"):
             data = json.loads(f.read_text(encoding="utf-8"))
             if data.get("status") == "PENDING":
                 pending.append(data)
@@ -72,9 +86,9 @@ class ConfirmGate:
         return json.loads(p.read_text(encoding="utf-8"))
 
     def approve(self, task_id: str) -> Dict:
-        proposal_path = self._proposal_path(task_id)
+        proposal_path = self._proposal_path(task_id, status="PENDING")
         if not proposal_path.exists():
-            return {"status": "ERROR", "error": f"No proposal found for {task_id}"}
+            return {"status": "ERROR", "error": f"No pending proposal found for {task_id}"}
 
         data = json.loads(proposal_path.read_text(encoding="utf-8"))
 
@@ -86,7 +100,7 @@ class ConfirmGate:
                 "message": (
                     f"'{data['target_path']}' হলো {BLOCKED_PREFIX}/ এর ভেতরে — "
                     "এটা কখনো script দিয়ে auto-apply হবে না। owner নিজে হাতে "
-                    "review করে বসাতে হবে। Proposal এখনো Proposals/ ফোল্ডারে "
+                    "review করে বসাতে হবে। Proposal এখনো Proposals/Pending/ ফোল্ডারে "
                     "সংরক্ষিত আছে, content দেখতে preview() ব্যবহার করুন।"
                 ),
             }
@@ -100,21 +114,27 @@ class ConfirmGate:
 
         data["status"] = "APPROVED"
         data["approved_at"] = datetime.now().isoformat()
-        proposal_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+        new_path = self._proposal_path(task_id, status="APPROVED")
+        new_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        proposal_path.unlink()
 
         _log({"action": "APPROVE", "task_id": task_id, "target_path": data["target_path"]})
 
         return {"status": "APPLIED", "task_id": task_id, "target_path": data["target_path"]}
 
     def reject(self, task_id: str) -> Dict:
-        proposal_path = self._proposal_path(task_id)
+        proposal_path = self._proposal_path(task_id, status="PENDING")
         if not proposal_path.exists():
-            return {"status": "ERROR", "error": f"No proposal found for {task_id}"}
+            return {"status": "ERROR", "error": f"No pending proposal found for {task_id}"}
 
         data = json.loads(proposal_path.read_text(encoding="utf-8"))
         data["status"] = "REJECTED"
         data["rejected_at"] = datetime.now().isoformat()
-        proposal_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+        new_path = self._proposal_path(task_id, status="REJECTED")
+        new_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        proposal_path.unlink()
 
         _log({"action": "REJECT", "task_id": task_id, "target_path": data["target_path"]})
 
@@ -189,11 +209,17 @@ if __name__ == "__main__":
         print(f"\nApprove normal → {r1['status']}")
         assert r1["status"] == "APPLIED"
         assert Path("15_AI_Brain/Outputs/GATE-TEST-NORMAL.md").exists()
+        assert Path("15_AI_Brain/Proposals/Approved/GATE-TEST-NORMAL.proposal.json").exists()
+        assert not Path("15_AI_Brain/Proposals/Pending/GATE-TEST-NORMAL.proposal.json").exists()
 
         r2 = gate.approve("GATE-TEST-BLOCKED")
         print(f"Approve 03_Bot target → {r2['status']}")
         assert r2["status"] == "MANUAL_REVIEW_REQUIRED"
         assert not Path("03_Bot/should_never_write.py").exists()
+        assert Path("15_AI_Brain/Proposals/Pending/GATE-TEST-BLOCKED.proposal.json").exists()
 
         gate.reject("GATE-TEST-BLOCKED")
+        assert Path("15_AI_Brain/Proposals/Rejected/GATE-TEST-BLOCKED.proposal.json").exists()
+        assert not Path("15_AI_Brain/Proposals/Pending/GATE-TEST-BLOCKED.proposal.json").exists()
+
         print("\n✅ ALL SELF-TESTS PASSED")

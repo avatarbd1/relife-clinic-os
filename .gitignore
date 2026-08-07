@@ -29,3 +29,14 @@ repo_dirs.txt
 03_Bot/*.bak.*
 03_Bot/*.bak_*
 *.zip
+
+# --------------------
+# AI Brain — Runtime Generated
+# Never commit (regenerable without information loss — Golden Rule)
+# --------------------
+15_AI_Brain/Logs/*.jsonl
+15_AI_Brain/Monitor/HEALTH_REPORT.json
+15_AI_Brain/Monitor/HEALTH_REPORT.md
+15_AI_Brain/Outputs/
+15_AI_Brain/Proposals/Pending/
+15_AI_Brain/Proposals/Rejected/
