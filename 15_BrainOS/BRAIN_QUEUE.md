@@ -9,8 +9,9 @@ BrainOS centralized task queue. TASK_ROUTER.py takes tasks from here, PROVIDER_R
 | TASK_ID | Type | Priority | Status | Assigned | Created |
 |---------|------|----------|--------|----------|---------|
 
-| TASK-006 | Bug Fix | NORMAL | QUEUED | groq | 2026-08-05 19:07 |
 ## Completed
+| TASK-007 | Bug Fix | HIGH | DONE | groq | 2026-08-05 20:17 |
+| TASK-006 | Bug Fix | NORMAL | DONE | groq | 2026-08-05 19:07 |
 | TASK_ID | Type | Priority | Status | Assigned | Created |
 |---------|------|----------|--------|----------|---------|
 | BOOT-001 | Bootstrap | CRITICAL | DONE | DeepSeek (user) | 2026-07-25 |

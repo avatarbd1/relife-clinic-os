@@ -1469,6 +1469,7 @@ def add_expense(category: str, amount: float, added_by: str, note: str = "") -> 
         note,
     ]
     ws.append_row(row, value_input_option="RAW")
+    _invalidate_cache(ws)
     return expense_id
 
 

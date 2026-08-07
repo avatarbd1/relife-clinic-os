@@ -90,10 +90,45 @@ PROMPT_TEMPLATES = {
 }
 
 
-def _build_prompt(task_type: str, description: str = "") -> str:
+MAX_FILE_CHARS = 40000  # প্রায় ১০,০০০ টোকেন, Groq-এর জন্য নিরাপদ সীমা
+
+def _load_target_file_context(target_file: str) -> str:
+    """target_file থাকলে তার আসল কোড পড়ে prompt-এ জুড়ে দেওয়ার
+    জন্য একটা টেক্সট ব্লক বানায়। খুব বড় ফাইল হলে শুরুর অংশ + সতর্কবার্তা।"""
+    if not target_file:
+        return ""
+    full_path = os.path.join(REPO_ROOT, target_file)
+    if not os.path.exists(full_path):
+        return ""
+    try:
+        with open(full_path, "r", encoding="utf-8") as f:
+            file_content = f.read()
+    except Exception:
+        return ""
+
+    truncated_note = ""
+    if len(file_content) > MAX_FILE_CHARS:
+        file_content = file_content[:MAX_FILE_CHARS]
+        truncated_note = (
+            "\n\n[সতর্কতা: ফাইলটি অনেক বড়, শুধু প্রথম অংশ দেখানো হয়েছে। "
+            "যদি প্রাসঙ্গিক অংশ এখানে না থাকে, output-এ স্পষ্ট করে বলো যে "
+            "আরও context দরকার।]"
+        )
+
+    return (
+        f"\n\nবর্তমান ফাইল ({target_file}) নিচে দেওয়া হলো — এই ফাইলের প্রেক্ষাপটে "
+        f"কাজ করো। শুধু পরিবর্তিত/নতুন অংশটুকু স্পষ্ট comment সহ দাও (পুরো ফাইল "
+        f"আবার লেখার দরকার নেই), এবং ঠিক কোন ফাংশন/লাইনের কাছে বসাতে হবে তা "
+        f"উল্লেখ করো:\n\n```python\n{file_content}\n```{truncated_note}"
+    )
+
+
+def _build_prompt(task_type: str, description: str = "", target_file: str = "") -> str:
     template = PROMPT_TEMPLATES.get(task_type, PROMPT_TEMPLATES["Default"])
     desc = description or f"Complete the {task_type} task as per project standards."
-    return template.format(description=desc)
+    prompt = template.format(description=desc)
+    prompt += _load_target_file_context(target_file)
+    return prompt
 
 
 def _output_path_for(task_id: str, task_type: str) -> str:
@@ -146,7 +181,7 @@ def process_task(bridge, executor, validator, gate, logger, row):
     in_progress_line = bridge.set_queue_row_status(row["raw_line"], "IN-PROGRESS")
     bridge.log_memory(f"DISPATCH: {row['task_id']} ({row['type']}, {row['priority']}) -> IN-PROGRESS")
 
-    prompt = _build_prompt(row["type"], row.get("description", ""))
+    prompt = _build_prompt(row["type"], row.get("description", ""), row.get("target_file", ""))
     output_path = _output_path_for(row["task_id"], row["type"])
 
     start_time = time.time()

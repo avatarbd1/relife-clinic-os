@@ -194,8 +194,22 @@ class TaskRouterBridge:
                     "status": status,
                     "assigned": assigned,
                     "created": created,
+                    "target_file": self._load_target_file(task_id),
                 })
         return rows
+
+    def _load_target_file(self, task_id):
+        """TASK_DESCRIPTIONS.json থেকে এই task_id-এর target_file পড়ে (থাকলে)।"""
+        import json
+        desc_path = os.path.join(REPO_ROOT, "15_BrainOS", "TASK_DESCRIPTIONS.json")
+        if not os.path.exists(desc_path):
+            return ""
+        try:
+            with open(desc_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return data.get(task_id, {}).get("target_file", "")
+        except Exception:
+            return ""
 
     def set_queue_row_status(self, raw_line, new_status):
         """Update just the status field of a row still inside Active Queue

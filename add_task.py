@@ -51,11 +51,23 @@ ALLOWED_TYPES = [
 ]
 ALLOWED_PRIORITIES = ["CRITICAL", "HIGH", "NORMAL", "LOW"]
 
+TARGET_FILES = [
+    "03_Bot/bot.py", "03_Bot/sheets.py", "03_Bot/roles.py",
+    "03_Bot/config.py", "03_Bot/staff_ai_query.py",
+    "03_Bot/intent_router.py", "03_Bot/calendar_helper.py",
+    "03_Bot/clinical_ai.py", "03_Bot/case_study_ai.py",
+    "03_Bot/drive.py", "03_Bot/text_extract.py", "",
+]
+
 CLASSIFY_PROMPT = """তুমি একটা সফটওয়্যার প্রজেক্টের টাস্ক ক্লাসিফায়ার। ইউজার নিচে একটা
 সাধারণ বাক্যে কিছু একটা ফিক্স/তৈরি করতে বলেছে। এটা বিশ্লেষণ করে শুধু নিচের JSON
 ফরম্যাটে উত্তর দাও, অন্য কোনো লেখা/ব্যাখ্যা/মার্কডাউন ফেন্স ছাড়া:
 
-{{"type": "<এই লিস্ট থেকে একটা: Documentation, Planning, Python Coding, Bug Fix, Refactor, Testing, Automation, Architecture, Business Logic>", "priority": "<CRITICAL, HIGH, NORMAL, LOW এর একটা>", "description": "<ইউজার আসলে কী চেয়েছে তার পরিষ্কার, বিস্তারিত ইংরেজি/বাংলা বর্ণনা, যাতে অন্য কোনো ডেভেলপার/AI প্রেক্ষাপট ছাড়াই বুঝতে পারে কী করতে হবে>"}}
+{{"type": "<এই লিস্ট থেকে একটা: Documentation, Planning, Python Coding, Bug Fix, Refactor, Testing, Automation, Architecture, Business Logic>", "priority": "<CRITICAL, HIGH, NORMAL, LOW এর একটা>", "description": "<ইউজার আসলে কী চেয়েছে তার পরিষ্কার, বিস্তারিত ইংরেজি/বাংলা বর্ণনা, যাতে অন্য কোনো ডেভেলপার/AI প্রেক্ষাপট ছাড়াই বুঝতে পারে কী করতে হবে>", "target_file": "<এই লিস্ট থেকে ঠিক একটা path হুবহু কপি করো যেটা এই কাজের সাথে সবচেয়ে সম্পর্কিত: {target_files}. যদি কোনোটাই স্পষ্টভাবে সম্পর্কিত না হয় (যেমন pure documentation/planning), খালি স্ট্রিং \"\" দাও>"}}
+
+মেনু/বাটন/কনভারসেশন সংক্রান্ত সমস্যা হলে সাধারণত target_file হবে "03_Bot/bot.py"।
+বেতন/হাজিরা/ডেটা স্টোরেজ সংক্রান্ত হলে "03_Bot/sheets.py"।
+স্টাফ পারমিশন/রোল সংক্রান্ত হলে "03_Bot/roles.py"।
 
 ইউজারের কথা: "{text}"
 """
@@ -64,12 +76,12 @@ CLASSIFY_PROMPT = """তুমি একটা সফটওয়্যার �
 def classify(text):
     if not GROQ_API_KEY:
         print("⚠️  GROQ_API_KEY পাওয়া যায়নি (.env চেক করো) — ডিফল্ট ভ্যালু দিয়ে এগোচ্ছি।")
-        return {"type": "Bug Fix", "priority": "NORMAL", "description": text}
+        return {"type": "Bug Fix", "priority": "NORMAL", "description": text, "target_file": ""}
 
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
     payload = {
         "model": GROQ_MODEL,
-        "messages": [{"role": "user", "content": CLASSIFY_PROMPT.format(text=text)}],
+        "messages": [{"role": "user", "content": CLASSIFY_PROMPT.format(text=text, target_files=", ".join(repr(t) for t in TARGET_FILES))}],
         "temperature": 0,
     }
     try:
@@ -81,7 +93,7 @@ def classify(text):
         data = json.loads(out)
     except Exception as e:
         print(f"⚠️  AI ক্লাসিফিকেশন ফেইল হয়েছে ({e}) — ডিফল্ট ভ্যালু দিয়ে এগোচ্ছি।")
-        return {"type": "Bug Fix", "priority": "NORMAL", "description": text}
+        return {"type": "Bug Fix", "priority": "NORMAL", "description": text, "target_file": ""}
 
     task_type = data.get("type", "Bug Fix")
     if task_type not in ALLOWED_TYPES:
@@ -90,10 +102,13 @@ def classify(text):
     if priority not in ALLOWED_PRIORITIES:
         priority = "NORMAL"
     description = data.get("description") or text
-    return {"type": task_type, "priority": priority, "description": description}
+    target_file = data.get("target_file", "")
+    if target_file not in TARGET_FILES:
+        target_file = ""
+    return {"type": task_type, "priority": priority, "description": description, "target_file": target_file}
 
 
-def save_description(task_id, description, original_text):
+def save_description(task_id, description, original_text, target_file=""):
     """description আলাদা ফাইলে সেভ করি, যাতে BRAIN_QUEUE.md-এর টেবিল
     ফরম্যাট নষ্ট না হয়, কিন্তু dispatcher পরে পুরো বর্ণনা পড়তে পারে।"""
     path = os.path.join(REPO_ROOT, "15_BrainOS", "TASK_DESCRIPTIONS.json")
@@ -107,6 +122,7 @@ def save_description(task_id, description, original_text):
     data[task_id] = {
         "description": description,
         "original_text": original_text,
+        "target_file": target_file,
         "created_at": datetime.now().isoformat(),
     }
     with open(path, "w") as f:
@@ -133,7 +149,7 @@ def main():
     )
 
     if task.get("status") == "PROVIDER_ASSIGNED":
-        save_description(task["task_id"], result["description"], text)
+        save_description(task["task_id"], result["description"], text, result.get("target_file", ""))
         print(f"\n✅ টাস্ক তৈরি হয়েছে: {task['task_id']}")
         print(f"   BRAIN_QUEUE.md-এ QUEUED অবস্থায় যোগ হয়েছে।")
         print(f"   Provider বরাদ্দ: {task.get('provider')}")
