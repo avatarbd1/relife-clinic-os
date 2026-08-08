@@ -24,6 +24,19 @@ class ClinicDataAdapter:
         }
 
 
+    def unified_data(self):
+        """Single source for downstream AI engines and future analytics."""
+        snapshot = self.reader.read_unified_snapshot()
+        return {
+            "generated": self.generated,
+            "schema_version": "relife-uda-v1",
+            "domains": snapshot,
+            "status": "connected" if any(
+                item.get("status") == "connected" for item in snapshot.values()
+            ) else "unavailable",
+        }
+
+
     def staff_data(self):
 
         data = self.reader.read_staff()

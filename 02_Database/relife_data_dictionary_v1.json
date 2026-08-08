@@ -1,0 +1,40 @@
+{
+  "schema_version": "relife-uda-v1",
+  "identity": {
+    "Organization_ID": "Owning organization identifier",
+    "Clinic_ID": "Clinic identifier used to namespace records",
+    "Branch_ID": "Physical or operational branch identifier",
+    "Record_ID": "Cross-system record identity; legacy business IDs remain in their original columns",
+    "Encounter_ID": "Clinical encounter identity; v1 treatment rows derive it from Treatment_ID",
+    "Provider_ID": "Stable staff/provider identity when available"
+  },
+  "provenance": {
+    "Source_System": "System that produced the record",
+    "Source_Type": "human_entry, legacy_record, import, or explicitly declared AI workflow type",
+    "AI_Generated": "TRUE only when AI produced the stored content",
+    "Human_Verified": "TRUE only when verification is actually recorded",
+    "Schema_Version": "Data contract version",
+    "Provenance_Timestamp": "Timestamp when provenance metadata was created"
+  },
+  "domains": {
+    "patient": {"sheet": "02_Patients", "key": "Patient_ID"},
+    "attendance": {"sheet": "03_Attendance", "key": "Attendance_ID"},
+    "appointment": {"sheet": "04_Appointments", "key": "Appointment_ID", "patient_link": "Patient_ID"},
+    "treatment": {"sheet": "05_Treatments", "key": "Treatment_ID", "patient_link": "Patient_ID", "encounter_link": "Encounter_ID"},
+    "payment": {"sheet": "06_Payments", "key": "Receipt_No", "patient_link": "Patient_ID"},
+    "expense": {"sheet": "07_Expenses", "key": "Expense_ID"},
+    "staff": {"sheet": "08_Staff", "key": "Staff_ID"},
+    "inventory": {"sheet": "09_Inventory", "key": "Item_ID"},
+    "assessment": {"sheet": "10_Assessments", "key": "Assessment_ID", "patient_link": "Patient_ID"},
+    "package": {"sheet": "11_Packages", "key": "Package_ID", "patient_link": "Patient_ID"},
+    "treatment_plan": {"sheet": "12_Treatment_Plans", "key": "Plan_ID", "patient_link": "Patient_ID"},
+    "salary": {"sheet": "13_Salary", "key": "Salary_Payment_ID", "provider_link": "Staff_ID"},
+    "report": {"sheet": "14_Reports", "key": "Report_ID", "patient_link": "Patient_ID"},
+    "case_study": {"sheet": "15_Case_Studies", "key": "Case_Study_ID", "patient_link": "Patient_ID"},
+    "delete_log": {"sheet": "16_Delete_Log"},
+    "inventory_log": {"sheet": "17_Inventory_Log"},
+    "learning": {"sheet": "18_Learning_Progress", "provider_link": "Staff_ID"},
+    "consent": {"sheet": "19_Consent", "key": "Consent_ID", "patient_link": "Patient_ID"},
+    "audit": {"sheet": "20_Data_Audit", "key": "Audit_ID"}
+  }
+}

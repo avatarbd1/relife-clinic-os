@@ -14,6 +14,27 @@ from config.brain_config import BrainConfig
 
 class GoogleSheetReader:
 
+    DOMAIN_SHEETS = {
+        "patients": "02_Patients",
+        "attendance": "03_Attendance",
+        "appointments": "04_Appointments",
+        "treatments": "05_Treatments",
+        "payments": "06_Payments",
+        "expenses": "07_Expenses",
+        "staff": "08_Staff",
+        "inventory": "09_Inventory",
+        "assessments": "10_Assessments",
+        "packages": "11_Packages",
+        "treatment_plans": "12_Treatment_Plans",
+        "salary": "13_Salary",
+        "reports": "14_Reports",
+        "case_studies": "15_Case_Studies",
+        "inventory_log": "17_Inventory_Log",
+        "learning_progress": "18_Learning_Progress",
+        "consent": "19_Consent",
+        "data_audit": "20_Data_Audit",
+    }
+
     def __init__(self):
 
         load_dotenv()
@@ -60,52 +81,53 @@ class GoogleSheetReader:
         ]
 
 
-    def read_patients(self):
+    def read_domain(self, domain):
+        """Read any registered Clinic OS domain through one stable AI interface."""
+        if domain not in self.DOMAIN_SHEETS:
+            raise ValueError(f"Unknown Relife data domain: {domain}")
+        tab = self.DOMAIN_SHEETS[domain]
+        try:
+            records = self._get_records(tab)
+            return {
+                "domain": domain,
+                "sheet": tab,
+                "records": len(records),
+                "data": records,
+                "status": "connected",
+            }
+        except gspread.exceptions.WorksheetNotFound:
+            # Consent/audit tabs are introduced by UDA v1 and may not have been
+            # migrated yet. Missing optional domains must not crash AI Brain.
+            return {
+                "domain": domain,
+                "sheet": tab,
+                "records": 0,
+                "data": [],
+                "status": "not_migrated",
+            }
 
-        records = self._get_records("02_Patients")
 
+    def read_unified_snapshot(self):
         return {
-            "sheet": "02_Patients",
-            "records": len(records),
-            "data": records,
-            "status": "connected"
+            domain: self.read_domain(domain)
+            for domain in self.DOMAIN_SHEETS
         }
+
+
+    def read_patients(self):
+        return self.read_domain("patients")
 
 
     def read_staff(self):
-
-        records = self._get_records("08_Staff")
-
-        return {
-            "sheet": "08_Staff",
-            "records": len(records),
-            "data": records,
-            "status": "connected"
-        }
+        return self.read_domain("staff")
 
 
     def read_payments(self):
-
-        records = self._get_records("06_Payments")
-
-        return {
-            "sheet": "06_Payments",
-            "records": len(records),
-            "data": records,
-            "status": "connected"
-        }
+        return self.read_domain("payments")
 
 
     def read_expenses(self):
-
-        records = self._get_records("07_Expenses")
-
-        return {
-            "sheet": "07_Expenses",
-            "records": len(records),
-            "data": records,
-            "status": "connected"
-        }
+        return self.read_domain("expenses")
 
 
 if __name__ == "__main__":

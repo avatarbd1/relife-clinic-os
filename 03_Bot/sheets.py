@@ -26,6 +26,14 @@ def _safe_float(value):
         return 0.0
 
 
+def _safe_bool(value, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None or str(value).strip() == "":
+        return default
+    return str(value).strip().lower() in {"1", "true", "yes", "y"}
+
+
 _records_cache = {}  # {worksheet_title: (timestamp, records)}
 _RECORDS_CACHE_TTL = 2.0  # সেকেন্ড — একই ড্যাশবোর্ড রেন্ডারের মধ্যে বারবার একই শীট না পড়ার জন্য
 
@@ -91,6 +99,7 @@ from datetime import datetime
 
 import config
 from config import bd_now
+from data_contract import apply_to_headers, encounter_id_from_treatment, metadata, new_record_id
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -123,6 +132,37 @@ def _worksheet(name: str):
     if name not in _worksheet_cache:
         _worksheet_cache[name] = _get_spreadsheet().worksheet(name)
     return _worksheet_cache[name]
+
+
+def _append_unified_row(
+    ws,
+    row: list,
+    record_type: str,
+    record_id: str = "",
+    *,
+    encounter_id: str = "",
+    provider_id: str = "",
+    source_type: str = "human_entry",
+    ai_generated: bool = False,
+    human_verified: bool = True,
+    value_input_option: str = "RAW",
+) -> None:
+    """Append a legacy-compatible row plus Unified Data Architecture metadata."""
+    headers = ws.row_values(1)
+    envelope = metadata(
+        record_type,
+        legacy_record_id=record_id,
+        encounter_id=encounter_id,
+        provider_id=provider_id,
+        source_type=source_type,
+        ai_generated=ai_generated,
+        human_verified=human_verified,
+    )
+    ws.append_row(
+        apply_to_headers(headers, row, envelope) if headers else row,
+        value_input_option=value_input_option,
+    )
+    _invalidate_cache(ws)
 
 
 def _find_inventory_row(item_name: str):
@@ -172,9 +212,12 @@ def adjust_inventory_stock(item_name: str, change: float, reason: str, staff: st
 
         try:
             log_ws = _worksheet(config.SHEET_INVENTORY_LOG)
-            log_ws.append_row(
+            _append_unified_row(
+                log_ws,
                 [now.strftime("%Y-%m-%d %I:%M %p"), item_id, item_name, change, reason, staff, new_balance],
-                value_input_option="RAW",
+                "inventory_log",
+                new_record_id("inventory_log"),
+                provider_id=staff,
             )
         except Exception as e:
             print(f"⚠️ Inventory log লিখতে সমস্যা হয়েছে: {e}")
@@ -262,7 +305,7 @@ def add_patient(data: dict, created_by: str) -> str:
         now.strftime("%Y-%m-%d %I:%M %p"),
         now.strftime("%Y-%m-%d %I:%M %p"),
     ]
-    ws.append_row(row, value_input_option="RAW")
+    _append_unified_row(ws, row, "patient", patient_id, provider_id=created_by)
     new_row_number = len(ws.get_all_values())
     phone_val = data.get("Phone", "")
     alt_phone_val = data.get("Alternative_Phone", "")
@@ -355,7 +398,10 @@ def add_appointment(data: dict, created_by: str) -> str:
         "Scheduled",
         data.get("Remarks", ""),
     ]
-    ws.append_row(row, value_input_option="RAW")
+    _append_unified_row(
+        ws, row, "appointment", appointment_id,
+        provider_id=created_by,
+    )
     return appointment_id
 
 
@@ -435,7 +481,10 @@ def attendance_check_in(staff: dict) -> str:
         status,
         "",
     ]
-    ws.append_row(row, value_input_option="RAW")
+    _append_unified_row(
+        ws, row, "attendance", attendance_id,
+        provider_id=staff_id,
+    )
     return time_str
 
 
@@ -604,7 +653,7 @@ def add_package(patient_id: str, patient_name: str, total_sessions: int, package
         package_amount, paid_amount, due_amount,
         bd_now().strftime("%Y-%m-%d"), status,
     ]
-    ws.append_row(row)
+    _append_unified_row(ws, row, "package", package_id)
     return package_id
 
 
@@ -707,7 +756,10 @@ def add_payment(data: dict) -> str:
         data.get("Received_By", ""),
         data.get("Remarks", ""),
     ]
-    ws.append_row(row)
+    _append_unified_row(
+        ws, row, "payment", receipt_no,
+        provider_id=str(data.get("Received_By", "")),
+    )
     return receipt_no
 
 
@@ -795,17 +847,23 @@ def delete_payment(receipt_no: str, deleted_by: str) -> dict | None:
     # ৪) Delete_Log শীটে রেকর্ড রাখা
     try:
         log_ws = _worksheet(getattr(config, "SHEET_DELETE_LOG", "Delete_Log"))
-        log_ws.append_row([
-            bd_now().strftime("%Y-%m-%d %I:%M %p"),
-            deleted_by,
-            "Payment/Session",
-            entry["Receipt_No"],
-            entry["Patient_ID"],
-            entry["Patient_Name"],
-            entry["Amount"],
-            sessions,
-            json.dumps(entry, ensure_ascii=False),
-        ])
+        _append_unified_row(
+            log_ws,
+            [
+                bd_now().strftime("%Y-%m-%d %I:%M %p"),
+                deleted_by,
+                "Payment/Session",
+                entry["Receipt_No"],
+                entry["Patient_ID"],
+                entry["Patient_Name"],
+                entry["Amount"],
+                sessions,
+                json.dumps(entry, ensure_ascii=False),
+            ],
+            "delete_log",
+            new_record_id("delete_log"),
+            provider_id=deleted_by,
+        )
     except Exception as e:
         print(f"⚠️ Delete_Log-এ লেখা ব্যর্থ হয়েছে (এন্ট্রি তবুও মোছা হয়েছে): {e}")
 
@@ -909,6 +967,16 @@ def add_treatment_note(data: dict, created_by: str) -> str:
     payload.setdefault("Date", bd_now().strftime("%Y-%m-%d"))
     payload.setdefault("Created_By", created_by)
     payload.setdefault("_created_by", created_by)
+    envelope = metadata(
+        "treatment",
+        legacy_record_id=treatment_id,
+        encounter_id=encounter_id_from_treatment(treatment_id),
+        provider_id=created_by,
+        source_type=str(payload.get("Source_Type", "human_entry") or "human_entry"),
+        ai_generated=_safe_bool(payload.get("AI_Generated"), False),
+        human_verified=_safe_bool(payload.get("Human_Verified"), True),
+    )
+    payload.update(envelope)
 
     headers = ws.row_values(1)
     if headers:
@@ -1000,7 +1068,10 @@ def add_assessment(patient_id: str, category: str, test_data: dict, created_by: 
         created_by,
         now.strftime("%Y-%m-%d %I:%M %p"),
     ]
-    ws.append_row(row, value_input_option="RAW")
+    _append_unified_row(
+        ws, row, "assessment", assessment_id,
+        provider_id=created_by,
+    )
     return assessment_id
 
 
@@ -1041,7 +1112,10 @@ def add_treatment_plan(data: dict, created_by: str) -> str:
         bd_now().strftime("%Y-%m-%d"),
         "Active",
     ]
-    ws.append_row(row, value_input_option="RAW")
+    _append_unified_row(
+        ws, row, "treatment_plan", plan_id,
+        provider_id=created_by,
+    )
     _invalidate_cache(ws)
     return plan_id
 
@@ -1175,7 +1249,10 @@ def add_report(data: dict, uploaded_by: str) -> str:
         uploaded_by,
         data.get("File_Drive_Link", ""),
     ]
-    ws.append_row(row, value_input_option="RAW")
+    _append_unified_row(
+        ws, row, "report", report_id,
+        provider_id=uploaded_by,
+    )
     return report_id
 
 
@@ -1298,7 +1375,12 @@ def add_case_study_lesson(session_id: str, patient_id: str, patient_name: str,
         created_by,
         bd_now().strftime("%Y-%m-%d %I:%M %p"),
     ]
-    ws.append_row(row, value_input_option="RAW")
+    _append_unified_row(
+        ws, row, "case_study", case_study_id,
+        provider_id=created_by,
+        source_type="human_or_ai_lesson",
+        human_verified=False,
+    )
     return case_study_id
 
 
@@ -1456,7 +1538,10 @@ def add_salary_payment(staff_id: str, month: str, amount: float, paid_by: str, n
         now.strftime("%Y-%m-%d %I:%M %p"),
         note,
     ]
-    ws.append_row(row, value_input_option="RAW")
+    _append_unified_row(
+        ws, row, "salary_payment", payment_id,
+        provider_id=paid_by,
+    )
     return payment_id
 
 
@@ -1490,7 +1575,10 @@ def add_expense(category: str, amount: float, added_by: str, note: str = "") -> 
         now.strftime("%Y-%m-%d %I:%M %p"),
         note,
     ]
-    ws.append_row(row, value_input_option="RAW")
+    _append_unified_row(
+        ws, row, "expense", expense_id,
+        provider_id=added_by,
+    )
     _invalidate_cache(ws)
     return expense_id
 
@@ -1534,7 +1622,10 @@ def add_learning_event(staff_id: str, full_name: str, role: str, event_type: str
         correct,
         now.strftime("%Y-%m-%d %I:%M %p"),
     ]
-    ws.append_row(row, value_input_option="RAW")
+    _append_unified_row(
+        ws, row, "learning_event", item_id,
+        provider_id=staff_id,
+    )
     _invalidate_cache(ws)
 
 
@@ -1543,3 +1634,77 @@ def get_learning_events_for_staff(staff_id: str) -> list[dict]:
     ws = _worksheet(config.SHEET_LEARNING_PROGRESS)
     records = safe_get_all_records(ws)
     return [r for r in records if str(r.get("Staff_ID", "")).strip() == str(staff_id).strip()]
+
+
+# ===== Unified consent + audit ledgers (UDA v1) =====
+
+def record_patient_consent(
+    patient_id: str,
+    purpose: str,
+    status: str,
+    consent_version: str,
+    recorded_by: str,
+    notes: str = "",
+) -> str:
+    """Record an explicit consent decision; never infer consent from treatment data."""
+    ws = _worksheet(config.SHEET_CONSENT)
+    consent_id = new_record_id("CONSENT")
+    now = bd_now().strftime("%Y-%m-%d %I:%M %p")
+    withdrawn_at = now if str(status).strip().lower() == "withdrawn" else ""
+    row = [
+        consent_id,
+        patient_id,
+        purpose,
+        status,
+        consent_version,
+        recorded_by,
+        now,
+        withdrawn_at,
+        notes,
+    ]
+    _append_unified_row(
+        ws, row, "consent", consent_id,
+        provider_id=recorded_by,
+    )
+    return consent_id
+
+
+def get_patient_consents(patient_id: str) -> list[dict]:
+    ws = _worksheet(config.SHEET_CONSENT)
+    return [
+        row for row in safe_get_all_records(ws)
+        if str(row.get("Patient_ID", "")).strip() == str(patient_id).strip()
+    ]
+
+
+def add_data_audit_event(
+    actor_id: str,
+    action: str,
+    entity_type: str,
+    entity_id: str,
+    *,
+    patient_id: str = "",
+    before_value: str = "",
+    after_value: str = "",
+    reason: str = "",
+) -> str:
+    """Append an audit event without changing the target business record."""
+    ws = _worksheet(config.SHEET_DATA_AUDIT)
+    audit_id = new_record_id("AUDIT")
+    row = [
+        audit_id,
+        bd_now().strftime("%Y-%m-%d %I:%M %p"),
+        actor_id,
+        action,
+        entity_type,
+        entity_id,
+        patient_id,
+        before_value,
+        after_value,
+        reason,
+    ]
+    _append_unified_row(
+        ws, row, "audit", audit_id,
+        provider_id=actor_id,
+    )
+    return audit_id

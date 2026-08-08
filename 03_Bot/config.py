@@ -55,3 +55,6 @@ SHEET_INVENTORY_LOG = "17_Inventory_Log"
 SHEET_SALARY = "13_Salary"
 SHEET_EXPENSES = "07_Expenses"
 SHEET_LEARNING_PROGRESS = "18_Learning_Progress"
+
+SHEET_CONSENT = "19_Consent"
+SHEET_DATA_AUDIT = "20_Data_Audit"
