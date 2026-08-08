@@ -21,6 +21,8 @@ from task_executor import TaskExecutor
 from output_validator import OutputValidator
 from confirm_gate import ConfirmGate
 from task_result_logger import TaskResultLogger
+from alert_notifier import send_alert
+from concurrency_lock import BrainOSLock, LockBusyError
 from datetime import datetime
 
 MAX_TASKS_PER_RUN = 3
@@ -175,6 +177,12 @@ def process_task(bridge, executor, validator, gate, logger, row):
             fallback_used=result.get("fallback_used", False),
             retry_count=result.get("retry_count", 0),
         )
+        send_alert(
+            "Provider routing failed",
+            str(result.get("error", "Unknown routing error")),
+            task_id=row["task_id"],
+            stage="routing",
+        )
         return False, result
 
     provider = result["selected_provider"]
@@ -196,6 +204,9 @@ def process_task(bridge, executor, validator, gate, logger, row):
     validation = None
     if exec_result.get("status") == "SUCCESS" and exec_result.get("output"):
         validation = validator.validate(exec_result["output"], output_path)
+        if not validation.get("valid", False):
+            exec_result["status"] = "FAILED"
+            exec_result["error"] = "Validation failed: " + "; ".join(validation.get("errors", []))
 
     gate_result = None
     if exec_result.get("status") == "SUCCESS":
@@ -248,9 +259,16 @@ def process_task(bridge, executor, validator, gate, logger, row):
 
         if retry_result.get("status") == "SUCCESS":
             validation = validator.validate(retry_result["output"], output_path) if retry_result.get("output") else None
-            gate_result = gate.propose(row["task_id"], retry_result["output"], output_path)
-            gate_result["auto_approved"] = False
+            if not validation or not validation.get("valid", False):
+                retry_result["status"] = "FAILED"
+                retry_result["error"] = "Validation failed: " + "; ".join(
+                    validation.get("errors", []) if validation else ["empty output"]
+                )
+            else:
+                gate_result = gate.propose(row["task_id"], retry_result["output"], output_path)
+                gate_result["auto_approved"] = False
 
+        if retry_result.get("status") == "SUCCESS":
             logger.log(
                 task_id=row["task_id"],
                 task_type=row["type"],
@@ -292,10 +310,16 @@ def process_task(bridge, executor, validator, gate, logger, row):
             row["task_id"], "AUTO-FAILED",
             f"Type: {row['type']} — failed after 1 retry ({retry_result.get('error')}), needs manual review"
         )
+        send_alert(
+            "Task failed after retry",
+            str(retry_result.get("error", "Unknown execution error")),
+            task_id=row["task_id"],
+            stage="execution",
+        )
         return False, retry_result
 
 
-def main():
+def _run_dispatcher():
     print("=" * 50)
     print("BRAIN DISPATCHER v2.0 — Full Autonomous Loop")
     print("Phase 2: Execute + Validate + Log + Confirm Gate")
@@ -313,6 +337,11 @@ def main():
         if health_result["missing_keys"]:
             print(f" Missing keys: {health_result['missing_keys']}")
         print(" See 15_AI_Brain/Monitor/HEALTH_REPORT.md for details.")
+        send_alert(
+            "Health pre-flight failed",
+            f"missing_required={health_result['missing_required']}; missing_keys={health_result['missing_keys']}",
+            stage="preflight",
+        )
         return
 
     bridge = TaskRouterBridge()
@@ -382,6 +411,16 @@ def main():
     print("\n" + "=" * 50)
     print("DISPATCHER v2.0 RUN COMPLETE")
     print("=" * 50)
+
+
+def main():
+    """Run one dispatcher under an OS-level lock to prevent race conditions."""
+    try:
+        with BrainOSLock():
+            _run_dispatcher()
+    except LockBusyError as exc:
+        print(f" Dispatch aborted: {exc}")
+        send_alert("Concurrent run blocked", str(exc), stage="concurrency")
 
 
 if __name__ == "__main__":
