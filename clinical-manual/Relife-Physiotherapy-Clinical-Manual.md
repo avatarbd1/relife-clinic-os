@@ -66,47 +66,47 @@ Use these labels during the audit; a section marked “Complete” in the progre
 | # | Section | Status | Completion |
 |---|---|---|---|
 | — | **PART A — FOUNDATION MODULES** | | |
-| 1 | Module 1: Patient Assessment | ✅ Complete | 100% |
-| 2 | Module 2: Clinical Management (diagnostic reasoning, goal-setting, treatment planning framework, modality selection, SOAP documentation, progression/regression, reassessment, discharge, referral) | ✅ Complete | 100% |
-| 3 | Module 3: Manual Therapy Library (Maitland, Mulligan, MET, soft tissue techniques — technique-by-technique reference) | ✅ Complete | 100% |
-| 4 | Module 4: Exercise Prescription Library (stage-based progression models, dosage principles) | ✅ Complete | 100% |
-| 5 | Module 5: Electrotherapy Parameter Library (modality-by-modality: indication, contraindication, dosage/parameters) | ✅ Complete | 100% |
-| 6 | Module 6: Acupuncture / Dry Needling Protocol Library | ✅ Complete | 100% |
-| 7 | Module 7: Contraindications & Precautions (cross-cutting safety reference) | ✅ Complete | 100% |
-| 8 | Module 8: Differential Diagnosis Matrices (symptom-pattern → likely conditions, by region) | ✅ Complete | 100% |
-| 9 | Module 9: Outcome Measure Interpretation (score meaning, MCID, red flags in scoring) | ✅ Complete | 100% |
-| 10 | Module 10: Home Exercise Program Templates | ✅ Complete | 100% |
+| 1 | Module 1: Patient Assessment | ⚠️ Partial safety audit | Serious-pathology section audited; remainder pending |
+| 2 | Module 2: Clinical Management (diagnostic reasoning, goal-setting, treatment planning framework, modality selection, SOAP documentation, progression/regression, reassessment, discharge, referral) | ⏳ Evidence audit pending | Content present; not claim-verified |
+| 3 | Module 3: Manual Therapy Library (Maitland, Mulligan, MET, soft tissue techniques — technique-by-technique reference) | ⚠️ Safety/governance audited | Condition evidence and local scope pending |
+| 4 | Module 4: Exercise Prescription Library (stage-based progression models, dosage principles) | ⏳ Evidence audit pending | Content present; dosage review pending |
+| 5 | Module 5: Electrotherapy Parameter Library (modality-by-modality: indication, contraindication, dosage/parameters) | ⚠️ Safety/governance audited | Device SOPs and efficacy review pending |
+| 6 | Module 6: Acupuncture / Dry Needling Protocol Library | ⛔ Not authorized | Scope, credential and local approval pending |
+| 7 | Module 7: Contraindications & Precautions (cross-cutting safety reference) | ⚠️ Safety/governance audited | Local pathways and modality details pending |
+| 8 | Module 8: Differential Diagnosis Matrices (symptom-pattern → likely conditions, by region) | ⏳ Evidence audit pending | Content present; not claim-verified |
+| 9 | Module 9: Outcome Measure Interpretation (score meaning, MCID, red flags in scoring) | ⏳ Evidence audit pending | Cutoffs/MCIDs not claim-verified |
+| 10 | Module 10: Home Exercise Program Templates | ⏳ Evidence audit pending | Content present; not claim-verified |
 | — | **PART B — DISEASE-WISE PROTOCOLS** (each: Anatomy Link → Assessment Clues → Differential → 7-14-28 day phase goals → Session time-block → Manual/Exercise/Electro/Acupuncture detail → Contraindications → Progression criteria → Red flags → Home program) | | |
-| B1 | Shoulder: Frozen Shoulder (stage-based) | ✅ Complete | 100% |
-| B2 | Shoulder: Rotator Cuff Tendinopathy/Tear | ✅ Complete | 100% |
-| B3 | Shoulder: Subacromial Impingement | ✅ Complete | 100% |
-| B4 | Shoulder: Instability | ✅ Complete | 100% |
-| B5 | Neck: Mechanical Neck Pain | ✅ Complete | 100% |
-| B6 | Neck: Cervical Radiculopathy | ✅ Complete | 100% |
-| B7 | Neck: Cervical Spondylosis | ✅ Complete | 100% |
-| B8 | Low Back: Non-specific LBP | ✅ Complete | 100% |
-| B9 | Low Back: Sciatica / Disc Prolapse | ✅ Complete | 100% |
-| B10 | Low Back: Facet Joint Syndrome | ✅ Complete | 100% |
-| B11 | Low Back: SIJ Dysfunction | ✅ Complete | 100% |
-| B12 | Low Back: Lumbar Spondylosis/Spondylolisthesis | ✅ Complete | 100% |
-| B13 | Knee: Osteoarthritis | ✅ Complete | 100% |
-| B14 | Knee: Post-ACL Reconstruction | ✅ Complete | 100% |
-| B15 | Knee: Meniscus Injury | ✅ Complete | 100% |
-| B16 | Knee: Patellofemoral Pain Syndrome | ✅ Complete | 100% |
-| B17 | Hip: Osteoarthritis | ✅ Complete | 100% |
-| B18 | Hip: Trochanteric Bursitis/Gluteal Tendinopathy | ✅ Complete | 100% |
-| B19 | Elbow: Tennis Elbow (Lateral Epicondylalgia) | ✅ Complete | 100% |
-| B20 | Elbow: Golfer's Elbow (Medial Epicondylalgia) | ✅ Complete | 100% |
-| B21 | Wrist/Hand: Carpal Tunnel Syndrome | ✅ Complete | 100% |
-| B22 | Wrist/Hand: De Quervain's Tenosynovitis | ✅ Complete | 100% |
-| B23 | Ankle/Foot: Ankle Sprain | ✅ Complete | 100% |
-| B24 | Ankle/Foot: Plantar Fasciitis | ✅ Complete | 100% |
-| B25 | Ankle/Foot: Achilles Tendinopathy | ✅ Complete | 100% |
-| B26 | Post-Fracture Stiffness (general protocol, adaptable by joint) | ✅ Complete | 100% |
-| B27 | Post-Surgical General Rehab Principles | ✅ Complete | 100% |
-| B28 | TMJ Dysfunction | ✅ Complete | 100% |
-| B29 | Fibromyalgia / Chronic Widespread Pain (nociplastic pain approach) | ✅ Complete | 100% |
-| B30 | Postural Syndrome / Upper Crossed Syndrome | ✅ Complete | 100% |
+| B1 | Shoulder: Frozen Shoulder (stage-based) | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B2 | Shoulder: Rotator Cuff Tendinopathy/Tear | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B3 | Shoulder: Subacromial Impingement | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B4 | Shoulder: Instability | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B5 | Neck: Mechanical Neck Pain | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B6 | Neck: Cervical Radiculopathy | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B7 | Neck: Cervical Spondylosis | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B8 | Low Back: Non-specific LBP | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B9 | Low Back: Sciatica / Disc Prolapse | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B10 | Low Back: Facet Joint Syndrome | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B11 | Low Back: SIJ Dysfunction | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B12 | Low Back: Lumbar Spondylosis/Spondylolisthesis | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B13 | Knee: Osteoarthritis | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B14 | Knee: Post-ACL Reconstruction | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B15 | Knee: Meniscus Injury | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B16 | Knee: Patellofemoral Pain Syndrome | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B17 | Hip: Osteoarthritis | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B18 | Hip: Trochanteric Bursitis/Gluteal Tendinopathy | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B19 | Elbow: Tennis Elbow (Lateral Epicondylalgia) | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B20 | Elbow: Golfer's Elbow (Medial Epicondylalgia) | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B21 | Wrist/Hand: Carpal Tunnel Syndrome | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B22 | Wrist/Hand: De Quervain's Tenosynovitis | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B23 | Ankle/Foot: Ankle Sprain | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B24 | Ankle/Foot: Plantar Fasciitis | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B25 | Ankle/Foot: Achilles Tendinopathy | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B26 | Post-Fracture Stiffness (general protocol, adaptable by joint) | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B27 | Post-Surgical General Rehab Principles | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B28 | TMJ Dysfunction | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B29 | Fibromyalgia / Chronic Widespread Pain (nociplastic pain approach) | ⏳ Evidence audit pending | Content present; not claim-verified |
+| B30 | Postural Syndrome / Upper Crossed Syndrome | ⏳ Evidence audit pending | Content present; not claim-verified |
 
 **Structural completion: 40 of 40 originally planned sections are present — updated 2026-08-05. This is not evidence-verification or clinical-approval completion. The standardized condition-schema audit, claim-by-claim source verification, contradiction review, and named clinical approval remain outstanding.**
 
