@@ -298,115 +298,88 @@ Clinical reasoning integrates subjective and objective findings into a working d
 
 ## Module 2: Clinical Management
 
-This module defines how the findings documented in Module 1 (Patient Assessment) are converted into a working diagnosis, a treatment goal set, and a session-by-session plan. Where Module 1 answers "what is going on," Module 2 answers "what do we do about it, and how fast do we expect it to change." Part B condition protocols apply this framework to each specific diagnosis rather than repeating it.
+> **Audit status (2026-08-09): EVIDENCE-AUDITED GOVERNANCE FRAMEWORK — CLINICAL APPROVAL PENDING.** This module governs reasoning and documentation; it does not authorize a diagnosis, technique, device, dose, visit count or prognosis. Apply the condition-specific guideline, patient findings, practitioner competence, applicable local scope and the safety gates in Modules 1, 3, 5, 6 and 7. A named human clinical reviewer must approve this module before clinic-SOP use.
 
-> **Clinical Note:** Clinical Management is the single highest-leverage module in this manual for the stated goal of internationally competitive recovery times — a correct diagnosis paired with a vague plan still produces a slow, inconsistent outcome. Precision here is what separates "acceptable" care from "fastest evidence-based" care.
+Rehabilitation should be person-centred and directed toward functioning, activity and participation goals. Decisions must be shared with the patient, with benefits, risks, alternatives and the option of no treatment discussed in language the patient can understand. Sources: [WHO rehabilitation overview](https://www.who.int/news-room/fact-sheets/detail/rehabilitation); [NICE NG197 shared decision making](https://www.nice.org.uk/guidance/ng197/chapter/recommendations).
 
-### 2.1 From Findings to Working Diagnosis
+### 2.1 Clinical Reasoning and Working Impression
 
-1. Cluster the objective findings from Module 1 (ROM pattern, MMT, neuro, special tests, functional limitation) against the subjective history. A working diagnosis needs convergent evidence from at least two to three independent findings — never commit to a diagnosis on the strength of one positive special test or the patient's own label for their condition.
-2. State the working diagnosis in tissue/mechanism-specific terms where possible (e.g. "subacromial impingement secondary to rotator cuff tendinopathy with scapular dyskinesis" rather than "shoulder pain").
-3. List active differentials in order of likelihood, with the finding(s) that support or argue against each — this list is not academic, it directly determines what to re-check if the patient doesn't respond as expected by the first re-assessment point (see 2.8).
-4. Classify the presentation on two axes that drive everything downstream:
-   - **Pain mechanism:** nociceptive (mechanical/inflammatory, tissue-based) vs neuropathic (nerve tissue) vs nociplastic (centrally sensitized, disproportionate to tissue findings) — nociplastic presentations need graded exposure and education-led approaches, not escalating passive modalities.
-   - **SIN status:** Severity (how intense), Irritability (how easily provoked and how long it takes to settle), Nature (the underlying pathology and its behavior, including red flag status) — this sets first-session dosage (2.4) and which manual/exercise techniques are appropriate on day one.
-5. Document reasoning, not just conclusions: a one-line "why" for the working diagnosis and a one-line "why not" for each ruled-out differential is mandatory in the chart, not optional detail.
+1. Confirm that Module 1 screening has not identified an emergency, urgent referral need or a reason to defer the proposed intervention.
+2. Integrate history, examination, functional impact, contextual factors and relevant investigations. Do not diagnose or exclude a disorder from one special test, one pain pattern, an imaging label or an arbitrary number of concordant findings.
+3. Record a provisional working impression, the important competing explanations and the evidence for and against each. Use diagnostic certainty that matches the available evidence.
+4. Use mechanism or tissue labels only when adequately supported. Otherwise document the presentation and functional problem without false precision.
+5. Reconsider the impression when the clinical course or new findings do not fit it. Diagnostic or prescribing decisions outside the practitioner's verified scope require referral or consultation.
 
-### 2.2 Goal Setting
+### 2.2 Shared Goals and Baseline
 
-Goals bridge the patient's own stated expectation (Module 1, 1.1) and the clinically realistic recovery trajectory for the working diagnosis.
+Agree goals with the patient around meaningful activity, participation, work, sleep or self-management. Record a baseline using a reproducible task, objective measure or suitable patient-reported outcome measure. Outcome instruments must follow their validated version, scoring rules and licensing requirements; Module 9 governs interpretation. Do not promise “fastest recovery,” a guaranteed result or a fixed healing time.
 
-- **Short-term goals (end of Phase 1, typically 1-2 weeks):** impairment-level and pain-behavior targets — e.g. "NPRS worst pain ≤4/10," "sleep uninterrupted by pain," "AROM within 20° of contralateral side."
-- **Medium-term goals (end of Phase 2, typically week 3-4):** functional targets — e.g. "return to desk work full day without flare," "climb stairs reciprocally without pain."
-- **Long-term / discharge goals:** the patient's actual functional/sport/work target from intake, with a realistic timeframe stated up front so both patient and therapist can judge trajectory against expectation rather than discovering slow progress only at the end.
-- Every goal must be **measurable against a Module 1 outcome measure or objective metric** (NPRS, goniometry, MMT grade, validated questionnaire score, specific functional task) — a goal that can't be re-measured at the next checkpoint is not usable for tracking recovery speed, which undermines the entire "fastest evidence-based recovery" objective.
+### 2.3 Individual Care Plan
 
-### 2.3 Treatment Planning Framework — Phase Structure
+The written plan must identify:
 
-Relife uses a **7-14-28 day phase structure** as the default framework for tissue-healing-based conditions (adapted per condition in Part B; stage-based conditions like Frozen Shoulder use their own staging instead — see the relevant Part B protocol).
+- the working impression and key risks;
+- patient priorities and agreed goals;
+- proposed active and adjunct interventions, expected benefit, material risks and alternatives;
+- baseline measure(s) and review criteria;
+- home/self-management plan and adherence barriers;
+- escalation, referral and discontinuation criteria.
 
-| Phase | Typical window | Primary aim | Loading philosophy |
-|---|---|---|---|
-| Phase 1 — Acute/Protective | Day 1–7 | Reduce pain and irritability, protect healing tissue, prevent deconditioning | Low-load, high-frequency gentle movement; passive/assisted modalities carry more weight; avoid provoking SIN-positive movements |
-| Phase 2 — Sub-acute/Restorative | Day 7–14 | Restore ROM, begin controlled strengthening, reduce compensation patterns | Progressive active loading; manual therapy shifts from pain-relief grades toward mobilization grades that challenge restriction; introduce functional-pattern exercise |
-| Phase 3 — Remodeling/Functional | Day 14–28 | Build capacity toward functional/sport/work demand, address the movement-quality deficits found in Module 1 functional assessment | Higher-load progressive resistance, plyometric/sport-specific work where relevant, reducing passive modality reliance |
-| Phase 4 — Discharge/Maintenance | Beyond Day 28 (chronic/recurrent cases, or slow-responders) | Consolidate gains, independent home management, relapse-prevention education | Therapist-supervised sessions taper; home program becomes primary driver |
+There is **no universal 7–14–28-day tissue-healing pathway**. Phase names and calendar windows in the earlier draft are withdrawn. Progression must be criteria-based and condition-specific, accounting for irritability, comorbidity, healing constraints, patient preference and response. Visit frequency and episode length require individual justification and periodic review.
 
-A patient may move through Phase 1-3 faster than the calendar suggests if objective re-assessment supports it (see 2.8) — the phase structure is a clinical-reasoning scaffold, not a rigid calendar; moving a patient forward *as soon as* criteria are met, not on a fixed schedule, is itself part of the "fastest evidence-based recovery" objective.
+### 2.4 Session Structure
 
-### 2.4 Session Time-Block Template
+There is **no mandatory 45–55-minute template** and no required opening or closing electrotherapy block. Allocate time according to reassessment findings, goals, consent and the chosen intervention. Passive treatment must not be added merely to fill time or create a perception of value.
 
-Every standard OPD session (45-55 minutes total) follows this structure so patients do not perceive the visit as "just electrotherapy," and so that manual therapy and exercise (which drive the fastest tissue and motor-control adaptation) always get protected time:
+Exercise, education, manual therapy and electrophysical agents are not interchangeable generic blocks. Select them only where the applicable condition-specific evidence, contraindication screen and practitioner/device authorization support use. For example, NICE NG59 recommends exercise for low back pain and permits manual therapy only as part of a package including exercise, while advising against traction, TENS, interferential therapy and ultrasound for that condition; these recommendations must not be generalized to every diagnosis. Source: [NICE NG59 recommendations](https://www.nice.org.uk/guidance/ng59/chapter/recommendations).
 
-| Block | Duration | Content |
-|---|---|---|
-| Opening electrotherapy (warm-up) | ~10 min | Tissue prep — e.g. hot pack, short-duration TENS/IFT — chosen per condition and phase |
-| Manual therapy | ~10-12 min | Joint mobilization, soft tissue work, MET, per working diagnosis and current phase |
-| Exercise | ~15-20 min | Active-assistance / active / resistance work per phase (2.3); this block should expand as phases progress and passive-modality time contracts |
-| Closing electrotherapy (relief) | ~10 min | TENS/IFT/traction/relief modality as needed to manage post-treatment soreness |
+### 2.5 Dose, Monitoring and Modification
 
-Modality *selection* within each block (which manual technique, which electrotherapy modality and parameters, which exercise) is condition- and phase-specific — detailed in Part B and in Modules 3-6 once written; this section defines only the time allocation, which is constant.
+Do not use a universal pain score, “settles within one hour,” two-session rule or 24-hour flare rule as a clinic-wide progression threshold. Before and after a new or progressed intervention, document relevant symptoms, function and adverse response. Adjust or stop when the response exceeds the pre-agreed acceptable response, function deteriorates, new neurological or systemic features appear, or the intervention no longer has a defensible benefit.
 
-### 2.5 Modality Selection Rationale — Cross-Cutting Principles
+Exact exercise dose belongs in Module 4 and the audited condition card. Exact manual, electrotherapy and needling parameters are controlled by Modules 3, 5 and 6. Where evidence or authorization is missing, record: **EVIDENCE NOT VERIFIED — CLINICAL REVIEW REQUIRED** and do not improvise an operational protocol.
 
-These principles apply across all conditions; condition-specific application is in Part B.
+### 2.6 Documentation and AI Boundary
 
-- **Manual therapy** is indicated when objective restriction (capsular/end-feel findings, MMT/ROM discordance suggesting soft-tissue guarding) is present, and is dosed by SIN status — pain-relief-grade oscillations (Maitland Grade I-II equivalent) for high-irritability presentations, progressing to end-range mobilization (Grade III-IV equivalent) as irritability drops.
-- **Electrotherapy** is an adjunct, not a stand-alone treatment — it should never occupy the majority of a session's clinical value. Its role is to reduce pain/inflammation enough to enable more effective manual therapy and exercise in the same session, or to manage post-exercise soreness.
-- **Exercise** is the primary driver of durable, fast recovery once acute irritability is controlled — Relife's default bias, once Phase 1 criteria are met, is to shift time and clinical emphasis toward exercise loading rather than prolonging passive modality-dominant care, because active loading produces the tissue and motor-control adaptations that electrotherapy alone cannot.
-- **Acupuncture/dry needling** is considered where there is a clear myofascial trigger-point or neuromodulation indication (detailed per condition in Part B), used as an adjunct to accelerate pain reduction so manual therapy and exercise can proceed sooner and more vigorously — not as a default inclusion in every plan.
-- Modality choice must always be re-justified against the *current* phase and SIN status at each visit, not simply carried over from the previous visit by default, though carry-over is the practical starting point for efficiency (consistent with the existing bot workflow where the prior day's plan pre-populates and the therapist adjusts).
+Each encounter must record, at minimum:
 
-### 2.6 SOAP Documentation Standard
+- **Subjective:** interval change, new symptoms, adverse events, relevant adherence and patient priorities;
+- **Objective:** relevant findings and measurable response;
+- **Intervention:** what was actually delivered, including dose/parameters where authorized;
+- **Assessment:** current interpretation, progress and risk;
+- **Plan:** agreed next action, home plan, review and escalation arrangements;
+- consent or shared-decision discussion where material.
 
-Every session note follows SOAP structure, kept concise enough for the ~1-minute repeat-visit workflow while remaining clinically complete:
+A bot may draft text from structured data, but the treating practitioner must verify the complete note before it becomes part of the clinical record. The system must not invent missing findings, infer that an intervention occurred, auto-confirm a diagnosis, or autonomously prescribe/approve the Assessment or Plan.
 
-- **S (Subjective):** patient-reported change since last visit — pain trend, any new aggravation, adherence to home program.
-- **O (Objective):** what was measured or observed this visit — relevant ROM/MMT/functional re-check, treatment actually delivered (modalities, techniques, exercise with sets/reps/load).
-- **A (Assessment):** therapist's interpretation of the O data against the working diagnosis and goals — improving/plateaued/worsening, and why.
-- **P (Plan):** next visit's plan, including any phase progression, modality changes, and home program updates.
+### 2.7 Reassessment
 
-This structure is what the bot's auto-generated SOAP note (already implemented per PT_WORKFLOW_V2) should populate from structured visit data, with the therapist able to edit the auto-drafted A and P fields — auto-drafting S and O directly from structured fields is safe; A and P benefit most from therapist review since they're where clinical judgment concentrates.
+Reassess at a clinically meaningful interval determined by diagnosis, risk, expected course and any material change—not solely after “7 visits or 14 days.” The bot may issue an administrative reminder, but the trigger is not evidence of clinical appropriateness.
 
-### 2.7 Progression and Regression Criteria
+Compare the same valid baseline measures where feasible; review goals, adverse effects, adherence, diagnosis/differentials and benefit-versus-burden. Reassess sooner for deterioration, unexpected response, new neurological/systemic symptoms or a change in function.
 
-Generic criteria (condition-specific numeric thresholds are set in each Part B protocol):
+### 2.8 Escalation and Non-response
 
-**Progress to the next phase/loading level when:**
-- Pain during/after the current exercise level is ≤3/10 and settles within 1 hour
-- No latent pain flare (>24h delayed increase) after the last 2 sessions at current load
-- The target ROM/strength/functional milestone for the current phase is met or trending to be met within 1-2 visits
+Stop the relevant intervention and follow Module 1/7 emergency or urgent pathways when red flags, acute neurological deterioration, suspected serious adverse events or other safety triggers emerge. For non-response, first confirm adherence, dose, measurement reliability, diagnosis/differentials, psychosocial/contextual barriers and whether the intervention is evidence-supported. Escalate, consult or refer when risk, diagnostic uncertainty, scope or patient need exceeds clinic capability. A fixed “Day 28” referral threshold is withdrawn.
 
-**Regress or hold at current level when:**
-- Pain during a session exceeds the patient's baseline irritability threshold and doesn't settle within the expected window
-- A new objective deficit appears (ROM loss, new neuro sign) — re-assess before continuing to load
-- Patient reports a latent flare from the previous session's loading
+### 2.9 Discharge, Transfer or Continuation
 
-### 2.8 Reassessment Protocol
+Discharge or transfer is a shared, documented decision. Appropriate reasons may include goal attainment; independent self-management; no further expected benefit; need for a different service; unacceptable risk or burden; or the informed patient's decision to stop. Pain elimination, normative scores or completion of a package are not universal prerequisites. Record current function, goal status, residual limitations, safety-net advice, home plan and re-entry/referral instructions.
 
-- **Formal reassessment is mandatory every 7 visits or 14 calendar days, whichever comes first** (matches the bot's existing PT_WORKFLOW_V2 reassessment trigger) — re-run the relevant Module 1 outcome measure(s), re-check key objective findings (ROM/MMT/special test that was originally positive), and re-confirm the working diagnosis is still supported.
-- If a patient is **not meeting expected trajectory** by the first reassessment point, do not simply continue the same plan — return to 2.1, re-check the differential list, and consider whether a red flag was missed, the working diagnosis needs revision, or referral is indicated.
-- Reassessment findings must be documented distinctly from routine SOAP notes (a dedicated reassessment note) so progress-graph features (already planned in PT_WORKFLOW_V2) have clean checkpoint data to plot against.
+### 2.10 Governance Checklist
 
-### 2.9 Discharge Criteria
+Before clinic-SOP use, the reviewer must confirm that:
 
-Discharge when **all** of the following are met, not merely when pain is tolerable:
-- Long-term/functional goal from 2.2 is met or the patient has returned to their stated target activity/work/sport level
-- Objective outcome measure score is at or near normative/pre-injury value, or has plateaued at a level the patient and therapist agree is an acceptable ceiling
-- Patient demonstrates independent management of the home exercise program and understands relapse-prevention principles for their condition
-- Document discharge status explicitly (full recovery / functional recovery with residual limitation / plateaued — patient declines further care / discharged to independent maintenance) — this feeds both the patient's record and, in aggregate, the clinic's own outcome data for benchmarking against international standards.
+- each linked condition card supplies current, population-specific evidence and monitoring criteria;
+- Module 9 outcome-measure rules are verified;
+- bot fields preserve uncertainty and require clinician verification;
+- Bangladesh referral routes, recordkeeping, consent and scope requirements are locally approved;
+- no withdrawn fixed calendar, session template, modality recipe or universal pain threshold remains in Part B.
 
-### 2.10 Referral Criteria
-
-Refer to the supervising clinician/physician when:
-- Any red flag from Module 1 (1.2) is positive at intake or emerges during care
-- No meaningful progress against goals by the second reassessment point (approx. Day 28) despite plan adjustment
-- A new or worsening neurological deficit appears at any point
-- The presentation falls outside the conditions covered by Part B and the therapist's own scope of confidence — referral (or senior therapist consultation) is the correct action, not improvisation outside the evidence base
-
-*End of Module 2. Module 3 (Manual Therapy Library) and the Part B condition protocols apply this reasoning framework to specific techniques and specific diagnoses.*
+*End of Module 2.*
 
 ---
+
 ## Module 3: Manual Therapy — Governance, Selection, and Safety
 
 Manual therapy is an optional component of care, not a diagnosis, cure, or required service. It may be used when a patient-specific trial produces a meaningful, reproducible change that supports activity or exercise. The therapist must not explain effects using unverified claims that a joint was “put back,” fascia was permanently “released,” scar tissue was “broken,” circulation was “cleared,” or a positional fault was proven by response to treatment.
