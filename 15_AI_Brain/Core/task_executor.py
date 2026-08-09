@@ -16,9 +16,8 @@ from typing import Dict, Optional
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-REPO_ROOT = os.path.expanduser("~/relife-clinic-os")
-if os.path.isdir(REPO_ROOT):
-    os.chdir(REPO_ROOT)
+REPO_ROOT = str(Path(__file__).resolve().parents[2])
+os.chdir(REPO_ROOT)
 sys.path.insert(0, os.path.join(REPO_ROOT, "15_AI_Brain", "Core"))
 sys.path.insert(0, os.path.join(REPO_ROOT, "15_AI_Brain", "Control"))
 
