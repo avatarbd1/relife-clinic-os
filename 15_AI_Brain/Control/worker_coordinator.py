@@ -94,11 +94,55 @@ class WorkerCoordinator:
         queue: Path | None = None,
         handover: Path | None = None,
         lock_path: Path | None = None,
+        brain_queue: Path | None = None,
     ) -> None:
         self.registry = registry or ROOT / "11_AIOS" / "AI_REGISTRY.md"
         self.queue = queue or ROOT / "13_AI_Tasks" / "TASK_QUEUE.md"
         self.handover = handover or ROOT / "12_Handover" / "HANDOVER.md"
         self.lock_path = lock_path or ROOT / "15_AI_Brain" / "Logs" / "brainos.lock"
+        self.brain_queue = brain_queue or ROOT / "15_BrainOS" / "BRAIN_QUEUE.md"
+
+    def brain_active_task_ids(self) -> set[str]:
+        """Return task IDs currently present in BrainOS Active Queue."""
+        if not self.brain_queue.exists():
+            raise CoordinationError(f"BrainOS queue not found: {self.brain_queue}")
+        text = self.brain_queue.read_text(encoding="utf-8")
+        rows = _data_rows(_section_lines(text, "Active Queue"), 6)
+        return {row[0] for row in rows}
+
+    def reconciliation_issues(
+        self,
+        max_age_days: int = 7,
+        as_of: date | None = None,
+    ) -> list[tuple[ActiveTask, list[str]]]:
+        """Detect inconsistent/stale claims without mutating either queue."""
+        if max_age_days < 0:
+            raise CoordinationError("max_age_days must be >= 0")
+
+        active_ids = self.brain_active_task_ids()
+        today = as_of or date.today()
+        issues = []
+
+        for item in self.active_tasks():
+            reasons = []
+
+            if item.task not in active_ids:
+                reasons.append("missing from BRAIN_QUEUE Active Queue")
+
+            try:
+                started = date.fromisoformat(item.started)
+                age_days = (today - started).days
+                if age_days > max_age_days:
+                    reasons.append(
+                        f"claim age {age_days} days exceeds {max_age_days}-day threshold"
+                    )
+            except ValueError:
+                reasons.append(f"invalid start date: {item.started}")
+
+            if reasons:
+                issues.append((item, reasons))
+
+        return issues
 
     def workers(self) -> list[Worker]:
         text = self.registry.read_text(encoding="utf-8")
@@ -285,6 +329,8 @@ def main() -> int:
     complete.add_argument("task")
     complete.add_argument("--evidence", default="")
     complete.add_argument("--no-review", action="store_true")
+    reconcile = sub.add_parser("reconcile")
+    reconcile.add_argument("--max-age-days", type=int, default=7)
     args = parser.parse_args()
 
     coordinator = WorkerCoordinator()
@@ -300,9 +346,17 @@ def main() -> int:
         elif args.command == "assign":
             worker = coordinator.assign(args.task, args.module, args.worker)
             print(f"Assigned {args.task} -> {worker.worker_id}")
-        else:
+        elif args.command == "complete":
             item = coordinator.complete(args.task, args.evidence, not args.no_review)
             print(f"Completed {item.task} by {item.worker_id}; handover updated")
+        else:
+            issues = coordinator.reconciliation_issues(args.max_age_days)
+            print(f"Reconciliation issues: {len(issues)}")
+            for item, reasons in issues:
+                print(
+                    f"  {item.task} | {item.worker_id} | {item.started} | "
+                    f"{item.module} | {'; '.join(reasons)}"
+                )
     except CoordinationError as exc:
         print(f"BLOCKED: {exc}")
         return 2

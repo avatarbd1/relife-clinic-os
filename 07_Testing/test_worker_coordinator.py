@@ -39,6 +39,13 @@ QUEUE = """# Queue
 """
 
 
+BRAIN_QUEUE = """# Brain Queue
+## Active Queue
+| TASK_ID | Type | Priority | Status | Assigned | Created |
+|---------|------|----------|--------|----------|---------|
+| Existing | Testing | NORMAL | QUEUED | - | 2026-08-09 |
+"""
+
 class WorkerCoordinatorTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -47,10 +54,16 @@ class WorkerCoordinatorTests(unittest.TestCase):
         self.queue = root / "queue.md"
         self.handover = root / "handover.md"
         self.lock = root / "brainos.lock"
+        self.brain_queue = root / "brain_queue.md"
         self.registry.write_text(REGISTRY, encoding="utf-8")
         self.queue.write_text(QUEUE, encoding="utf-8")
+        self.brain_queue.write_text(BRAIN_QUEUE, encoding="utf-8")
         self.coordinator = worker_coordinator.WorkerCoordinator(
-            self.registry, self.queue, self.handover, self.lock
+            self.registry,
+            self.queue,
+            self.handover,
+            self.lock,
+            brain_queue=self.brain_queue,
         )
 
     def tearDown(self):
@@ -121,6 +134,32 @@ class WorkerCoordinatorTests(unittest.TestCase):
             "ReleaseMe",
             [item.task for item in self.coordinator.active_tasks()],
         )
+
+    def test_reconcile_detects_orphan_and_stale_without_mutation(self):
+        text = self.queue.read_text(encoding="utf-8")
+        text = text.replace(
+            "\n## Done",
+            "\n| Orphan | Claude-1 | 2026-07-23 | 03_Bot/bot.py |\n\n## Done",
+            1,
+        )
+        self.queue.write_text(text, encoding="utf-8")
+        original = self.queue.read_text(encoding="utf-8")
+
+        issues = self.coordinator.reconciliation_issues(
+            max_age_days=7,
+            as_of=worker_coordinator.date(2026, 8, 9),
+        )
+
+        orphan = next(
+            (reasons for item, reasons in issues if item.task == "Orphan"),
+            None,
+        )
+        self.assertIsNotNone(orphan)
+        self.assertTrue(
+            any("missing from BRAIN_QUEUE" in reason for reason in orphan)
+        )
+        self.assertTrue(any("claim age" in reason for reason in orphan))
+        self.assertEqual(self.queue.read_text(encoding="utf-8"), original)
 
     def test_assignment_prefers_matching_module_and_writes_handover(self):
         selected = self.coordinator.assign("Bot task", "03_Bot/bot.py")
