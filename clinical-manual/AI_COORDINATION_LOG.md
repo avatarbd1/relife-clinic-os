@@ -33,11 +33,10 @@
 | 2026-08-09 | ChatGPT | Module 3 (Manual Therapy) | DONE | Cervical HVLA prohibited; generic technique dosage withdrawn; tracker made truthful | `35b4de4`, `fea1e07` |
 | 2026-08-09 | Claude | B8 electrotherapy/acupuncture subsections (pre-governance baseline) | SUPERSEDED / NOT MERGED | Owner reports sandbox-only work predating the governance baseline; requires re-audit | Not pushed |
 | 2026-08-09 | Claude | Module 9 (Outcome Measures) | OWNER-REPORTED / NOT MERGED | Owner reports ODI/NDI MCID corrections in a download; content and citations have not been verified or merged on this branch | Download/base commit not yet supplied |
-| 2026-08-09 | ChatGPT | Module 2 (Clinical Management) | IN PROGRESS | Auditing clinical-management assessment, planning, monitoring and escalation claims | Pending |
+| 2026-08-09 | ChatGPT | Module 2 (Clinical Management) | DONE | Withdrew fixed phase/session/reassessment recipes; added shared-decision, monitoring, AI verification and escalation gates | `5781855` |
 
 ## Next Available Sections
 
-- Module 2: Clinical Management
 - Module 4: Exercise Prescription Library
 - Module 8: Differential Diagnosis Matrices
 - Module 9: all unmerged content; eight remaining instruments reported unverified
