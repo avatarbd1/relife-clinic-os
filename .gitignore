@@ -49,3 +49,8 @@ repo_dirs.txt
 16_ClinicOS_CLI/backup/
 16_ClinicOS_CLI/workspace/outputs/
 16_ClinicOS_CLI/workspace/temp/
+
+# BrainOS local runtime inbox and approved execution records
+15_BrainOS/TaskInbox/
+15_AI_Brain/Proposals/Approved/
+15_AI_Brain/Logs/*.pid
