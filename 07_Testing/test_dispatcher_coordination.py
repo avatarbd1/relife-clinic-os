@@ -9,8 +9,10 @@ from unittest.mock import MagicMock, patch
 ROOT = Path(__file__).resolve().parents[1]
 CONTROL_DIR = ROOT / "15_AI_Brain" / "Control"
 CORE_DIR = ROOT / "15_AI_Brain" / "Core"
+LOGS_DIR = ROOT / "15_AI_Brain" / "Logs"
 sys.path.insert(0, str(CONTROL_DIR))
 sys.path.insert(0, str(CORE_DIR))
+sys.path.insert(0, str(LOGS_DIR))
 MODULE_PATH = CONTROL_DIR / "dispatcher_bridge.py"
 
 SPEC = importlib.util.spec_from_file_location("dispatcher_phase5", MODULE_PATH)
