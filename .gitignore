@@ -35,6 +35,7 @@ repo_dirs.txt
 # Never commit (regenerable without information loss — Golden Rule)
 # --------------------
 15_AI_Brain/Logs/*.jsonl
+15_AI_Brain/Logs/brainos.lock
 15_AI_Brain/Monitor/HEALTH_REPORT.json
 15_AI_Brain/Monitor/HEALTH_REPORT.md
 15_AI_Brain/Outputs/

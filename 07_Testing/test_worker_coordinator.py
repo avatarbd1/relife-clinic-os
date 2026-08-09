@@ -1,0 +1,96 @@
+import importlib.util
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+MODULE_PATH = ROOT / "15_AI_Brain" / "Control" / "worker_coordinator.py"
+SPEC = importlib.util.spec_from_file_location("worker_coordinator", MODULE_PATH)
+worker_coordinator = importlib.util.module_from_spec(SPEC)
+assert SPEC.loader is not None
+sys.modules[SPEC.name] = worker_coordinator
+SPEC.loader.exec_module(worker_coordinator)
+
+
+REGISTRY = """# Registry
+## ID তালিকা
+| ID | Platform | Module | Status |
+|----|----------|--------|--------|
+| ChatGPT-1 | ChatGPT | 15_AI_Brain | Active |
+| Claude-1 | Claude | 03_Bot | |
+| Gemini-1 | Gemini | | |
+"""
+
+QUEUE = """# Queue
+## Pending
+| কাজ | মডিউল/ফাইল | অগ্রাধিকার |
+|-----|------------|------------|
+
+## In-Progress
+| কাজ | AI ID | শুরুর তারিখ | মডিউল/ফাইল |
+|-----|-------|-------------|-------------|
+| Existing | ChatGPT-1 | 2026-08-09 | 15_AI_Brain/Integration |
+
+## Done
+| কাজ | AI ID | তারিখ | মডিউল/ফাইল |
+|-----|-------|-------|------------|
+"""
+
+
+class WorkerCoordinatorTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        root = Path(self.temp.name)
+        self.registry = root / "registry.md"
+        self.queue = root / "queue.md"
+        self.handover = root / "handover.md"
+        self.lock = root / "brainos.lock"
+        self.registry.write_text(REGISTRY, encoding="utf-8")
+        self.queue.write_text(QUEUE, encoding="utf-8")
+        self.coordinator = worker_coordinator.WorkerCoordinator(
+            self.registry, self.queue, self.handover, self.lock
+        )
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def test_busy_worker_is_not_available(self):
+        ids = {worker.worker_id for worker in self.coordinator.available_workers()}
+        self.assertNotIn("ChatGPT-1", ids)
+        self.assertEqual(ids, {"Claude-1", "Gemini-1"})
+
+    def test_parent_child_module_conflict_is_blocked(self):
+        with self.assertRaises(worker_coordinator.CoordinationError):
+            self.coordinator.assign("Conflict", "15_AI_Brain/Integration/V2")
+
+    def test_worker_can_hold_only_one_active_task(self):
+        with self.assertRaises(worker_coordinator.CoordinationError):
+            self.coordinator.assign("Second", "09_SOP", "ChatGPT-1")
+
+    def test_assignment_is_blocked_while_brainos_lock_is_held(self):
+        with worker_coordinator.BrainOSLock(self.lock):
+            with self.assertRaises(worker_coordinator.CoordinationError):
+                self.coordinator.assign("Locked", "09_SOP")
+
+    def test_assignment_prefers_matching_module_and_writes_handover(self):
+        selected = self.coordinator.assign("Bot task", "03_Bot/bot.py")
+        self.assertEqual(selected.worker_id, "Claude-1")
+        queue = self.queue.read_text(encoding="utf-8")
+        self.assertIn("| Bot task | Claude-1 |", queue)
+        self.assertIn("Bot task - ASSIGNED", self.handover.read_text(encoding="utf-8"))
+
+    def test_complete_releases_worker_and_marks_review_ready(self):
+        self.coordinator.assign("Docs", "09_SOP", "Gemini-1")
+        self.coordinator.complete("Docs", "tests passed")
+        self.assertNotIn("Docs", [item.task for item in self.coordinator.active_tasks()])
+        ids = {worker.worker_id for worker in self.coordinator.available_workers()}
+        self.assertIn("Gemini-1", ids)
+        handover = self.handover.read_text(encoding="utf-8")
+        self.assertIn("Docs - REVIEW-READY", handover)
+        self.assertIn("tests passed", handover)
+
+
+if __name__ == "__main__":
+    unittest.main()
