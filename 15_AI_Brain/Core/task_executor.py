@@ -115,6 +115,7 @@ class TaskExecutor:
         task_type: str,
         prompt: str,
         output_path: Optional[str] = None,
+        persist_output: bool = True,
     ) -> Dict:
         if output_path and output_path.replace("\\", "/").startswith(BLOCKED_PREFIX):
             return {
@@ -159,7 +160,9 @@ class TaskExecutor:
             if result["status"] == "SUCCESS":
                 break
 
-        if result["status"] == "SUCCESS":
+        # Dispatcher passes persist_output=False so unvalidated provider output
+        # stays in memory. ConfirmGate becomes the only writer to final Outputs/.
+        if result["status"] == "SUCCESS" and persist_output:
             final_path = Path(output_path) if output_path else DEFAULT_OUTPUT_DIR / f"{task_id}.md"
             final_path.parent.mkdir(parents=True, exist_ok=True)
             final_path.write_text(result["output"], encoding="utf-8")
