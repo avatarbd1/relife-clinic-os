@@ -14,7 +14,7 @@ HANDOVER.md এবং TASK_QUEUE.md-এ ব্যবহার হবে — আ�
 | ID         | Platform | বরাদ্দকৃত মডিউল (যদি স্থায়ী হয়) | স্ট্যাটাস |
 |------------|----------|-----------------------------------|-----------|
 | Claude-1   | Claude   |                                    | Active    |
-| ChatGPT-1  | ChatGPT  |                                    | Active    |
+| ChatGPT-1  | ChatGPT  | 16_ClinicOS_CLI                    | Active    |
 
 
 ## Usage Log
