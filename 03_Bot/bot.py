@@ -56,6 +56,7 @@ import intent_router
 import ai_helper
 import assessment_defs
 import clinical_ai
+import async_runtime
 from learning import learning_engine
 
 logging.basicConfig(
@@ -509,7 +510,7 @@ def _parse_pt_edit_message(text: str) -> dict:
 
 
 async def pt_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return
     if not roles.can_access(staff.get("Role", ""), roles.MENU_MY_PATIENTS):
@@ -524,7 +525,7 @@ async def pt_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def pt_dashboard_refresh_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         await query.edit_message_text("❌ স্টাফ প্রোফাইল পাওয়া যায়নি। /start দাও।")
         return
@@ -599,7 +600,7 @@ async def pt_dashboard_receive_callback(update: Update, context: ContextTypes.DE
 async def pt_dashboard_done_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     treatment = context.user_data.get("pt_treatment")
     patient_id = context.user_data.get("pt_patient_id", "")
     if staff is None or not treatment or not patient_id:
@@ -726,7 +727,7 @@ async def pt_dashboard_edit_back_callback(update: Update, context: ContextTypes.
 async def pt_dashboard_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         await query.edit_message_text("❌ স্টাফ প্রোফাইল পাওয়া যায়নি।")
         return ConversationHandler.END
@@ -918,7 +919,16 @@ def _number_keyboard(nums, per_row: int = 5) -> ReplyKeyboardMarkup:
 
 async def _require_staff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
-    staff = sheets.get_staff_by_telegram_id(telegram_id)
+    try:
+        staff = await async_runtime.run_role_lookup(
+            sheets.get_staff_by_telegram_id,
+            telegram_id,
+        )
+    except _asyncio_p314.TimeoutError:
+        await update.effective_message.reply_text(
+            "⚠️ স্টাফ অনুমতি যাচাই করতে সময় লাগছে। একটু পরে আবার চেষ্টা করো।"
+        )
+        return None
     if staff is None:
         await update.effective_message.reply_text(
             "❌ তোমাকে সিস্টেমে স্টাফ হিসেবে খুঁজে পাওয়া যায়নি।\n"
@@ -926,6 +936,7 @@ async def _require_staff(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "এই ID-টা ক্লিনিক ম্যানেজারকে দাও, তিনি 08_Staff শীটে যোগ করে দেবেন।"
         )
         return None
+    context.user_data["staff"] = staff
     return staff
 
 
@@ -983,7 +994,7 @@ async def learning_quiz_answer_callback(update: Update, context: ContextTypes.DE
     query = update.callback_query
     await query.answer()
     quiz = context.user_data.pop("pending_quiz", None)
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if quiz is None or staff is None:
         return
     selected_index = int(query.data.split(":")[1])
@@ -1001,7 +1012,7 @@ async def learning_quiz_answer_callback(update: Update, context: ContextTypes.DE
 
 
 async def go_home(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return
     role = staff.get("Role", "")
@@ -1019,7 +1030,7 @@ async def my_patients(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ---------- রোগী রেজিস্ট্রেশন ----------
 
 async def reg_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
     if not roles.can_access(staff.get("Role", ""), roles.MENU_PATIENT_REG):
@@ -1108,7 +1119,10 @@ async def reg_photo_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("⏳ ছবিটা পড়া হচ্ছে...")
     debug_error = None
     try:
-        extracted = photo_extract.extract_from_photo(image_bytes)
+        extracted = await async_runtime.run_ai(
+            photo_extract.extract_from_photo,
+            image_bytes,
+        )
     except Exception as e:
         logger.exception("photo_extract failed")
         extracted = None
@@ -1201,7 +1215,10 @@ async def reg_fields(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     ai_filled = False
     if len(missing) > 1:
         try:
-            extracted = text_extract.extract_patient_fields(raw_text)
+            extracted = await async_runtime.run_ai(
+                text_extract.extract_patient_fields,
+                raw_text,
+            )
         except Exception as e:
             logger.warning(f"text_extract ব্যর্থ হয়েছে, comma-split এ ফলব্যাক: {e}")
             extracted = None
@@ -1335,7 +1352,7 @@ async def reg_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ---------- অ্যাপয়েন্টমেন্ট বুকিং ----------
 
 async def apt_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
     if not roles.can_access(staff.get("Role", ""), roles.MENU_APPOINTMENT):
@@ -1710,7 +1727,7 @@ async def search_patient(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def today_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """📋 আজকের শিডিউল — হাজিরা ও আজকের অ্যাপয়েন্টমেন্ট একসাথে একটা সাবমেনুতে (patch36)।"""
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return
     buttons = []
@@ -1745,7 +1762,7 @@ def _submenu_keyboard(labels: list[str]) -> ReplyKeyboardMarkup:
 
 
 async def _generic_submenu(update: Update, context: ContextTypes.DEFAULT_TYPE, items_map: dict, title: str):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return
     try:
@@ -1776,14 +1793,14 @@ async def finance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def back_to_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return
     await update.message.reply_text("🏠 মূল মেনু", reply_markup=_menu_keyboard(staff.get("Role", "")))
 
 
 async def attendance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return
     if not roles.can_access(staff.get("Role", ""), roles.MENU_ATTENDANCE):
@@ -1821,7 +1838,7 @@ async def attendance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    staff = context.user_data.get("staff") or sheets.get_staff_by_telegram_id(update.effective_user.id)
+    staff = await _require_staff(update, context)
     if staff is None:
         await query.edit_message_text("❌ স্টাফ তথ্য পাওয়া যায়নি।")
         return
@@ -1853,7 +1870,7 @@ async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
 # ---------- আজকের অ্যাপয়েন্টমেন্ট (রোগীর ভিজিট হাজিরা) ----------
 
 async def today_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return
     if not roles.can_access(staff.get("Role", ""), roles.MENU_TODAY_APPOINTMENTS):
@@ -1936,7 +1953,7 @@ async def apt_today_back_callback(update: Update, context: ContextTypes.DEFAULT_
 # ---------- পেমেন্ট / বিল এন্ট্রি ----------
 
 async def pay_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
     if not roles.can_access(staff.get("Role", ""), roles.MENU_PAYMENT):
@@ -1959,7 +1976,7 @@ async def pay_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def pay_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.message.text.strip()
 
-    ai_data = ai_helper.parse_register_entry(query)
+    ai_data = await async_runtime.run_ai(ai_helper.parse_register_entry, query)
     if ai_data:
         ai_results = sheets.search_patients(ai_data["name"])
         if len(ai_results) == 1:
@@ -2218,7 +2235,7 @@ def _paydel_list_keyboard(entries: list[dict]) -> InlineKeyboardMarkup:
 
 
 async def paydel_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
     if not roles.can_access(staff.get("Role", ""), roles.MENU_DELETE_ENTRY):
@@ -2385,7 +2402,7 @@ async def _treat_prepare_for_patient(patient: dict, context: ContextTypes.DEFAUL
 
 async def treat_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ট্রিটমেন্ট নোট এন্ট্রি শুরু — রোগী খোঁজা দিয়ে শুরু হয়।"""
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
     if not roles.can_access(staff.get("Role", ""), roles.MENU_TREATMENT_NOTE):
@@ -2652,7 +2669,10 @@ async def _treat_save_note(reply_func, menu_reply, context: ContextTypes.DEFAULT
     """রোগীর মন্তব্য বিবেচনায় নিয়ে, সত্যিই কিছু মিসিং থাকলে AI ১টা প্রশ্ন করে (TREAT_AI_QUESTION state-এ যায়,
     আগের মন্তব্যে যা বলা হয়ে গেছে তা নিয়ে duplicate প্রশ্ন করে না), নাহলে সরাসরি সেভ করে দেয়।"""
     try:
-        question = case_study_ai.check_treatment_missing_info(t)
+        question = await async_runtime.run_ai(
+            case_study_ai.check_treatment_missing_info,
+            t,
+        )
     except Exception:
         logger.exception("check_treatment_missing_info ব্যর্থ হয়েছে — প্রশ্ন ছাড়াই এগোনো হচ্ছে")
         question = ""
@@ -2744,7 +2764,7 @@ def _inventory_list_text() -> str:
 
 
 async def inventory_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
     if not roles.can_access(staff.get("Role", ""), roles.MENU_INVENTORY):
@@ -2965,7 +2985,7 @@ async def atest_info_callback(update, context):
 
 
 async def tplan_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
     if not roles.can_access(staff.get("Role", ""), roles.MENU_TREATMENT_PLAN):
@@ -3102,7 +3122,10 @@ async def tplan_ai_suggest_callback(update: Update, context: ContextTypes.DEFAUL
     await query.answer()
     await query.message.reply_text("🤔 Manual খুঁজছি...")
     case_text = _build_tplan_case_text(context)
-    answer, matched_summary = clinical_ai.get_clinical_guidance(case_text)
+    answer, matched_summary = await async_runtime.run_ai(
+        clinical_ai.get_clinical_guidance,
+        case_text,
+    )
     prefix = f"📖 প্রাসঙ্গিক condition: {matched_summary}\n\n" if matched_summary else ""
     await query.message.reply_text(
         prefix + answer + "\n\n(এখান থেকে দরকারি অংশ copy করে Exercise/Electrotherapy/Manual Therapy "
@@ -3247,7 +3270,7 @@ def _register_view_text_and_keyboard():
 
 
 async def register_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return
     if not roles.can_access(staff.get("Role", ""), roles.MENU_DAILY_REGISTER):
@@ -3260,7 +3283,7 @@ async def register_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def reg_new_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
     context.user_data["payment"] = {}
@@ -3335,7 +3358,7 @@ def _reports_summary_keyboard(role_str: str = "") -> InlineKeyboardMarkup:
 
 
 async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return
     if not roles.can_access(staff.get("Role", ""), roles.MENU_REPORTS):
@@ -3472,7 +3495,7 @@ async def thist_progress_callback(update: Update, context: ContextTypes.DEFAULT_
 
 
 async def thist_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
     if not roles.can_access(staff.get("Role", ""), roles.MENU_TREATMENT_HISTORY):
@@ -3701,7 +3724,7 @@ def _build_full_history_text(patient_id: str) -> str | None:
 
 
 async def hist_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
     if not roles.can_access(staff.get("Role", ""), roles.MENU_PATIENT_HISTORY):
@@ -3748,7 +3771,7 @@ async def hist_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def unknown_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return
     text = (update.message.text or "").strip()
@@ -3867,7 +3890,7 @@ def _patient_card_keyboard(
 
 
 async def patient_list_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
     if not roles.can_access(staff.get("Role", ""), roles.MENU_PATIENT_LIST):
@@ -4184,7 +4207,7 @@ async def plist_action_viewfiles(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     await query.answer()
     patient_id = query.data.replace("plistact_viewfiles_", "")
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return
     patient = sheets.get_patient_by_id(patient_id)
@@ -4218,7 +4241,7 @@ async def plist_action_getfile(update: Update, context: ContextTypes.DEFAULT_TYP
     query = update.callback_query
     await query.answer()
     report_id = query.data.replace("plistact_getfile_", "")
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return
     record = sheets.get_report_by_id(report_id)
@@ -4284,7 +4307,7 @@ async def date_report_day_selected(update, context):
 
 
 async def staffai_start(update, context):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
     if not roles.can_access(staff.get("Role", ""), roles.MENU_STAFF_AI_QUERY):
@@ -4301,7 +4324,11 @@ async def staffai_receive(update, context):
     question = update.message.text.strip()
     await update.message.reply_text("\U0001F914 খুঁজছি...")
     staff = context.user_data.get("staff", {})
-    answer = staff_ai_query.answer_staff_query(question, role=staff.get("Role", ""))
+    answer = await async_runtime.run_ai(
+        staff_ai_query.answer_staff_query,
+        question,
+        role=staff.get("Role", ""),
+    )
     await update.message.reply_text(
         answer,
         reply_markup=_menu_keyboard(staff.get("Role", "")),
@@ -4319,7 +4346,7 @@ async def staffai_cancel(update, context):
 
 
 async def clinicalai_start(update, context):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
     if not roles.can_access(staff.get("Role", ""), roles.MENU_CLINICAL_AI):
@@ -4335,7 +4362,10 @@ async def clinicalai_receive(update, context):
     staff = context.user_data.get("staff", {})
     case_text = update.message.text.strip()
     await update.message.reply_text("\U0001F914 Manual খুঁজছি...")
-    answer, matched_summary = clinical_ai.get_clinical_guidance(case_text)
+    answer, matched_summary = await async_runtime.run_ai(
+        clinical_ai.get_clinical_guidance,
+        case_text,
+    )
     prefix = f"📖 প্রাসঙ্গিক condition: {matched_summary}\n\n" if matched_summary else ""
     await update.message.reply_text(
         prefix + answer,
@@ -4425,7 +4455,7 @@ def _cslesson_next_keyboard() -> InlineKeyboardMarkup:
 
 
 async def casestudy_start(update, context):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
     if not roles.can_access(staff.get("Role", ""), roles.MENU_CASE_STUDY):
@@ -4543,14 +4573,21 @@ async def casestudy_extra_receive(update, context):
     images = await _download_report_images(context, patient_id, limit=4)
     if images:
         await update.message.reply_text("\U0001F50D রিপোর্টের ছবি দেখছি...")
-        vision_notes = case_study_ai.analyze_report_images(images)
+        vision_notes = await async_runtime.run_ai(
+            case_study_ai.analyze_report_images,
+            images,
+        )
         if vision_notes:
             case_text += f"\n\nরিপোর্ট ছবি বিশ্লেষণ (AI Vision):\n{vision_notes}"
 
     context.user_data["cs_case_text"] = case_text
     context.user_data["cs_lesson"] = 1
     await update.message.reply_text("\U0001F914 কেস বিশ্লেষণ করছি, Lesson 1 তৈরি হচ্ছে...")
-    answer = case_study_ai.answer_case_lesson(case_text, 1)
+    answer = await async_runtime.run_ai(
+        case_study_ai.answer_case_lesson,
+        case_text,
+        1,
+    )
     staff = context.user_data.get("staff", {})
     try:
         sheets.add_case_study_lesson(
@@ -4577,7 +4614,11 @@ async def casestudy_lesson_callback(update, context):
 
     lesson += 1
     await query.message.reply_text(f"\U0001F914 Lesson {lesson} তৈরি হচ্ছে...")
-    answer = case_study_ai.answer_case_lesson(case_text, lesson)
+    answer = await async_runtime.run_ai(
+        case_study_ai.answer_case_lesson,
+        case_text,
+        lesson,
+    )
     context.user_data["cs_lesson"] = lesson
     try:
         sheets.add_case_study_lesson(
@@ -4615,7 +4656,7 @@ async def casestudy_cancel(update, context):
 
 
 async def salary_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
     if not roles.can_access(staff.get("Role", ""), roles.MENU_SALARY):
@@ -4835,7 +4876,7 @@ async def send_break_reminder(context: ContextTypes.DEFAULT_TYPE):
 
 
 async def salhist_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return
     if not roles.can_access(staff.get("Role", ""), roles.MENU_SALARY_HISTORY):
@@ -4887,7 +4928,7 @@ async def salhist_select_callback(update: Update, context: ContextTypes.DEFAULT_
 
 
 async def mypayments_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return
     if not roles.can_access(staff.get("Role", ""), roles.MENU_MY_PAYMENTS):
@@ -4911,7 +4952,7 @@ async def mypayments_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cost_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
     if not roles.can_access(staff.get("Role", ""), roles.MENU_ADD_EXPENSE):
@@ -5035,7 +5076,7 @@ async def cost_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def costtracker_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff") or await _require_staff(update, context)
+    staff = await _require_staff(update, context)
     if staff is None:
         return
     if not roles.can_access(staff.get("Role", ""), roles.MENU_EXPENSE_TRACKER):
