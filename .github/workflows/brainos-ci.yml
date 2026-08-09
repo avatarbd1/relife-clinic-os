@@ -47,7 +47,8 @@ jobs:
             development/15_AI_Brain/Control/test_confirm_gate_policy.py \
             07_Testing/test_dispatcher_coordination.py \
             07_Testing/test_worker_coordinator.py \
-            07_Testing/test_task_detector.py
+            07_Testing/test_task_detector.py \
+            07_Testing/test_live_schema_audit.py
 
       - name: Validate cron shell scripts
         run: bash -n brainos_cron_cycle.sh install_brainos_cron.sh configure_runtime_git_hygiene.sh
@@ -67,4 +68,5 @@ jobs:
           python -m unittest -v \
             07_Testing/test_dispatcher_coordination.py \
             07_Testing/test_worker_coordinator.py \
-            07_Testing/test_task_detector.py
+            07_Testing/test_task_detector.py \
+            07_Testing/test_live_schema_audit.py
