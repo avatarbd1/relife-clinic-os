@@ -49,3 +49,23 @@ async def run_ai(function, /, *args, timeout: float = 120, **kwargs):
 
 async def run_role_lookup(function, /, *args, timeout: float = 20, **kwargs):
     return await ROLE_GATE.run(function, *args, timeout=timeout, **kwargs)
+
+
+async def run_ai_background(
+    function,
+    /,
+    *args,
+    on_success,
+    on_error,
+    timeout: float = 120,
+    **kwargs,
+):
+    """Run an AI call and deliver its result without holding an update handler."""
+    try:
+        result = await run_ai(function, *args, timeout=timeout, **kwargs)
+    except asyncio.TimeoutError:
+        await on_error("timeout")
+    except Exception:
+        await on_error("error")
+    else:
+        await on_success(result)
