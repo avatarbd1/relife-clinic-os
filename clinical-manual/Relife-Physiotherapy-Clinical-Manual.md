@@ -932,85 +932,117 @@ A deep-heating modality using high-frequency electromagnetic energy, generally r
 
 ---
 
-## Module 6: Acupuncture / Dry Needling Protocol Library
+## Module 6: Dry Needling / Acupuncture Governance and Safety Gate
 
-This module defines the scope, technique, and safety protocol for needling-based interventions at Relife Physiotherapy Center. Part B condition protocols reference this module in their "Acupuncture / Dry Needling Detail" subsection.
+> [!CAUTION]
+> **RELIFE STATUS: NOT AUTHORIZED FOR ROUTINE CLINICAL USE.** This manual does not establish legal scope, practitioner competence, or permission to perform skin-penetrating needling. Relife may activate a needling service only after the authorization requirements in 6.2 are documented and approved. Reading this section, holding a general physiotherapy qualification, or attending an unverified short course is not authorization.
 
-> **Clinical Note:** The scope at Relife is **Western trigger-point dry needling**, grounded in musculoskeletal/neurophysiological rationale (trigger point deactivation, local twitch response, pain-gate and diffuse noxious inhibitory control mechanisms) — not Traditional Chinese Medicine meridian-based acupuncture theory. Where a technique historically originates from TCM acupuncture (e.g., needle point locations that overlap with classical acupoints), it is applied and justified here on musculoskeletal/neurophysiological grounds only.
+This module governs whether dry needling or acupuncture may be offered at Relife and how an adverse event must be handled. It intentionally does **not** teach insertion angle, depth, needle length, anatomical point selection, pistoning, retention time, or thoracic technique. Those psychomotor and anatomical skills require supervised competency-based education and assessment; they cannot be made safe by a written protocol alone.
 
-### 6.1 Principles and Evidence Base
+The [FSBPT competency analysis](https://www.fsbpt.org/Portals/0/documents/free-resources/DryNeedlingFinalReport_20150812.pdf) identifies dry needling as a non-entry-level technique requiring specialized psychomotor training plus specific knowledge in anatomy, needle handling, contraindications, and emergency response. The [2024 FSBPT update](https://www.fsbpt.org/Portals/0/documents/free-resources/DN%20Competency%20Update%202024%20-%20Memo.pdf) continues that competency-based approach. These US regulatory resources are used here only as an international competency benchmark; they do not define Bangladeshi legal scope.
 
-- Dry needling targets myofascial trigger points, tight/taut muscle bands, and localized soft-tissue dysfunction using a solid filiform needle without injectate.
-- Evidence supports dry needling as a short-to-medium-term adjunct for myofascial pain and as a component of a broader active-treatment plan (manual therapy + exercise) — it is not supported as a standalone or primary treatment, consistent with the adjunctive role electrotherapy plays in Module 5.
-- Needling is performed only by therapists specifically trained and credentialed in dry needling, within applicable local scope-of-practice regulation.
+### 6.1 Terminology and Intended Role
 
-### 6.2 Indications
+- **Dry needling** generally refers to insertion of a solid filiform needle for a musculoskeletal/neuromuscular treatment rationale.
+- **Acupuncture** may involve different diagnostic traditions, training standards, and regulation. Relife must not present dry needling as acupuncture, or acupuncture as dry needling, merely because both use needles.
+- If authorized in the future, needling must be an optional adjunct to a documented assessment and active rehabilitation plan—not a default treatment or substitute for indicated exercise, education, medical referral, or other care.
+- The evidence for effectiveness is condition-, comparator-, outcome-, and follow-up-specific. This manual therefore withdraws its former blanket statement that needling has a general “short-to-medium-term” benefit. Each future Condition Card must cite and grade evidence for its own condition.
 
-- Active myofascial trigger points contributing to the patient's pain pattern (local or referred), identified on palpation as a taut band with a hyperirritable, tender nodule reproducing familiar pain
-- Muscle guarding/hypertonicity limiting range or contributing to a movement dysfunction, where manual techniques (Module 3) have had insufficient effect
-- Chronic or recurrent myofascial pain patterns as an adjunct within the broader condition-specific plan (e.g., B29 Fibromyalgia, B30 Postural Syndrome, and myofascial components of spinal/shoulder conditions)
+> **Evidence status:** Terminology and competency principles are supported at framework level. Condition-specific efficacy remains `EVIDENCE NOT VERIFIED — CLINICAL REVIEW REQUIRED`.
 
-### 6.3 Contraindications and Precautions
+### 6.2 Authorization Requirements
 
-| Category | Absolute Contraindications | Relative Precautions |
-|---|---|---|
-| Patient factors | Needle phobia with inability to consent/cooperate, unable to give informed consent | Anxiety about needling (address with education, consider trial on a less-sensitive site first) |
-| Medical | Active local or systemic infection, lymphedema in the limb to be needled, bleeding disorders/anticoagulant therapy without medical clearance | Diabetes (delayed healing — monitor site), pregnancy (avoid specific point areas per trimester and abdominal/lower back region per standard obstetric precaution) |
-| Anatomical | Needling near the thorax/lung fields without specific training and technique modification (pneumothorax risk) | Needling near major vessels or nerves — requires precise anatomical knowledge and technique adjustment, not avoidance in trained hands |
-| Other | Metal allergy (needle material), first-trimester pregnancy for certain point locations per standard precaution | Patients on immunosuppressive therapy (infection risk — heightened aseptic technique) |
+Before the first Relife needling treatment, **all** of the following must exist:
 
-> **Clinical Note:** Needling near the ribcage/thoracic region (e.g., upper trapezius, rhomboids, thoracic paraspinals) carries a recognized pneumothorax risk if angle and depth are not controlled precisely — this is the most serious reportable adverse event associated with dry needling and requires specific technique training, not general manual therapy competence.
+1. **Local scope verification:** written review of the Bangladesh Rehabilitation Council Act, applicable rules/standards, Ministry requirements, professional guidance, and facility obligations by an appropriately qualified local authority or adviser. The [Bangladesh Rehabilitation Council Act, 2018](https://bdlaws.minlaw.gov.bd/act-1284.html) confirms a statutory rehabilitation framework, but this audit did not find an authoritative provision expressly confirming dry needling scope for a diploma physiotherapist.
+2. **Named practitioner credential:** identity, base professional qualification, registration/licensing status where applicable, recognized needling education, supervised practical training, assessed competencies, anatomical-region limitations, and renewal requirements.
+3. **Relife privileging decision:** written approval specifying exactly which practitioner may perform which technique in which anatomical regions. Authorization is individual; it cannot be transferred to assistants or inferred from job title.
+4. **Infection-prevention system:** hand hygiene, clean field, single-use sterile needles, skin preparation consistent with approved policy, sharps container, exposure/injury procedure, waste disposal, and stock/expiry controls. The [WHO benchmarks for acupuncture practice](https://iris.who.int/bitstreams/e4c8a673-688a-4a2a-af6d-f1c36438946a/download) provide an international procedures/facilities/safety reference but do not replace local requirements.
+5. **Emergency readiness:** documented response pathway, staff rehearsal, accessible emergency contacts, observation and transfer plan, and equipment appropriate to the approved service.
+6. **Consent materials:** patient-language information covering purpose, alternatives, uncertainty, common minor effects, material serious risks relevant to the proposed site, practitioner identity, and the right to decline without losing access to other care.
+7. **Incident governance:** standardized procedure note, adverse-event form, escalation thresholds, review responsibility, and service-suspension criteria.
+8. **Clinical review:** approval of each condition-specific indication and exclusion criterion; blanket use for any “tight muscle,” guarding, chronic pain, fibromyalgia, spinal pain, or posture is not permitted.
 
-### 6.4 Technique — Trigger Point Dry Needling
+Until all eight requirements are recorded, every Part B instruction recommending acupuncture or dry needling is **inactive** and must be read as `LOCAL POLICY — NOT AUTHORIZED`.
 
-1. Palpate and confirm the target trigger point (taut band, tender nodule, reproduction of familiar pain, possible local twitch response on snapping palpation).
-2. Prepare the site with appropriate skin antisepsis; use a single-use sterile needle per site/session, disposed of per standard sharps protocol.
-3. Insert the needle through the skin at an angle and depth appropriate to the target muscle and its anatomical relations (avoiding underlying neurovascular/visceral structures).
-4. Advance toward the trigger point, aiming to elicit a local twitch response (LTR) — an involuntary spinal reflex contraction of the muscle fibers — which is associated with (though not required for) a positive treatment effect.
-5. Withdraw partially and redirect within the same insertion (a "pistoning" or fanning technique) to target multiple fibers within the taut band, until LTRs diminish or the desired number of passes is reached.
-6. Remove the needle, apply light pressure to the site, and monitor the patient briefly before they leave the treatment area.
+### 6.3 Patient and Procedure Decision Gate
 
-### 6.5 Needling Technique Variants
+If the service is later authorized, the credentialed practitioner must complete and document all steps before every procedure:
 
-| Technique | Description | Primary Use |
-|---|---|---|
-| Superficial dry needling | Needle inserted only into subcutaneous tissue above the muscle, not into the muscle belly itself | Lower-irritability presentations, needle-sensitive patients, as an introductory technique |
-| Deep dry needling | Needle advanced into the muscle belly to directly contact the trigger point | Standard technique for established, well-localized trigger points |
-| In-and-out (pistoning) technique | Rapid, repeated shallow insertion/withdrawal within the muscle to elicit multiple LTRs | Larger or more active trigger point areas |
-| Retention technique | Needle left in place for a period without further manipulation | Where a sustained, lower-intensity effect is preferred over the more provocative pistoning technique |
+- confirm patient identity, target problem, intended site and side;
+- confirm that needling is relevant to a current assessment and agreed goal;
+- review consent capacity, preferences, prior needle response, pregnancy possibility where relevant, infection/systemic illness, skin integrity, bleeding/bruising history, medications, immune status, altered sensation, anatomy/surgery, implants, and other patient-specific risks;
+- perform a site-specific anatomical risk assessment, including structures beneath and adjacent to the proposed needle path;
+- determine whether to proceed, modify, choose a non-invasive alternative, consult, or decline;
+- conduct a pause immediately before insertion confirming practitioner, patient, site, side, consent, sterile equipment, positioning, and emergency readiness.
 
-### 6.6 Needling Parameters
+The former categorical contraindication table has been removed because it mixed patient preference, medical risk, anatomy, pregnancy, anticoagulation, and training deficiencies as if they were equivalent universal rules. These factors require individualized risk assessment and local scope guidance.
 
-| Parameter | Typical Range |
+### 6.4 Prohibited Practice Pending Separate Approval
+
+Even if a general needling service is later authorized, the following remain prohibited unless specifically included in the practitioner’s documented anatomical-region privilege and Relife’s approved procedure:
+
+- thorax, rib cage, upper trapezius, periscapular region, thoracic paraspinals, or any site where a needle trajectory could reach pleura/lung;
+- anterior or lateral neck, deep gluteal/pelvic regions, abdomen, face, or other regions containing vulnerable neurovascular or visceral structures;
+- electro-dry needling or any electrical current applied through needles;
+- treatment of children or a person unable to provide valid consent without an approved consent/safeguarding pathway;
+- delegation of insertion or needle manipulation to an assistant or unprivileged practitioner;
+- use of a generic chart to select insertion depth, angle, or needle length.
+
+This is a **Relife safety policy**, not a claim that every listed procedure is universally illegal. Any future exception requires documented legal/scope verification, advanced region-specific training, competency assessment, clinical governance approval, and an updated manual version.
+
+### 6.5 Infection Prevention and Sharps Safety
+
+Only single-use, sterile, in-date needles may be used. Reuse, re-sterilization, recapping, unattended exposed sharps, or disposal outside an approved puncture-resistant sharps container is prohibited. The clinic must maintain a written sharps-injury/exposure pathway and comply with verified local biomedical-waste requirements.
+
+Because the Bangladesh-specific infection-control and waste pathway has not yet been added from an authoritative local source, this subsection remains `LOCAL POLICY — APPROVAL REQUIRED` despite alignment with the safety principles in the [WHO practice benchmarks](https://iris.who.int/bitstreams/e4c8a673-688a-4a2a-af6d-f1c36438946a/download).
+
+### 6.6 Consent and Documentation
+
+The procedure note must include:
+
+- indication and intended functional/clinical goal;
+- alternatives offered, including no needling;
+- material risks discussed and consent outcome;
+- practitioner and credential/privilege status;
+- anatomical site and side, patient position, technique category, needle count inserted and removed, and confirmation that all sharps were accounted for;
+- immediate response, post-procedure observations, advice and safety-net instructions;
+- any adverse event and action taken.
+
+Consent must explicitly cover pneumothorax when the proposed region presents pleural risk, bleeding/bruising, pain/soreness, fainting/vasovagal response, infection, nerve or vascular injury, retained/broken needle, symptom aggravation, and the possibility of no benefit. The exact consent language requires local legal and clinical review.
+
+### 6.7 Adverse-Event Recognition and Response
+
+Minor effects such as bleeding, bruising, and pain are common in prospective survey data; major events were uncommon but reported. In one prospective survey of 20,464 treatments, 36.7% involved a reported minor adverse event and fewer than 0.1% involved a major event; these figures come from self-reported survey research and should not be treated as a guaranteed patient-specific risk estimate. See [Boyce et al., 2020](https://pubmed.ncbi.nlm.nih.gov/32089962/).
+
+| Event | Required response |
 |---|---|
-| Needle gauge | 0.25–0.30 mm diameter, commonly used sizes for musculoskeletal dry needling |
-| Needle length | 25–75 mm depending on target muscle depth |
-| Retention time (if retained) | 10–20 minutes |
-| Session frequency | 1–2x/week, allowing 48–72 hours between sessions at the same site for post-needling soreness to resolve |
-| Course length | Typically 3–6 sessions before reassessing effect; continue only if a measurable change in the target sign (pain, range, palpation finding) is observed |
+| Pallor, sweating, nausea, presyncope or syncope | Stop; remove and account for needles when safe; protect from fall; position and monitor appropriately; assess vital signs within competence; escalate if recovery is incomplete, atypical, prolonged, or accompanied by concerning symptoms. Do not resume that session. |
+| Unexpected sharp/electric pain, new weakness or sensory change | Stop and remove the needle safely; perform and document an appropriate neurovascular assessment; arrange urgent medical assessment for persistent or progressive deficit. |
+| Bleeding or expanding haematoma | Stop; apply appropriate direct pressure; monitor. Escalate for persistent bleeding, expanding swelling, neurovascular compromise, or systemic symptoms. |
+| Suspected infection | Stop further needling and arrange timely medical assessment; use urgent escalation for systemic illness or rapidly spreading signs. |
+| Chest pain, breathlessness, dry cough, cyanosis, or unexplained deterioration after needling near a pleural-risk region | Treat pneumothorax or other thoracic injury as possible. Activate emergency medical assessment; do not use a “wait and see” home plan. Symptoms may be delayed, so written safety-net advice is mandatory whenever a pleural-risk region has been needled. |
+| Missing, retained, or broken needle | Stop; do not blindly probe; account for all sharps and arrange appropriate medical assessment/removal. Preserve device details and report the incident. |
 
-### 6.7 Adverse Event Recognition and Management
+All material adverse events trigger immediate suspension of further needling by the involved practitioner pending documented review. A suspected pneumothorax, significant neurovascular injury, serious infection, uncontrolled bleeding, or retained/broken needle also triggers suspension of the entire Relife needling service until the clinical-governance review records corrective action and authorization to resume.
 
-| Event | Recognition | Management |
-|---|---|---|
-| Post-needling soreness | Localized ache, 24–48 hours, similar in nature to deep friction massage soreness (Module 3.4) | Expected response — counsel in advance; apply the 24-hour rule (Module 4.4) to distinguish from an adverse reaction |
-| Vasovagal/syncopal response | Lightheadedness, pallor, sweating, brief loss of consciousness, typically during or shortly after needle insertion | Stop needling immediately, position patient supine with legs elevated, monitor vitals, do not resume needling that session |
-| Bruising/minor bleeding | Localized bruise at insertion site | Apply direct pressure, reassure patient; more likely in anticoagulated patients (screened per 6.3) |
-| Pneumothorax (rare, serious) | Delayed-onset chest pain, shortness of breath, following needling near the thorax | Refer for emergency medical assessment immediately — this is a medical emergency, not a wait-and-monitor situation |
-| Nerve irritation | Sharp, shooting, or electric sensation with needle contact | Withdraw and redirect immediately; do not needle directly through the sensation |
+### 6.8 Operational Parameters Withdrawn
 
-### 6.8 Post-Needling Care and Patient Education
+The previous table specifying generic needle gauge, 25–75 mm length, 10–20 minute retention, 1–2 sessions weekly, 48–72-hour spacing, and a 3–6-session course has been removed. The audit did not verify those numbers as universally safe or effective across anatomical sites, conditions, techniques, and patient risks.
 
-- Advise the patient of expected post-needling soreness (24–48 hours), similar to post-exercise muscle soreness, and to apply the 24-hour rule (Module 4.4) if it does not resolve as expected.
-- Encourage gentle movement/activity rather than complete rest after needling, consistent with the general early-loading philosophy in Module 4.
-- Advise avoiding strenuous exercise of the needled muscle group for the remainder of the treatment day where a strong local twitch response was elicited.
-- Document needled sites, technique used, and immediate response (including LTR elicited or not) for continuity of care and to inform whether the technique is having the intended effect over successive sessions.
+Likewise, written instructions to “advance toward the trigger point,” deliberately elicit local twitch responses, piston/fan the needle, or redirect within one insertion are not retained as operational SOP. If needling is eventually authorized, technique and dosage must come from the practitioner’s approved competency framework and the condition/site-specific reviewed protocol—not from generic prose.
 
-### 6.9 Condition-Specific Application
+### 6.9 Part B and AI Condition Card Rule
 
-Dry needling is referenced as an adjunct technique in the relevant Part B condition protocols — most frequently in myofascial and postural presentations (B29 Fibromyalgia/Chronic Widespread Pain, B30 Postural Syndrome), and as an adjunct for muscle guarding components of spinal conditions (B5–B12) and shoulder girdle conditions (B1–B4). Where a Part B protocol specifies dry needling, apply the general technique, dosage, and safety principles in this module rather than repeating them per condition.
+- Existing Part B needling recommendations are inactive until reviewed individually.
+- A Condition Card must never activate needling merely because the condition name matches.
+- Production AI may state that needling is unavailable/not authorized or prompt a credentialed clinician to review eligibility; it must not output insertion instructions, depth, angle, needle selection, point maps, or a personalized needling procedure.
+- If Relife later authorizes the service, the card must check practitioner privilege, patient/procedure decision gate, site restrictions, consent, and emergency readiness before showing any clinician-facing reminder.
+- Patient-facing AI must not recommend self-needling.
 
-*End of Module 6. Module 7 (Contraindications & Precautions) consolidates the safety information scattered across Modules 3, 5, and 6 into a single cross-cutting reference.*
+> **Module 6 audit status (2026-08-09):** Governance and adverse-event response audited against the cited WHO, FSBPT, Bangladesh statute, and adverse-event survey sources. Bangladesh-specific professional scope, local infection-control/waste requirements, named practitioner competence, condition-specific efficacy, consent language, and any anatomical technique remain unverified. **Needling remains not authorized at Relife under this manual.**
+
+*End of Module 6.*
 
 ---
 
