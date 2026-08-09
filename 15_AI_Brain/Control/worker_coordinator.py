@@ -45,6 +45,14 @@ class ActiveTask:
     module: str
 
 
+@dataclass(frozen=True)
+class CoordinationEvent:
+    event: str
+    worker_id: str
+    event_date: str
+    details: str
+
+
 def _cells(line: str) -> list[str]:
     return [cell.strip() for cell in line.strip().strip("|").split("|")]
 
@@ -163,6 +171,51 @@ class WorkerCoordinator:
         text = self.queue.read_text(encoding="utf-8")
         rows = _data_rows(_section_lines(text, "In-Progress"), 4)
         return [ActiveTask(*row) for row in rows]
+
+    def recent_events(self, limit: int = 5) -> list[CoordinationEvent]:
+        """Return the newest coordination rows from HANDOVER.md."""
+        if limit < 0:
+            raise CoordinationError("event limit must be >= 0")
+        if limit == 0 or not self.handover.exists():
+            return []
+
+        rows = _data_rows(self.handover.read_text(encoding="utf-8").splitlines(), 4)
+        events = [CoordinationEvent(*row) for row in rows]
+        return list(reversed(events[-limit:]))
+
+    def dashboard_lines(
+        self,
+        max_age_days: int = 7,
+        event_limit: int = 5,
+    ) -> list[str]:
+        """Build a read-only coordination health snapshot for operators."""
+        active = self.active_tasks()
+        free = self.available_workers()
+        issues = self.reconciliation_issues(max_age_days)
+        events = self.recent_events(event_limit)
+
+        lines = [
+            "=== AI WORKER COORDINATION DASHBOARD ===",
+            f"Active assignments: {len(active)}",
+        ]
+        lines.extend(
+            f"  {item.worker_id}: {item.task} [{item.module}]"
+            for item in active
+        )
+        lines.append(f"Available workers: {len(free)}")
+        lines.append("  " + (", ".join(worker.worker_id for worker in free) or "none"))
+        lines.append(f"Reconciliation health: {'HEALTHY' if not issues else 'ISSUES'}")
+        lines.append(f"Reconciliation issues: {len(issues)}")
+        for item, reasons in issues:
+            lines.append(
+                f"  {item.task} | {item.worker_id} | {'; '.join(reasons)}"
+            )
+        lines.append(f"Recent coordination events: {len(events)}")
+        lines.extend(
+            f"  {event.event_date} | {event.worker_id} | {event.event} | {event.details}"
+            for event in events
+        )
+        return lines
 
     def available_workers(self, module: str = "") -> list[Worker]:
         busy = {task.worker_id for task in self.active_tasks()}
@@ -331,6 +384,9 @@ def main() -> int:
     complete.add_argument("--no-review", action="store_true")
     reconcile = sub.add_parser("reconcile")
     reconcile.add_argument("--max-age-days", type=int, default=7)
+    dashboard = sub.add_parser("dashboard")
+    dashboard.add_argument("--max-age-days", type=int, default=7)
+    dashboard.add_argument("--event-limit", type=int, default=5)
     args = parser.parse_args()
 
     coordinator = WorkerCoordinator()
@@ -349,7 +405,7 @@ def main() -> int:
         elif args.command == "complete":
             item = coordinator.complete(args.task, args.evidence, not args.no_review)
             print(f"Completed {item.task} by {item.worker_id}; handover updated")
-        else:
+        elif args.command == "reconcile":
             issues = coordinator.reconciliation_issues(args.max_age_days)
             print(f"Reconciliation issues: {len(issues)}")
             for item, reasons in issues:
@@ -357,6 +413,15 @@ def main() -> int:
                     f"  {item.task} | {item.worker_id} | {item.started} | "
                     f"{item.module} | {'; '.join(reasons)}"
                 )
+        else:
+            print(
+                "\n".join(
+                    coordinator.dashboard_lines(
+                        max_age_days=args.max_age_days,
+                        event_limit=args.event_limit,
+                    )
+                )
+            )
     except CoordinationError as exc:
         print(f"BLOCKED: {exc}")
         return 2

@@ -161,6 +161,35 @@ class WorkerCoordinatorTests(unittest.TestCase):
         self.assertTrue(any("claim age" in reason for reason in orphan))
         self.assertEqual(self.queue.read_text(encoding="utf-8"), original)
 
+    def test_dashboard_reports_health_and_recent_events_without_mutation(self):
+        self.handover.write_text(
+            "# Handover\n"
+            "| First - ASSIGNED | Claude-1 | 2026-08-08 | 03_Bot |\n"
+            "| Second - REVIEW-READY | Gemini-1 | 2026-08-09 | tests passed |\n",
+            encoding="utf-8",
+        )
+        queue_before = self.queue.read_text(encoding="utf-8")
+        handover_before = self.handover.read_text(encoding="utf-8")
+
+        lines = self.coordinator.dashboard_lines(
+            max_age_days=7,
+            event_limit=1,
+        )
+
+        report = "\n".join(lines)
+        self.assertIn("Active assignments: 1", report)
+        self.assertIn("Available workers: 2", report)
+        self.assertIn("Reconciliation health: HEALTHY", report)
+        self.assertIn("Recent coordination events: 1", report)
+        self.assertIn("Second - REVIEW-READY", report)
+        self.assertNotIn("First - ASSIGNED", report)
+        self.assertEqual(self.queue.read_text(encoding="utf-8"), queue_before)
+        self.assertEqual(self.handover.read_text(encoding="utf-8"), handover_before)
+
+    def test_dashboard_rejects_negative_event_limit(self):
+        with self.assertRaises(worker_coordinator.CoordinationError):
+            self.coordinator.dashboard_lines(event_limit=-1)
+
     def test_assignment_prefers_matching_module_and_writes_handover(self):
         selected = self.coordinator.assign("Bot task", "03_Bot/bot.py")
         self.assertEqual(selected.worker_id, "Claude-1")
