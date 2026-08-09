@@ -4,12 +4,13 @@ set -eu
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 LOG_DIR="$REPO_ROOT/15_AI_Brain/Logs"
 MARKER="# BrainOS managed cron cycle"
-CRON_LINE="*/10 * * * * $REPO_ROOT/brainos_cron_cycle.sh >> $LOG_DIR/cron-cycle.log 2>&1"
+BASH_BIN="$(command -v bash)"
+CRON_LINE="*/10 * * * * $BASH_BIN $REPO_ROOT/brainos_cron_cycle.sh >> $LOG_DIR/cron-cycle.log 2>&1"
 TMP_DIR="${PREFIX:-/data/data/com.termux/files/usr}/tmp"
 TMP_FILE="$TMP_DIR/brainos-cron.$$"
 
 mkdir -p "$LOG_DIR" "$TMP_DIR"
-chmod +x "$REPO_ROOT/brainos_cron_cycle.sh"
+bash "$REPO_ROOT/configure_runtime_git_hygiene.sh"
 
 if ! command -v crontab >/dev/null 2>&1 || ! command -v crond >/dev/null 2>&1; then
     echo "cronie is not installed. Run: pkg install cronie -y"
