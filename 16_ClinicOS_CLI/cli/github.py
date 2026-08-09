@@ -67,6 +67,23 @@ def sync(message: str = None):
     message = message or f"Auto commit - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     print(f"📁 Git root: {git_root}")
 
+    changes = _run(["git", "status", "--short"], cwd=git_root)
+    if changes.returncode != 0:
+        print("❌ git status ব্যর্থ:", changes.stderr)
+        return False
+
+    if not changes.stdout.strip():
+        print("✅ কোনো পরিবর্তন নেই। Sync করার কিছু নেই।")
+        return True
+
+    print("\n--- যে ফাইলগুলো commit হবে ---")
+    print(changes.stdout.rstrip())
+
+    confirm = input("\nCommit + push করতে YES লিখুন: ").strip()
+    if confirm != "YES":
+        print("⛔ Sync বাতিল হয়েছে। কোনো commit/push করা হয়নি।")
+        return False
+
     add = _run(["git", "add", "."], cwd=git_root)
     if add.returncode != 0:
         print("❌ git add ব্যর্থ:", add.stderr)
