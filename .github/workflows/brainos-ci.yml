@@ -28,6 +28,9 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install BrainOS test dependency
+        run: python -m pip install "requests>=2.32.0"
+
       - name: Compile BrainOS control modules
         run: |
           python -m py_compile \
