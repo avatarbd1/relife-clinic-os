@@ -186,6 +186,7 @@ class TaskRouterBridge:
             parts = [p.strip() for p in stripped.split('|') if p.strip()]
             if len(parts) >= 6:
                 task_id, task_type, priority, status, assigned, created = parts[:6]
+                metadata = self._load_task_metadata(task_id)
                 rows.append({
                     "raw_line": line,
                     "task_id": task_id,
@@ -194,22 +195,24 @@ class TaskRouterBridge:
                     "status": status,
                     "assigned": assigned,
                     "created": created,
-                    "target_file": self._load_target_file(task_id),
+                    "description": metadata.get("description", ""),
+                    "target_file": metadata.get("target_file", ""),
                 })
         return rows
 
-    def _load_target_file(self, task_id):
-        """TASK_DESCRIPTIONS.json থেকে এই task_id-এর target_file পড়ে (থাকলে)।"""
+    def _load_task_metadata(self, task_id):
+        """Load the persisted description and target for one queued task."""
         import json
         desc_path = os.path.join(REPO_ROOT, "15_BrainOS", "TASK_DESCRIPTIONS.json")
         if not os.path.exists(desc_path):
-            return ""
+            return {}
         try:
             with open(desc_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            return data.get(task_id, {}).get("target_file", "")
-        except Exception:
-            return ""
+            metadata = data.get(task_id, {})
+            return metadata if isinstance(metadata, dict) else {}
+        except (OSError, json.JSONDecodeError, TypeError):
+            return {}
 
     def set_queue_row_status(self, raw_line, new_status):
         """Update just the status field of a row still inside Active Queue
