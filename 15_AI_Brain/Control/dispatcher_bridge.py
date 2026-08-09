@@ -199,6 +199,7 @@ def process_task(bridge, executor, validator, gate, logger, row):
         task_type=row["type"],
         prompt=prompt,
         output_path=output_path,
+    persist_output=False,
     )
     exec_time_ms = int((time.time() - start_time) * 1000)
 
@@ -256,6 +257,7 @@ def process_task(bridge, executor, validator, gate, logger, row):
             task_type=row["type"],
             prompt=prompt,
             output_path=output_path,
+        persist_output=False,
         )
         retry_time_ms = int((time.time() - start_time) * 1000)
 
