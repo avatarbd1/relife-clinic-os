@@ -50,7 +50,8 @@ jobs:
             07_Testing/test_task_detector.py \
             07_Testing/test_live_schema_audit.py \
             07_Testing/test_async_runtime.py \
-            07_Testing/test_user_facing_copy.py
+            07_Testing/test_user_facing_copy.py \
+            07_Testing/test_background_ai_policy.py
 
       - name: Validate cron shell scripts
         run: bash -n brainos_cron_cycle.sh install_brainos_cron.sh configure_runtime_git_hygiene.sh
@@ -73,4 +74,5 @@ jobs:
             07_Testing/test_task_detector.py \
             07_Testing/test_live_schema_audit.py \
             07_Testing/test_async_runtime.py \
-            07_Testing/test_user_facing_copy.py
+            07_Testing/test_user_facing_copy.py \
+            07_Testing/test_background_ai_policy.py
