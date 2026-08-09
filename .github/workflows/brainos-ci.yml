@@ -50,7 +50,13 @@ jobs:
             07_Testing/test_task_detector.py
 
       - name: Validate cron shell scripts
-        run: bash -n brainos_cron_cycle.sh install_brainos_cron.sh
+        run: bash -n brainos_cron_cycle.sh install_brainos_cron.sh configure_runtime_git_hygiene.sh
+
+      - name: Verify runtime ignore policy
+        run: |
+          git check-ignore -q 15_BrainOS/TaskInbox/example.txt
+          git check-ignore -q 15_AI_Brain/Proposals/Approved/TASK-TEST.proposal.json
+          git check-ignore -q 15_AI_Brain/Logs/scheduler.pid
 
       - name: Confirm Gate unit tests
         working-directory: 15_AI_Brain/Control
