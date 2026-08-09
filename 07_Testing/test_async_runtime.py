@@ -45,6 +45,41 @@ class AsyncRuntimeTests(unittest.IsolatedAsyncioTestCase):
             await gate.run(time.sleep, 0.2, timeout=0.02)
         self.assertLess(time.monotonic() - started, 0.15)
 
+    async def test_background_success_is_delivered(self):
+        delivered = []
+
+        async def success(value):
+            delivered.append(("success", value))
+
+        async def error(reason):
+            delivered.append(("error", reason))
+
+        await runtime.run_ai_background(
+            lambda: "ready",
+            on_success=success,
+            on_error=error,
+        )
+        self.assertEqual(delivered, [("success", "ready")])
+
+    async def test_background_error_is_user_safe(self):
+        delivered = []
+
+        def fail():
+            raise RuntimeError("secret provider detail")
+
+        async def success(value):
+            delivered.append(("success", value))
+
+        async def error(reason):
+            delivered.append(("error", reason))
+
+        await runtime.run_ai_background(
+            fail,
+            on_success=success,
+            on_error=error,
+        )
+        self.assertEqual(delivered, [("error", "error")])
+
 
 if __name__ == "__main__":
     unittest.main()
