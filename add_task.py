@@ -13,8 +13,9 @@ import os
 import re
 import json
 from datetime import datetime
+from pathlib import Path
 
-REPO_ROOT = os.path.expanduser("~/relife-clinic-os")
+REPO_ROOT = str(Path(__file__).resolve().parent)
 
 # .env ফাইল থেকে GROQ_API_KEY ম্যানুয়ালি লোড করা (কোনো এক্সট্রা লাইব্রেরি ছাড়াই)
 def load_env():
