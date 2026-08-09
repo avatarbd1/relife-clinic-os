@@ -4337,16 +4337,33 @@ async def staffai_receive(update, context):
     staff = context.user_data.get("staff", {})
     question = update.message.text.strip()
     await update.message.reply_text(STATUS_BUSINESS_ANALYSIS)
-    staff = context.user_data.get("staff", {})
-    answer = await async_runtime.run_ai(
+
+    bot_api = context.bot
+    chat_id = update.effective_chat.id
+    role = staff.get("Role", "")
+
+    async def deliver(answer):
+        await bot_api.send_message(
+            chat_id,
+            answer,
+            reply_markup=_menu_keyboard(role),
+        )
+
+    async def deliver_error(reason):
+        message = (
+            "⏱️ তথ্য বিশ্লেষণের সময়সীমা শেষ হয়েছে। আবার চেষ্টা করুন।"
+            if reason == "timeout"
+            else "⚠️ এই মুহূর্তে তথ্য বিশ্লেষণ সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।"
+        )
+        await bot_api.send_message(chat_id, message, reply_markup=_menu_keyboard(role))
+
+    context.application.create_task(async_runtime.run_ai_background(
         staff_ai_query.answer_staff_query,
         question,
-        role=staff.get("Role", ""),
-    )
-    await update.message.reply_text(
-        answer,
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
-    )
+        role=role,
+        on_success=deliver,
+        on_error=deliver_error,
+    ))
     return ConversationHandler.END
 
 
@@ -4376,15 +4393,34 @@ async def clinicalai_receive(update, context):
     staff = context.user_data.get("staff", {})
     case_text = update.message.text.strip()
     await update.message.reply_text(STATUS_CLINICAL_ANALYSIS)
-    answer, matched_summary = await async_runtime.run_ai(
+
+    bot_api = context.bot
+    chat_id = update.effective_chat.id
+    role = staff.get("Role", "")
+
+    async def deliver(result):
+        answer, matched_summary = result
+        prefix = f"📖 প্রাসঙ্গিক condition: {matched_summary}\n\n" if matched_summary else ""
+        await bot_api.send_message(
+            chat_id,
+            prefix + answer,
+            reply_markup=_menu_keyboard(role),
+        )
+
+    async def deliver_error(reason):
+        message = (
+            "⏱️ ক্লিনিক্যাল বিশ্লেষণের সময়সীমা শেষ হয়েছে। আবার চেষ্টা করুন।"
+            if reason == "timeout"
+            else "⚠️ এই মুহূর্তে ক্লিনিক্যাল বিশ্লেষণ সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।"
+        )
+        await bot_api.send_message(chat_id, message, reply_markup=_menu_keyboard(role))
+
+    context.application.create_task(async_runtime.run_ai_background(
         clinical_ai.get_clinical_guidance,
         case_text,
-    )
-    prefix = f"📖 প্রাসঙ্গিক condition: {matched_summary}\n\n" if matched_summary else ""
-    await update.message.reply_text(
-        prefix + answer,
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
-    )
+        on_success=deliver,
+        on_error=deliver_error,
+    ))
     return ConversationHandler.END
 
 
