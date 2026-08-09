@@ -22,7 +22,7 @@ class UserFacingCopyTests(unittest.TestCase):
 
     def test_context_specific_status_messages_exist(self):
         expected = [
-            "নথির তথ্য বিশ্লেষণ করছি",
+            "ছবি/রিপোর্টের তথ্য বিশ্লেষণ করছি",
             "ক্লিনিক্যাল তথ্য ও প্রাসঙ্গিক ম্যানুয়াল বিশ্লেষণ করছি",
             "ক্লিনিকের তথ্য বিশ্লেষণ করে উত্তর প্রস্তুত করছি",
             "রোগী শনাক্ত করতে নাম, ফোন নম্বর অথবা Patient ID লিখুন",
