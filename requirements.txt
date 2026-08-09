@@ -28,7 +28,7 @@ pyasn1-modules>=0.4.0
 pydantic>=2.13.0
 pyparsing>=3.3.0
 python-dotenv>=1.0.0
-python-telegram-bot>=21.4
+python-telegram-bot[job-queue]==21.4
 pytz>=2026.0
 requests>=2.32.0
 requests-oauthlib>=2.0.0

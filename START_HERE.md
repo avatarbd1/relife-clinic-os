@@ -26,11 +26,11 @@ Production Code:
 ## Step 2 — Read These Files
 
 1. PROJECT_STATUS.md
-2. 11_AIOS/MASTER_PROMPT.md
-3. 11_AIOS/AI_CONSTITUTION.md
-4. 11_AIOS/AI_REGISTRY.md
-5. 12_Handover/HANDOVER.md
-6. 13_AI_Tasks/TASK_QUEUE.md
+2. development/11_AIOS/MASTER_PROMPT.md
+3. development/11_AIOS/AI_CONSTITUTION.md
+4. development/11_AIOS/AI_REGISTRY.md
+5. development/12_Handover/HANDOVER.md
+6. development/13_AI_Tasks/TASK_QUEUE.md
 
 ---
 
@@ -48,15 +48,15 @@ cat START_HERE.md
 
 cat PROJECT_STATUS.md
 
-cat 11_AIOS/MASTER_PROMPT.md
+cat development/11_AIOS/MASTER_PROMPT.md
 
-cat 11_AIOS/AI_CONSTITUTION.md
+cat development/11_AIOS/AI_CONSTITUTION.md
 
-cat 11_AIOS/AI_REGISTRY.md
+cat development/11_AIOS/AI_REGISTRY.md
 
-cat 12_Handover/HANDOVER.md
+cat development/12_Handover/HANDOVER.md
 
-cat 13_AI_Tasks/TASK_QUEUE.md
+cat development/13_AI_Tasks/TASK_QUEUE.md
 
 Never request individual files one by one.
 

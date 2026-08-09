@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-MONITOR = ROOT / "15_AI_Brain" / "Monitor"
+MONITOR = ROOT / "development/15_AI_Brain" / "Monitor"
 if str(MONITOR) not in sys.path:
     sys.path.insert(0, str(MONITOR))
 
@@ -49,8 +49,8 @@ class DashboardAutomationTests(unittest.TestCase):
 
         workers = [Worker("ChatGPT-1", "ChatGPT"), Worker("Claude-1", "Claude")]
         active = [
-            ActiveTask("task-a", "ChatGPT-1", "2026-08-09", "15_AI_Brain/Control"),
-            ActiveTask("task-b", "Claude-1", "2026-08-09", "15_AI_Brain/Control/file.py"),
+            ActiveTask("task-a", "ChatGPT-1", "2026-08-09", "development/15_AI_Brain/Control"),
+            ActiveTask("task-b", "Claude-1", "2026-08-09", "development/15_AI_Brain/Control/file.py"),
         ]
         status = dashboard._coordination_status(FakeCoordinator(workers, active))
         self.assertEqual(status["status"], "CONFLICT")

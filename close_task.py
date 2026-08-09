@@ -12,9 +12,9 @@ AI_ID = sys.argv[1]
 TASK_MATCH = sys.argv[2]
 NOTE = sys.argv[3] if len(sys.argv) > 3 else ""
 
-REG = "11_AIOS/AI_REGISTRY.md"
-TQ = "13_AI_Tasks/TASK_QUEUE.md"
-HO = "12_Handover/HANDOVER.md"
+REG = "development/11_AIOS/AI_REGISTRY.md"
+TQ = "development/13_AI_Tasks/TASK_QUEUE.md"
+HO = "development/12_Handover/HANDOVER.md"
 
 reg_text = open(REG, encoding="utf-8").read()
 tq_text = open(TQ, encoding="utf-8").read()

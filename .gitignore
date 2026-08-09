@@ -34,23 +34,23 @@ repo_dirs.txt
 # AI Brain — Runtime Generated
 # Never commit (regenerable without information loss — Golden Rule)
 # --------------------
-15_AI_Brain/Logs/*.jsonl
-15_AI_Brain/Logs/brainos.lock
-15_AI_Brain/Monitor/HEALTH_REPORT.json
-15_AI_Brain/Monitor/HEALTH_REPORT.md
-15_AI_Brain/Outputs/
-15_AI_Brain/Proposals/Pending/
-15_AI_Brain/Proposals/Rejected/
+development/15_AI_Brain/Logs/*.jsonl
+development/15_AI_Brain/Logs/brainos.lock
+development/15_AI_Brain/Monitor/HEALTH_REPORT.json
+development/15_AI_Brain/Monitor/HEALTH_REPORT.md
+development/15_AI_Brain/Outputs/
+development/15_AI_Brain/Proposals/Pending/
+development/15_AI_Brain/Proposals/Rejected/
 
 # ClinicOS CLI runtime state
-16_ClinicOS_CLI/database/*.db
-16_ClinicOS_CLI/database/settings.json
-16_ClinicOS_CLI/logs/*.json
-16_ClinicOS_CLI/backup/
-16_ClinicOS_CLI/workspace/outputs/
-16_ClinicOS_CLI/workspace/temp/
+development/16_ClinicOS_CLI/database/*.db
+development/16_ClinicOS_CLI/database/settings.json
+development/16_ClinicOS_CLI/logs/*.json
+development/16_ClinicOS_CLI/backup/
+development/16_ClinicOS_CLI/workspace/outputs/
+development/16_ClinicOS_CLI/workspace/temp/
 
 # BrainOS local runtime inbox and approved execution records
-15_BrainOS/TaskInbox/
-15_AI_Brain/Proposals/Approved/
-15_AI_Brain/Logs/*.pid
+development/15_BrainOS/TaskInbox/
+development/15_AI_Brain/Proposals/Approved/
+development/15_AI_Brain/Logs/*.pid

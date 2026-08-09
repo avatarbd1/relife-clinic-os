@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CONTROL_DIR = ROOT / "15_AI_Brain" / "Control"
+CONTROL_DIR = ROOT / "development/15_AI_Brain" / "Control"
 sys.path.insert(0, str(CONTROL_DIR))
 
 MODULE_PATH = CONTROL_DIR / "task_detector.py"

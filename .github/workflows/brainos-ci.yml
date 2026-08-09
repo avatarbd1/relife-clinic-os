@@ -6,11 +6,11 @@ on:
       - main
       - 'brainos/**'
     paths:
-      - '15_AI_Brain/**'
+      - 'development/15_AI_Brain/**'
       - '.github/workflows/brainos-ci.yml'
   pull_request:
     paths:
-      - '15_AI_Brain/**'
+      - 'development/15_AI_Brain/**'
       - '.github/workflows/brainos-ci.yml'
 
 permissions:
@@ -34,17 +34,17 @@ jobs:
       - name: Compile BrainOS control modules
         run: |
           python -m py_compile \
-            15_AI_Brain/Control/confirm_gate.py \
-            15_AI_Brain/Control/scheduler.py \
-            15_AI_Brain/Control/dispatcher_bridge.py \
-            15_AI_Brain/Control/concurrency_lock.py \
-            15_AI_Brain/Control/alert_notifier.py \
-            15_AI_Brain/Control/worker_coordinator.py \
-            15_AI_Brain/Control/provider_router.py \
-            15_AI_Brain/Control/task_router_bridge.py \
-            15_AI_Brain/Control/task_detector.py \
-            15_AI_Brain/Core/task_executor.py \
-            15_AI_Brain/Control/test_confirm_gate_policy.py \
+            development/15_AI_Brain/Control/confirm_gate.py \
+            development/15_AI_Brain/Control/scheduler.py \
+            development/15_AI_Brain/Control/dispatcher_bridge.py \
+            development/15_AI_Brain/Control/concurrency_lock.py \
+            development/15_AI_Brain/Control/alert_notifier.py \
+            development/15_AI_Brain/Control/worker_coordinator.py \
+            development/15_AI_Brain/Control/provider_router.py \
+            development/15_AI_Brain/Control/task_router_bridge.py \
+            development/15_AI_Brain/Control/task_detector.py \
+            development/15_AI_Brain/Core/task_executor.py \
+            development/15_AI_Brain/Control/test_confirm_gate_policy.py \
             07_Testing/test_dispatcher_coordination.py \
             07_Testing/test_worker_coordinator.py \
             07_Testing/test_task_detector.py
@@ -54,12 +54,12 @@ jobs:
 
       - name: Verify runtime ignore policy
         run: |
-          git check-ignore -q 15_BrainOS/TaskInbox/example.txt
-          git check-ignore -q 15_AI_Brain/Proposals/Approved/TASK-TEST.proposal.json
-          git check-ignore -q 15_AI_Brain/Logs/scheduler.pid
+          git check-ignore -q development/15_BrainOS/TaskInbox/example.txt
+          git check-ignore -q development/15_AI_Brain/Proposals/Approved/TASK-TEST.proposal.json
+          git check-ignore -q development/15_AI_Brain/Logs/scheduler.pid
 
       - name: Confirm Gate unit tests
-        working-directory: 15_AI_Brain/Control
+        working-directory: development/15_AI_Brain/Control
         run: python -m unittest -v test_confirm_gate_policy.py
 
       - name: Pipeline wiring regression tests
