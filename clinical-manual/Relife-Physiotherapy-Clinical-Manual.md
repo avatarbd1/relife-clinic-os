@@ -535,291 +535,98 @@ Manual therapy should taper or stop when it produces no reproducible meaningful 
 
 ---
 
-## Module 4: Exercise Prescription Library
+## Module 4: Exercise Prescription — Governance, Dose, and Safety
 
-*(Stage-based progression models and dosage principles. Every Part B condition protocol references this module's stages and dosage tables in its "Exercise Prescription Detail" section — this module is the authoritative source for how to load, progress, and regress exercise across the healing/rehab timeline. Cross-references Module 2.3 Treatment Planning Framework and Module 2.7 Progression/Regression Criteria.)*
+> **Audit status (2026-08-09): EVIDENCE-AUDITED GOVERNANCE FRAMEWORK — CLINICAL APPROVAL PENDING.** The previous universal four-stage model, dose tables, pain cut-offs, age-based recipes, velocity zones and return-to-sport clearance thresholds are withdrawn. This module does not authorize a patient-specific programme. Exercise selection and dose require the applicable condition guideline, examination findings, patient goals, contraindication screening, informed agreement and practitioner competence.
 
-### 4.1 The Four-Stage Progression Model
+Exercise prescription in rehabilitation is not the same as population physical-activity guidance or programming for healthy adults. WHO recommendations and the ACSM resistance-training position stand can inform general health and training principles, but they do not supply a universal rehabilitation dose for an injured, postoperative or medically complex patient. Sources: [WHO physical-activity guidelines](https://iris.who.int/server/api/core/bitstreams/faa83413-d89e-4be9-bb01-b24671aef7ca/content); [ACSM 2026 resistance-training position-stand summary](https://acsm.org/resistance-training-guidelines-update-2026/).
 
-Every condition in Part B maps its exercise plan onto this same four-stage skeleton, regardless of diagnosis — only the specific exercises, load, and timeline differ by condition and tissue type.
+### 4.1 Required Prescription Record
 
-- **Stage 1 — Protection/Pain Control:** goal is to calm the tissue and prevent further irritation while maintaining as much safe motion and muscle activity as possible. Isometric holds, pain-free range-of-motion work, gentle activation.
-- **Stage 2 — Restore Motion & Activation:** goal is to regain full pain-free range and re-establish basic motor control/activation of the target muscle(s). Active-assisted → active range work, low-load isotonic exercise.
-- **Stage 3 — Build Strength & Capacity:** goal is progressive tissue loading to rebuild strength, endurance, and load tolerance toward functional demand. Resisted exercise, progressive overload, endurance work.
-- **Stage 4 — Function & Return to Activity:** goal is to prepare the tissue for the specific demands of the patient's work, sport, or daily activity. Functional movement patterns, sport/task-specific loading, plyometric or high-speed work where relevant, final return-to-activity criteria testing.
+For every exercise, record:
 
-**Stage transition rule:** move to the next stage only when the current stage's exit criteria are met (see 4.3), not by a fixed calendar date alone — the 7-14-28 day framework used in Part B is a *typical* timeline expectation, not a rigid rule. If a patient meets criteria early, progress early; if not, hold the stage and address the limiting factor before moving on (cross-reference Module 2.8 Reassessment Protocol).
+- target activity, impairment or capacity and why this exercise was selected;
+- starting position, movement and any relevant precautions;
+- measurable dose (for example load, assistance, repetitions/time, sets and frequency);
+- acceptable response and technique standard;
+- progression, regression and stop criteria;
+- home supervision/equipment needs where relevant.
 
----
+Do not copy a generic programme into the chart without reconciling it with the patient's current findings and goals.
 
-### 4.2 Exercise Type Reference — What Each Type Is and When It's Used
+### 4.2 Selection and Sequencing
 
-**Isometric exercise:** muscle contraction without joint movement (e.g., wall sit, static quad hold). Used in Stage 1 for pain modulation (isometrics have an analgesic effect, particularly well-documented in tendinopathy) and to maintain strength without provoking irritable tissue. Typical dosage: 5 x 30-45 second holds, sub-maximal to moderate effort (40-70% of maximum voluntary contraction), 1-2x/day.
+Exercise type—range of motion, motor-control, aerobic, resistance, balance, task practice, plyometric or sport/work-specific—must follow the target and condition-specific evidence. Isometric, concentric, eccentric and heavy-slow resistance are loading methods, not diagnosis-independent phases. Claims that isometrics reliably produce analgesia, eccentric exercise uniquely remodels all tendons, or one tendon programme is superior across sites must not be used as universal rules.
 
-**Active-assisted range of motion (AAROM):** patient-initiated movement supported by the therapist, a device (pulley, wand), or the unaffected limb. Used early Stage 2 when active control is not yet sufficient to complete full range independently, or when guarding limits active movement despite adequate passive range.
+The earlier mandatory Stage 1–4 skeleton is withdrawn. Clinicians may use a locally approved phase model when the relevant guideline or surgical protocol defines it, but the chart must use explicit entry/exit criteria rather than a calendar label alone.
 
-**Active range of motion (AROM):** unassisted, patient-generated movement through available range. Used through Stage 2 as the bridge from assisted movement to loaded movement; also used as a home program mainstay (Module 10).
+### 4.3 Starting Dose
 
-**Isotonic exercise (concentric/eccentric):** muscle contraction through range against resistance (body weight, band, dumbbell, machine).
-- *Concentric* — muscle shortens while contracting (e.g., lifting phase of a bicep curl).
-- *Eccentric* — muscle lengthens while contracting under load (e.g., lowering phase). Eccentric loading has specific evidence for tendinopathy remodeling (see 4.5) and is emphasized in Achilles, patellar, lateral/medial epicondyle protocols.
-Used from Stage 2 (light isotonic) through Stage 3-4 (progressive overload).
+Choose a tolerable starting dose from baseline capacity, symptom behaviour, training history, tissue/surgical constraints, comorbidities and the consequences of an adverse response. Use direct measurement when safe and feasible. RPE, repetitions-in-reserve and percentage of measured maximum are different tools with population- and exercise-dependent relationships; the deleted conversion table must not be treated as an exact equivalence.
 
-**Isokinetic exercise:** movement at a constant controlled velocity through range, resistance varies to match effort (requires isokinetic dynamometer equipment). Used selectively in Stage 3-4 for objective strength assessment and late-stage loading where equipment is available; not essential to most OPD protocols in this manual, noted for completeness.
+No clinic-wide set/repetition/frequency recipe is authorized. The former values—including 5 × 30–45-second isometrics, 3 × 8–12 strengthening, daily low-load exercise and fixed heavy-slow-resistance doses—may be used only if independently justified in an audited condition card or patient-specific protocol.
 
-**Plyometric / stretch-shortening cycle exercise:** rapid eccentric-to-concentric loading (e.g., jump-landing, bounding). Used only in late Stage 4 for patients returning to sport or high-demand physical work, once strength and control criteria (4.3) are met — introducing this too early is a common cause of re-injury.
+### 4.4 Monitoring and Adjustment
 
-**Neuromuscular control / motor control exercise:** low-load exercise focused on movement quality, activation timing, and coordination rather than strength per se (e.g., scapular setting, transversus abdominis activation, single-leg balance). Used throughout Stages 2-4, particularly important early after injury/surgery when the nervous system's control of the area has been disrupted, and in postural/overuse conditions (see B30).
+Before progressing, compare the patient's response with the pre-agreed response criteria and relevant baseline measure. Consider symptoms during exercise, recovery after exercise, next-day function, swelling, neurological features, fatigue, technique and confidence.
 
----
+There is no universal safe pain score and no universal 24-hour rule. A numeric pain threshold validated for one condition or study protocol must not be generalized to another. Progress one or more variables only when the patient demonstrates the required capacity and recovery; regression may involve load, range, speed, volume, complexity, environment or frequency. New or worsening neurological/systemic features require reassessment and the Module 1/7 escalation pathway, not simple dose reduction.
 
-### 4.3 Stage Exit Criteria — General Template
+### 4.5 Tendinopathy
 
-*(Applied per-region in the relevant Part B protocol; general pattern given here.)*
+Tendon rehabilitation requires site-, stage- and person-specific progressive loading. Isometric, isotonic, eccentric, heavy-slow-resistance and energy-storage exercise are options, not a mandatory sequence. The earlier claim that a fixed isometric dose is analgesic and the fixed “Silbernagel” 0–2/3–5/>5 traffic-light rule are withdrawn pending condition-specific verification. Each tendinopathy card must identify the exact population, programme, comparator, outcomes and progression rules supporting its prescription.
 
-**Exit Stage 1 → Stage 2 when:**
-- Resting pain has reduced to mild or absent (≤3/10)
-- Pain-free or near-pain-free passive/active-assisted range is available
-- No increase in swelling, warmth, or irritability with daily activity
+### 4.6 Postoperative, Fracture and Acute-Tissue Care
 
-**Exit Stage 2 → Stage 3 when:**
-- Full or near-full active range of motion achieved, pain-free
-- Basic activation/motor control of the target muscle(s) demonstrated (e.g., can hold a position without compensatory substitution)
-- Symptoms are stable or improving with activity, not flaring unpredictably
+Confirm the procedure/injury, date, operative or medical instructions, weight-bearing status, immobilization, range restrictions, wound status and complications before loading. The surgeon's or treating medical team's patient-specific restrictions take priority. If instructions are unavailable, contradictory or clinically concerning, pause the affected progression and clarify them; do not infer tissue-healing permission from pain alone.
 
-**Exit Stage 3 → Stage 4 when:**
-- Strength reaches an acceptable threshold relative to the uninvolved side (commonly ≥80% on manual or functional comparison, or per condition-specific benchmark stated in the Part B entry)
-- Tissue tolerates progressive loading without a delayed pain flare (i.e., no significant increase in symptoms 24 hours after loading)
-- Functional movement patterns relevant to daily activity are pain-free
+### 4.7 Children and Adolescents
 
-**Exit Stage 4 / Discharge readiness when:**
-- Strength and range are within functional limits for the patient's specific demands (occupation, sport, daily activities)
-- Patient demonstrates the activity/movement that originally provoked symptoms without recurrence
-- Meets the condition-specific discharge criteria stated in its Part B entry and Module 2.9 Discharge Criteria
+Do not use age alone to prohibit external resistance or prescribe high repetitions. Confirm diagnosis, developmental ability, technique, supervision, equipment fit, training history and relevant medical/growth-related concerns. Use child- and condition-specific guidance. Parent/guardian involvement and assent/consent must follow locally approved policy. The previous blanket “avoid heavy loading through open growth plates” recipe is withdrawn because it did not define diagnosis, load, supervision or evidence.
 
-> **Note on return-to-*sport*, specifically:** the ≥80% threshold above governs the general Stage 3→4 transition. Return to *competitive sport* uses a stricter, test-battery-based standard — see 4.15.
+### 4.8 Older Adults, Frailty and Falls Risk
 
----
+Do not reduce starting load by an arbitrary percentage because of age. Base prescription on current capacity, frailty, falls risk, cognition, medication effects, cardiovascular status, bone health and goals. Where falls prevention is the target, follow a validated multifactorial assessment and an individually progressive programme rather than adding generic balance exercise. Source: [NICE NG249 falls recommendations](https://www.nice.org.uk/guidance/ng249/chapter/Recommendations).
 
-### 4.4 Dosage Principles — Sets, Reps, Load, Frequency
+### 4.9 Pregnancy, Hypermobility and Medical Complexity
 
-**General strengthening dosage (Stage 3, most conditions):**
-- Strength/hypertrophy focus: 3 sets of 8-12 repetitions, moderate-to-heavy load (progressing toward 70-85% of estimated 1-rep max or an equivalent perceived-effort scale), 2-3x/week with rest days between sessions targeting the same muscle group
-- Endurance focus: 2-3 sets of 15-25 repetitions, lighter load, can be performed more frequently (up to daily) since fatigue/recovery demand is lower
+Pregnancy, anticoagulant use, diabetes, osteoporosis or hypermobility is not by itself a universal exercise contraindication. Screen the relevant risks and modify according to the condition, trimester/medical advice, tissue integrity, sensation, balance and symptom response. Suspected heritable connective-tissue disorder or significant instability requires appropriate assessment/referral; a Beighton score alone neither confirms nor excludes a diagnosis.
 
-**Early-stage low-load dosage (Stage 1-2):**
-- 2-3 sets of 10-15 repetitions, light resistance (body weight or light band), daily or near-daily — frequency compensates for low intensity
+### 4.10 Home Exercise Programme
 
-**Progressive overload rule:** increase one variable at a time — repetitions first, then sets, then load/resistance — rather than increasing several simultaneously. A practical progression sequence: increase reps within the target range → increase to next set → increase load and drop reps back to the bottom of the target range → repeat.
+Agree a programme that the patient can understand and perform safely. The number of exercises and clinic-to-home set ratio are not fixed. Provide:
 
-**Session-to-session monitoring (the "24-hour rule"):** pain during exercise up to 3-4/10 that resolves within 24 hours and does not worsen day-to-day is considered acceptable loading. Pain that persists beyond 24 hours, exceeds 5/10 during exercise, or trends upward across sessions indicates the load or exercise selection should be regressed — cross-reference Module 2.7 Progression/Regression Criteria. *(For tendinopathy specifically, see the more detailed Silbernagel pain-monitoring model in 4.10.)*
+- clear written/visual instructions and dose;
+- expected and unacceptable responses;
+- equipment and supervision requirements;
+- modification/stop instructions and contact/escalation route;
+- a method for recording adherence and response when useful.
 
-**Between-session frequency:** most Stage 2-3 strengthening exercise is prescribed 3-4x/week to allow adequate recovery; isometric and low-load neuromuscular control work can be prescribed daily; plyometric/high-intensity Stage 4 work typically limited to 2x/week with 48-72 hours recovery between sessions.
+Review actual performance rather than assuming adherence from verbal confirmation. Module 10 templates must inherit these rules.
 
-**Load prescription without 1RM testing:** formal 1RM testing is rarely practical or appropriate in OPD rehab (fatigue risk, time, pain-limited patients). Use the RPE/RIR method (4.9) as the standard clinic method for setting and progressing load against the %1RM ranges given above.
+### 4.11 Return to Activity, Work or Sport
 
----
+Return is a continuum and a shared risk decision, not a single test or symmetry percentage. Use a condition- and demand-specific battery that may include symptoms, tissue/medical constraints, strength/capacity, movement quality, workload exposure, task performance and psychological readiness. Limb-symmetry index can be misleading when both limbs are deconditioned and must not be the sole clearance criterion. The deleted universal 80%/90% thresholds and four-hop-test clearance rule are not authorized outside an audited condition-specific protocol.
 
-### 4.5 Tendinopathy-Specific Loading Model (Isometric → Isotonic → Heavy Slow Resistance → Energy Storage)
+### 4.12 Stop, Urgent Review and Emergency Escalation
 
-*(Applies specifically to the tendinopathy conditions in Part B — B2 Rotator Cuff, B19 Tennis Elbow, B20 Golfer's Elbow, B25 Achilles Tendinopathy — referenced from their Exercise Prescription Detail sections.)*
+Stop exercise and assess immediately for chest pain, syncope/near-syncope, severe or unusual breathlessness, signs of stroke, suspected acute vascular event, sudden neurological loss, suspected fracture/dislocation, or another serious adverse event. Activate the locally approved emergency pathway when indicated.
 
-1. **Isometric phase** (reactive/acute tendinopathy, high irritability): sustained isometric holds at mid-range, 5 x 30-45 seconds, 70% effort, primarily for pain reduction and to maintain some loading without provoking reactivity.
-2. **Isotonic phase** (as irritability settles): slow concentric/eccentric loading through range, 3-4 sets of 8-15 repetitions, emphasizing the eccentric (lowering) phase in particular, moderate load.
-3. **Heavy slow resistance (HSR) phase:** heavier load, slow tempo (e.g., 3 seconds up, 3 seconds down), 3-4 sets of 6-8 repetitions, 2-3x/week, progressively increasing load session to session — this is the primary phase for structural tendon remodeling.
-4. **Energy storage/plyometric phase** (return-to-sport/high-demand only): fast stretch-shortening-cycle loading (e.g., hopping for Achilles, fast wrist flick loading for elbow tendons) introduced only after HSR strength and pain criteria are met, mirrors Stage 4 of the general model (4.1, 4.3).
+Hold the relevant exercise and reassess for a material new symptom, progressive loss of function, unexpected swelling, wound concern, repeated loss of control, or recovery outside the agreed response. “Medical clearance” must ask a specific clinical question; it does not transfer responsibility for safe exercise selection.
 
-**Key principle specific to tendinopathy:** unlike acute muscle/ligament injury, tendons generally tolerate and benefit from early loading — prolonged rest delays recovery rather than protecting the tendon. The isometric phase is for pain modulation, not tissue protection in the traditional sense.
+### 4.13 Governance Requirements
 
-**Progression between phases is criteria-based, not time-based** — use the Silbernagel pain-monitoring model (4.10) to decide when a patient is ready to move from one phase to the next, the same way 4.3 governs stage transitions in the general model.
+Before this module becomes an approved clinic SOP:
+
+- each Part B condition must replace generic recipes with traceable condition-specific evidence or mark them **EVIDENCE NOT VERIFIED — CLINICAL REVIEW REQUIRED**;
+- postoperative protocols must identify their source and revision date;
+- Module 9 measures and return-to-sport instruments must be verified;
+- Bangladesh scope, emergency route, consent and documentation rules require local approval;
+- a named human clinical reviewer must approve the operational dose and stop criteria.
+
+*End of Module 4.*
 
 ---
-
-### 4.6 Post-Surgical Loading Modifications
-
-*(General principles; the specific timeline for any given surgery always follows the operating surgeon's protocol first — see Module 2.10 Referral Criteria and B14, B26, B27 for post-surgical general principles.)*
-
-- Exercise dosage and stage progression in this module are **subordinate to** surgical precautions (weight-bearing status, range restrictions, graft protection timelines) whenever the two conflict.
-- Stage 1 in a post-surgical context is typically longer and more conservative than in a non-surgical soft-tissue presentation of the same region, often driven by tissue-healing timelines (e.g., graft ligamentization after ACL reconstruction) rather than symptom response alone.
-- Always confirm weight-bearing status, range-of-motion limits, and any brace/immobilization requirement from the operative note or surgeon's written protocol before applying this module's general stage criteria.
-
----
-
-### 4.7 Home Exercise Dosage and Adherence
-
-- Home program exercises (fully detailed templates in Module 10) are generally prescribed at a lower set/rep ceiling than in-clinic sessions to protect against over-loading between visits — typically 2 sets where the clinic session uses 3.
-- Simplicity improves adherence: home programs in this manual are capped at 4-6 exercises per stage; additional exercises are added only after the initial set is well-tolerated and consistently performed.
-- Written/visual instructions with a clear "stop and contact the clinic if..." rule (linked to Module 1.2 Red Flag Screening and the 24-hour pain rule in 4.4) should accompany every home program handout.
-
----
-
-### 4.8 Quick-Reference Dosage Table
-
-| Exercise type | Sets | Reps/Duration | Load | Frequency | Typical stage |
-|---|---|---|---|---|---|
-| Isometric | 5 | 30-45 sec hold | 40-70% effort | 1-2x/day | 1 (or tendinopathy phase 1) |
-| AAROM/AROM | 2-3 | 10-15 reps | Body weight/assisted | Daily | 1-2 |
-| Light isotonic | 2-3 | 10-15 reps | Light band/body weight | Daily | 1-2 |
-| Moderate isotonic (strength) | 3 | 8-12 reps | Moderate-heavy | 2-3x/week | 3 |
-| Endurance isotonic | 2-3 | 15-25 reps | Light-moderate | Up to daily | 2-3 |
-| Heavy slow resistance | 3-4 | 6-8 reps, 3+3 sec tempo | Heavy | 2-3x/week | 3 (tendinopathy) |
-| Neuromuscular control | 2-3 | 10-15 reps or 20-30 sec hold | Low | Daily | 2-4 |
-| Plyometric/energy storage | 2-3 | 6-10 reps | Body weight/added | 2x/week | 4 only |
-
----
-
-### 4.9 RPE/RIR-Based Load Progression
-
-Since 1-rep-max testing is rarely practical or safe in an OPD rehab setting, load is prescribed and progressed using **Rating of Perceived Exertion (RPE, 0-10 modified Borg scale)** and **Reps in Reserve (RIR)** rather than measured %1RM. The %1RM figures in 4.4 and 4.8 remain the reference range; RPE/RIR is the practical clinic tool for hitting them without equipment.
-
-| RPE | RIR | Approx. %1RM | Clinical use |
-|---|---|---|---|
-| 10 | 0 (failure) | ~100% | Never targeted in OPD rehab |
-| 8-9 | 2-3 | ~80-85% | Stage 3 strength target (matches 4.4 strength dosing) |
-| 6-7 | 4-5 | ~65-75% | Stage 2→3 transition, endurance-focus work |
-| 4-5 | 6+ | ~50-60% | Stage 1-2 low-load/daily dosing |
-
-**How to use it clinically:**
-- Ask the patient to rate effort immediately after the working set, not from memory afterward.
-- Progress load when the patient reports the *same* prescribed reps at a *lower* RPE than the previous session (i.e., it got easier) — this is the operational trigger for the "increase load" step in the progressive-overload rule (4.4).
-- If RPE is rising session-to-session at the same load/reps, hold or regress rather than adding load — this usually signals inadequate recovery or early symptom flare before it shows up as reported pain.
-
----
-
-### 4.10 Pain-Monitoring Model (Silbernagel Model)
-
-The general 24-hour rule (4.4) is sufficient for most acute/subacute conditions. For **tendinopathy** (4.5) and other conditions where some exercise-induced discomfort is expected and acceptable, this manual uses the Silbernagel pain-monitoring model as the more precise operational standard.
-
-**During/immediately after loading, using a 0-10 NRS:**
-- **0-2:** safe — may progress load or volume at the next session per the usual progressive-overload rule (4.4)
-- **3-5:** acceptable — continue at the current load, but monitor next-morning symptoms before progressing further
-- **>5:** too much — reduce load or volume at the next session
-
-**Next-morning check (this is the decisive check, not the in-session pain level alone):**
-- Pain/stiffness should return to the patient's pre-exercise baseline by the next morning. If it does, the prior day's load was tolerated and progression can continue.
-- If next-morning pain/stiffness has *not* returned to baseline, hold the current load until it does before progressing further.
-
-**Weekly trend over single-session pain:** a single session with pain in the 3-5 range is not itself a reason to stop progression — what matters is whether resting/morning pain is trending down over 1-2 weeks overall. Isolated exercise-induced discomfort within the acceptable band, alongside an improving weekly trend, is expected and should not be over-interpreted as a setback.
-
----
-
-### 4.11 Velocity-Based Progression
-
-Applies mainly to **Stage 4** (power, speed-strength, and return-to-sport work) and to facilities with equipment to measure it; not required for standard OPD dosing.
-
-- **Concept:** movement velocity (bar/limb speed) drops predictably as load or fatigue increases, so tracking velocity lets load be autoregulated session-to-session rather than fixed by percentage alone — a patient having a "bad day" will show slower velocity at the same prescribed load, signalling that load should be reduced that session.
-- **Where formal equipment is available** (linear position transducer, VBT smartphone app): approximate reference zones —
-  - **>1.0 m/s** — power/speed-strength work
-  - **0.5-0.75 m/s** — strength-speed work
-  - **<0.5 m/s** — maximal strength work
-  These are reference zones for facilities with VBT tools, not a requirement for standard protocols in this manual.
-- **OPD-practical proxy without equipment:** watch for degradation in movement tempo/control across a set — if the patient cannot maintain the prescribed tempo or control for the full prescribed reps, treat this the same as a velocity drop and reduce load or reps for that session, per the same autoregulation logic.
-
----
-
-### 4.12 Pediatric Dosage Modification
-
-- **Growth plate (physis) considerations:** avoid heavy axial or maximally resisted loading through open growth plates, particularly in high-risk sports; favor body-weight, band, and neuromuscular-control work over heavy external load even in Stage 3.
-- **Dosage shift:** lower absolute load, higher rep ranges (12-20+), with emphasis on technique and motor learning over load progression per se.
-- **Session design:** shorter, more frequent, game-based or functional exercise selection improves both adherence and movement quality in children compared to adult-style structured sets.
-- **Screening:** watch for pediatric-specific red flags (e.g., unresolving limp, apophysitis patterns such as Osgood-Schlatter or Sever's disease) — cross-reference Module 1.2 Red Flag Screening and the relevant Part B entries.
-- **Home program:** parent/guardian is instructed alongside the child and is responsible for supervision (modify Module 10 home template accordingly).
-
----
-
-### 4.13 Geriatric Dosage Modification
-
-- **Start lower, progress slower:** begin at roughly 10-20% below the standard adult starting loads in 4.4/4.8, and extend the interval between load increases relative to the standard progressive-overload rule.
-- **Functional priority:** balance, fall-risk, and functionally-patterned strength (sit-to-stand, gait-relevant loading) are prioritized alongside isolated muscle strengthening.
-- **Medical screening before loading:** check for polypharmacy effects (e.g., orthostatic risk), cardiovascular precautions, and osteoporosis/fracture risk before prescribing resisted or higher-impact work; plyometric/Stage 4 loading (4.1, 4.5.4) is generally avoided or heavily modified in frail or osteoporotic patients.
-- **Recovery:** allow longer between-session recovery (48-72 hours) even for moderate-load work, reflecting slower tissue adaptation.
-- **Instructional modification:** fewer exercises per stage than the standard 4-6 in 4.7, with more repeated/visual demonstration.
-
----
-
-### 4.14 Hypermobile Patient Modification
-
-*(e.g., Ehlers-Danlos spectrum, Beighton-positive/generalized joint hypermobility.)*
-
-- Shift emphasis away from range-of-motion work (already excessive in these patients) toward **neuromuscular control, proprioception, and end-range strength/stability**; do not encourage further stretching into the hypermobile range.
-- Favor **closed-chain and mid-range loading** over end-range or ballistic loading, particularly in Stage 1-2.
-- Progression into Stage 4 plyometric/energy-storage work (4.5.4) is typically slower and more conservative given joint stability concerns — strength and control criteria should be met with a stricter margin before introducing high-velocity loading.
-- Screen with the Beighton score where hypermobility is suspected (cross-reference Module 1 Assessment) and flag it explicitly in the treatment plan so the modification carries through all later stages.
-
----
-
-### 4.15 Return-to-Sport / Return-to-Activity Objective Testing Criteria
-
-The general Stage 3→4 threshold (≥80% limb symmetry, 4.3) governs everyday function. **Return to competitive sport** uses a stricter, criteria-based test battery rather than any single measure or a calendar date:
-
-- **Strength symmetry:** ≥90% limb symmetry index (LSI) versus the uninvolved side.
-- **Hop testing** (lower-limb conditions): single-leg hop for distance, triple hop, crossover hop, and 6-meter timed hop — each ≥90% LSI.
-- **Movement quality:** functional movement screening or single-leg squat assessment to rule out compensatory patterns under load.
-- **Sport-specific performance:** the actual skill/task performed at full speed without symptom provocation.
-- **Psychological readiness:** a brief readiness screen (e.g., ACL-RSI or equivalent) where relevant — fear of re-injury is an independent predictor of both return-to-sport success and re-injury risk, and should not be assumed to resolve automatically once physical criteria are met.
-
-**Principle:** no single test is sufficient for clearance. Require the patient to pass strength, hop/functional, and sport-specific criteria together, not any one measure in isolation. Condition-specific RTS batteries (where more detail applies, e.g., ACL reconstruction) are detailed in the relevant Part B entry and reference back to this section rather than duplicating it.
-
----
-
-### 4.16 FITT Principle Integration
-
-The FITT framework (Frequency, Intensity, Time, Type) is used here as an organizing lens over the dosage already specified in 4.4 and 4.8, not a separate dosing system:
-
-| Stage | Frequency | Intensity | Time | Type |
-|---|---|---|---|---|
-| 1 | Daily, 1-2x/day for isometrics | Low (40-70% MVC) | 30-45 sec holds | Isometric, AAROM |
-| 2 | Daily | Low-moderate (RPE 4-6) | 10-15 reps | AROM, light isotonic, motor control |
-| 3 | 2-3x/week (strength) / up to daily (endurance) | Moderate-heavy (RPE 6-9, ~65-85% 1RM) | 8-12 reps (strength) / 15-25 (endurance) | Isotonic, HSR (tendinopathy) |
-| 4 | 2x/week (plyometric) + ongoing strength maintenance | High/sport-specific | Variable, task-based | Functional, plyometric, sport-specific |
-
----
-
-### 4.17 ACSM Strength-Training Recommendations — Explicit Mapping
-
-- ACSM general-population guidance recommends resistance training on 2-3 non-consecutive days/week, targeting major muscle groups, at 1-3 sets of 8-12 repetitions at moderate-to-high intensity for general strength/hypertrophy — this manual's **Stage 3** dosing (4.4, 4.8) is deliberately aligned with this standard.
-- **Where this manual departs from ACSM general-population guidance, and why:**
-  - Stage 1-2 low-load daily dosing (4.4) sits below ACSM strength/hypertrophy thresholds intentionally — the goal at this point is pain modulation and motor control, not a hypertrophy stimulus; ACSM-aligned strength dosing is deferred to Stage 3.
-  - HSR tendon-loading dosage (4.5.3) uses a slower tempo and lower rep range than standard ACSM hypertrophy guidance by design, per tendon-remodeling evidence rather than general strength-training evidence — it should not be read as a deviation or an error against the ACSM strength table, but as a distinct, tissue-specific protocol.
-- This mapping is included so that any external reviewer comparing this manual against ACSM standards can see explicitly which sections are ACSM-aligned (Stage 3 general strengthening) and which are intentionally evidence-based departures (Stage 1-2, tendinopathy HSR).
-
----
-
-### 4.18 Contraindications & Exercise Stop Criteria
-
-*(Distinct from, but cross-referenced to, Module 1.2 Red Flag Screening — that section governs whether a patient should be seen/loaded at all; this section governs stopping or modifying exercise once treatment is underway.)*
-
-**Absolute contraindications to loading or stage progression at any point:**
-- Uncontrolled acute inflammation or infection
-- Unstable fracture
-- Suspected DVT
-- Uncontrolled cardiovascular symptoms
-- Any acute red-flag presentation pending medical clearance (Module 1.2)
-
-**Relative contraindications — modify, don't necessarily stop:**
-- Uncontrolled diabetes (wound-healing and neuropathy considerations)
-- Significant osteoporosis (avoid high-impact/end-range loading — see also 4.13)
-- Pregnancy (positioning and intra-abdominal pressure modifications)
-- Anticoagulant therapy (bruising/soft-tissue bleeding risk with aggressive manual therapy or eccentric loading)
-
-**In-session stop criteria (stop immediately, reassess before continuing):**
-- Sharp or severe pain distinct in character from expected exercise discomfort
-- Dizziness or near-syncope
-- Chest pain or unusual shortness of breath
-- An acute instability/loss-of-control event at the joint
-- Sudden onset of swelling during the session
-
-**Between-session hold/regress criteria:**
-- Pain exceeding the 24-hour rule threshold (4.4) on two or more consecutive sessions
-- Progressive loss of range or strength instead of the expected improvement
-- New neurological symptoms
-
----
-
-*End of Module 4. Module 5 (Electrotherapy Parameter Library) applies modality-specific parameters to the same stage framework established here.*
-
----
-
 
 ## Module 5: Electrophysical Agents — Governance, Safety, and Device-Specific Use
 
