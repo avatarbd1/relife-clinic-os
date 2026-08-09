@@ -14,8 +14,10 @@ import os
 import re
 import sys
 from datetime import datetime
+from pathlib import Path
 
-REPO_ROOT = os.path.expanduser("~/relife-clinic-os")
+# Resolve the checkout from this file instead of assuming a Termux-only home path.
+REPO_ROOT = str(Path(__file__).resolve().parents[2])
 os.chdir(REPO_ROOT)
 sys.path.insert(0, os.path.join(REPO_ROOT, "15_AI_Brain"))
 sys.path.insert(0, os.path.join(REPO_ROOT, "15_AI_Brain", "Control"))
