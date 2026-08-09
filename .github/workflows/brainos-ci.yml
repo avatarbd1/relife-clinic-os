@@ -1,0 +1,44 @@
+name: BrainOS Safety CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'brainos/**'
+    paths:
+      - '15_AI_Brain/**'
+      - '.github/workflows/brainos-ci.yml'
+  pull_request:
+    paths:
+      - '15_AI_Brain/**'
+      - '.github/workflows/brainos-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  brainos-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Compile BrainOS control modules
+        run: |
+          python -m py_compile \
+            15_AI_Brain/Control/confirm_gate.py \
+            15_AI_Brain/Control/scheduler.py \
+            15_AI_Brain/Control/dispatcher_bridge.py \
+            15_AI_Brain/Control/concurrency_lock.py \
+            15_AI_Brain/Control/alert_notifier.py \
+            15_AI_Brain/Control/worker_coordinator.py \
+            15_AI_Brain/Control/provider_router.py \
+            15_AI_Brain/Control/task_router_bridge.py
+
+      - name: Confirm Gate safety self-test
+        run: python 15_AI_Brain/Control/confirm_gate.py self-test
