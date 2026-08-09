@@ -113,7 +113,7 @@ BN_WEEKDAYS = ["সোম", "মঙ্গল", "বুধ", "বৃহঃ", "শ
 PATIENT_LOOKUP_PROMPT = (
     "🔎 রোগী শনাক্ত করতে নাম, ফোন নম্বর অথবা Patient ID লিখুন:"
 )
-STATUS_DOCUMENT_ANALYSIS = "🧾 নথির তথ্য বিশ্লেষণ করছি…"
+STATUS_DOCUMENT_ANALYSIS = "🖼️ ছবি/রিপোর্টের তথ্য বিশ্লেষণ করছি…"
 STATUS_CLINICAL_ANALYSIS = (
     "🧠 ক্লিনিক্যাল তথ্য ও প্রাসঙ্গিক ম্যানুয়াল বিশ্লেষণ করছি…"
 )
