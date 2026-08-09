@@ -407,114 +407,158 @@ Refer to the supervising clinician/physician when:
 *End of Module 2. Module 3 (Manual Therapy Library) and the Part B condition protocols apply this reasoning framework to specific techniques and specific diagnoses.*
 
 ---
-## Module 3: Manual Therapy Library
+## Module 3: Manual Therapy — Governance, Selection, and Safety
 
-This module is the technique-by-technique reference for every manual therapy intervention used at Relife Physiotherapy Center. Part B condition protocols reference these sections in their "Manual Therapy Detail" subsection rather than re-explaining technique mechanics each time — this module is the authoritative source for grading, dosage, and technique selection.
+Manual therapy is an optional component of care, not a diagnosis, cure, or required service. It may be used when a patient-specific trial produces a meaningful, reproducible change that supports activity or exercise. The therapist must not explain effects using unverified claims that a joint was “put back,” fascia was permanently “released,” scar tissue was “broken,” circulation was “cleared,” or a positional fault was proven by response to treatment.
 
-> **Clinical Note:** Manual therapy technique choice in this manual follows mixed clinical consensus (Maitland, Mulligan, MET, and soft-tissue schools combined pragmatically by presentation) rather than a single school's philosophy applied exclusively. Where schools disagree on mechanism, this is stated explicitly rather than presenting one theory as settled fact.
+Clinical practice guidelines support some manual-therapy approaches for selected neck and low-back-pain presentations, usually within multimodal care rather than as a universal stand-alone treatment. Recommendations are condition and subgroup specific; see the [AOPT published CPG collection](https://www.orthopt.org/content/publications/pub-cpg). Each Part B protocol must therefore justify its own use rather than inherit a blanket endorsement from this module.
 
-### 3.1 Joint Mobilization — Maitland Grading System
+### 3.1 Relife Authorization Levels
 
-The Maitland grading system (Grades I–V) classifies passive accessory and physiological joint mobilizations by amplitude and position within available range. It is the primary framework for grading joint mobilization dosage across this manual.
-
-| Grade | Description | Primary Use |
-|---|---|---|
-| I | Small-amplitude oscillation at the very start of range | Pain modulation, highly irritable presentations |
-| II | Large-amplitude oscillation within the mid-range, not reaching resistance | Pain modulation, early Stage 1-2, maintains mobility without provoking |
-| III | Large-amplitude oscillation up to the limit of available range, into resistance | Stiffness with moderate irritability; combines pain relief with some mobility gain |
-| IV | Small-amplitude oscillation at the limit of range, into resistance | Stiffness-dominant presentations, low irritability; primary mobility-gaining grade |
-| V | High-velocity, low-amplitude thrust beyond the limit of available range | Restricted range with a clear mechanical end-feel; requires specific training and is used selectively, not as a default technique in this manual |
-
-**Selection principle:** irritable, painful presentations are treated with Grade I–II (pain gate/neurophysiological effect, minimal mechanical stress); stiff, low-irritability presentations are treated with Grade III–IV (mechanical stretch effect). Reassess irritability every session and move up or down the grade scale accordingly — grade selection is not fixed for the whole episode of care.
-
-**Dosage:** typically 30–60 seconds of oscillation (2–3 oscillations/second) per bout, 3–4 bouts per session, reassessing the target movement/sign after each bout. Grade V thrust techniques are single-application, reassessed immediately, and not repeated more than 1–2 times in a session.
-
-> **Clinical Note:** Grade V (thrust/manipulation) techniques require specific pre-manipulative screening (vertebral artery insufficiency screening for cervical spine, absence of red flags, absence of instability) and should only be performed by therapists with specific training and within their scope of practice.
-
-### 3.2 Mulligan Concept — Mobilization with Movement (MWM)
-
-Mulligan mobilization applies a sustained accessory glide to a joint while the patient actively performs the previously painful or restricted movement, based on the principle that a positional fault or tracking issue is corrected by the glide, allowing pain-free movement.
-
-- **Core rule — the Pain-Free Rule:** the technique must be pain-free during application. If the corrective glide does not immediately reduce or abolish pain with the movement, the technique, direction, or grade of glide is wrong and should be adjusted or abandoned — this is the key diagnostic and treatment-selection feature of Mulligan technique, distinct from Maitland grading.
-- **Application sequence:** identify the painful/restricted active movement → apply a sustained glide (direction determined by trial and reassessment) → have the patient repeat the movement through range while the glide is sustained → reassess pain and range immediately.
-- **Common applications referenced in Part B:** SNAGs (Sustained Natural Apophyseal Glides) for spinal segments, MWM for peripheral joints (e.g., lateral glide for lateral epicondylalgia, taping/self-MWM techniques for home carryover).
-- **Dosage:** typically 3 sets of 6–10 repetitions of the movement under sustained glide, once pain-free movement is confirmed; can be progressed to overpressure at end-range once fully pain-free through range, and to self-administered/taped versions for home carryover (cross-reference Module 10).
-
-> **Clinical Note:** If the movement remains painful despite several attempts at glide direction/grade, do not force the technique — this is a "failed MWM trial," not a technique to push through, and should prompt reconsideration of the working diagnosis.
-
-### 3.3 Muscle Energy Technique (MET)
-
-MET uses a patient-generated, therapist-resisted isometric muscle contraction, followed by a period of relaxation, to achieve either a lengthening effect (post-isometric relaxation) or a facilitation effect (reciprocal inhibition of the antagonist), depending on target and direction.
-
-- **Post-isometric relaxation (PIR) technique:** position the target muscle at its restriction barrier → patient performs a gentle (20–30% effort) isometric contraction against therapist resistance for 5–10 seconds → patient relaxes fully → therapist moves the joint/muscle to the new barrier during the relaxation window → repeat 3–5 times.
-- **Reciprocal inhibition (RI) technique:** the same sequence but the contraction is performed by the muscle *opposite* the restricted one, used when direct contraction of the restricted muscle is painful or contraindicated.
-- **Primary uses in this manual:** hypertonic/shortened muscle length restriction, adjunct to joint mobilization when muscle guarding limits range, and as a lower-irritability alternative to stretching in acute presentations.
-- **Dosage:** 3–5 repetitions per muscle group per session, can be performed daily in early stages given the low mechanical stress involved.
-
-### 3.4 Soft Tissue Mobilization Techniques
-
-A general term covering hands-on techniques applied to muscle, fascia, and other soft tissue for pain modulation, extensibility, and tissue quality.
-
-| Technique | Description | Primary Use |
-|---|---|---|
-| Effleurage | Long, gliding superficial stroke | Warm-up, relaxation, lymphatic/venous flow assistance |
-| Petrissage | Kneading, lifting, rolling of muscle bulk | Muscle tension reduction, circulation |
-| Deep transverse friction massage (Cyriax) | Firm, transverse-to-fiber pressure at a specific lesion site | Localized tendinopathy/ligament lesions — aims to promote a localized therapeutic response and mobilize adherent scar tissue at the specific site |
-| Myofascial release | Sustained, low-load pressure/stretch through fascial planes | Fascial restriction, generalized tightness across a region |
-| Trigger point release | Sustained direct pressure on a hyperirritable palpable nodule until tension reduces | Myofascial trigger points contributing to referred pain patterns |
-
-**Dosage — deep friction massage specifically:** 5–10 minutes at the specific lesion site, applied across (not along) the fiber direction, moderate-to-firm pressure adjusted to patient tolerance and irritability; typically 2–3x/week, not daily, given the more provocative nature of the technique.
-
-**Dosage — general soft tissue work:** 5–15 minutes depending on the area and goal, can be used at the start of a session (preparatory) or end of session (post-exercise), most techniques safe for daily/frequent application at low-moderate pressure.
-
-> **Clinical Note:** Deep friction massage and trigger point release can each provoke a short-lived (24–48 hour) increase in soreness distinct from a true flare — counsel patients on this expected response so it is not misread as treatment failure, but still apply the 24-hour rule (Module 4.4) to distinguish expected soreness from an actual adverse reaction.
-
-### 3.5 Neural Mobilization
-
-Techniques applied to the peripheral nervous system when neurodynamic testing (Module 1.6) suggests adverse neural tension or reduced neural mobility is contributing to the presentation.
-
-- **Sliders (gliding techniques):** movement at one end of the nerve bed is combined with an opposite movement at the other end so the nerve slides relative to surrounding tissue without significant tension increase — lower irritability, used first in most cases.
-- **Tensioners:** movement at both ends of the nerve bed occurs simultaneously in the same direction, increasing tension through the nerve — higher irritability, reserved for later stages once sliders are well-tolerated.
-- **Dosage:** sliders — 2–3 sets of 10–15 repetitions, performed in a pain-free or minimally symptomatic range, can be prescribed for home use daily; tensioners — introduced only once sliders are tolerated without symptom increase, lower reps (2–3 sets of 6–10), monitored closely with the 24-hour rule.
-
-> **Clinical Note:** Neural mobilization should never be performed into significant neurological symptom reproduction (sharp radiating pain, paraesthesia increase). Mild, transient stretch sensation is expected; reproduction of the patient's neurological symptoms is a sign to reduce range or revert to sliders.
-
-### 3.6 Stretching Techniques
-
-| Technique | Description | Primary Use |
-|---|---|---|
-| Static stretching | Sustained end-range hold, no movement | General flexibility maintenance, Stage 2-3 |
-| PNF — hold-relax | Isometric contraction of the target muscle at end-range, followed by relaxation and further passive stretch | Greater range gain than static stretch alone in a single session; used when range is the primary limiting factor |
-| PNF — contract-relax-contract (CRAC) | Hold-relax followed by an active contraction of the antagonist to move further into range | Similar to hold-relax with an added active component |
-| Dynamic stretching | Controlled, movement-based stretch through range, not held | Warm-up before activity, Stage 3-4 |
-
-**Dosage:** static stretch — 3–5 x 30 second holds, mild-to-moderate stretch sensation (not pain), daily; PNF techniques — 3–4 repetitions per muscle group, 2–3x/week given the higher mechanical/neurological demand.
-
-### 3.7 Technique Selection Decision Framework
-
-Match the technique category to the clinical presentation using the SIN framework (Severity, Irritability, Nature — Module 1.10) established at assessment:
-
-1. **High irritability / acute / reactive presentation:** favor Maitland Grade I–II, gentle MET (reciprocal inhibition), sliders (not tensioners), light soft-tissue work. Avoid deep friction massage, Grade IV–V mobilization, tensioners, and aggressive stretching until irritability settles.
-2. **Moderate irritability, stiffness emerging as the dominant feature:** Maitland Grade III, Mulligan MWM (pain-free rule governs dosage regardless of stage), MET (PIR), moderate soft-tissue work.
-3. **Low irritability, stiffness-dominant, chronic:** Maitland Grade IV (± V where trained and indicated), deep friction massage at localized lesions, static and PNF stretching, tensioners where neural component present.
-4. **Painful contractile lesion with a discrete localized site (tendinopathy, ligament):** deep transverse friction massage as a targeted adjunct, combined with the loading progression in Module 4.5 — manual therapy here is adjunctive to loading, not a replacement for it.
-
-### 3.8 Dosage & Progression Principles Across Manual Therapy
-
-- Manual therapy in this manual is applied as an **adjunct** to active exercise/loading (Module 4), not as a standalone treatment strategy — a session combining passive technique with active follow-through (movement/exercise into any range gained) produces a more durable effect than passive technique alone.
-- **Immediate reassessment rule:** reassess the target sign (pain, range, or specific movement) immediately after each manual therapy technique within a session. A technique that does not change the target sign within 2–3 applications should be reconsidered, not repeated by default.
-- **Session frequency:** manual therapy is typically applied at each in-clinic visit during Stage 1–3, tapering in frequency as the patient transitions to independent exercise-based management in Stage 3–4, consistent with the general treatment-planning framework in Module 2.3.
-
-### 3.9 General Contraindications and Precautions
-
-| Category | Examples |
+| Intervention | Current status |
 |---|---|
-| Absolute (do not apply manual therapy at the site) | Fracture (unstable/unhealed), malignancy at or near the site, active infection, acute inflammatory arthropathy flare, cauda equina or other progressive neurological red flag |
-| Relative (modify grade/technique, proceed with caution) | Osteoporosis (avoid Grade V/high-force techniques, use lower-grade mobilization), anticoagulant therapy (reduce force for soft-tissue/friction techniques, monitor for bruising), pregnancy (position and technique modification, avoid certain spinal techniques per trimester), hypermobility (favor stability-oriented technique selection over further mobilization — cross-reference Module 4.14), recent surgery (defer to the surgeon's protocol per Module 4.6) |
+| Low-force joint mobilization (non-thrust) | **Conditional:** trained therapist, assessed indication, consent, documented dose/response and no unresolved safety concern |
+| Soft-tissue techniques | **Conditional:** site/risk screen, consent, skin/tissue tolerance and measurable goal |
+| Therapist-assisted stretching / MET-style resisted movement | **Conditional:** tissue/joint stability, safe resistance, consent and symptom monitoring |
+| Neural mobilization | **Conditional:** neurological screen, non-progressive presentation, careful symptom response and condition-specific rationale |
+| Mulligan-style mobilization with movement | **Conditional:** trained clinician, pain-free/acceptable response, no forced end range and immediate reassessment |
+| Grade V/HVLA thrust manipulation | **Not authorized by this manual** pending local scope verification, named advanced credential, competency assessment, technique/region privilege, consent and emergency governance |
+| Cervical HVLA manipulation | **Prohibited at Relife under this manual** unless a future governance revision expressly authorizes it after all requirements in 3.4 are satisfied |
 
-> **Clinical Note:** Any positive red flag from Module 1.2 takes precedence over this module — do not proceed with manual therapy at a site with an unresolved red flag pending medical clearance.
+“Conditional” does not mean routine. If the practitioner cannot name the clinical goal, relevant risk, alternative, stop rule and reassessment measure, do not perform the technique.
 
-*End of Module 3. Module 4 (Exercise Prescription Library) details the active loading progression that manual therapy in this module is designed to support, not replace.*
+### 3.2 Non-thrust Joint Mobilization
+
+Grades I–IV may be used as descriptive terms for oscillatory mobilization amplitude and location within the available range, but the grade alone does not prescribe force, speed, joint position, bout length or safety.
+
+| Grade | Descriptive convention |
+|---|---|
+| I | Small-amplitude movement near the beginning of available range |
+| II | Larger-amplitude movement within available range, short of the limiting resistance |
+| III | Larger-amplitude movement toward/into the limiting resistance |
+| IV | Small-amplitude movement near the end of available range |
+
+Required controls:
+
+- establish a baseline target such as a specific painful movement, function or range;
+- choose direction, amplitude, force and duration conservatively from irritability, tissue/joint integrity, diagnosis uncertainty and patient preference;
+- avoid using pain alone to “push through” a structural concern;
+- reassess immediately and later for worsening;
+- stop when there is no useful response, increasing irritability, guarding, neurological symptoms, dizziness, unusual head/neck pain, or loss of patient confidence.
+
+The former universal prescription of 30–60 seconds, 2–3 oscillations/second, 3–4 bouts has been withdrawn. No single dose is verified across joints, conditions, grades and patients.
+
+### 3.3 Mobilization With Movement and Other Named Concepts
+
+Named schools may organize clinical reasoning but do not prove a proposed biomechanical mechanism.
+
+- A symptom-reducing accessory glide during movement may be trialled only when the clinician is trained in the technique, the movement remains safe and acceptable, and no serious pathology/instability concern exists.
+- A successful immediate response is a treatment response—not proof that a “positional fault” existed.
+- Do not force a painful movement or add end-range overpressure merely because a named method recommends it.
+- Any home self-mobilization requires a separate screen, teach-back, clear stop criteria and follow-up.
+
+The former universal “3 sets of 6–10 repetitions” rule is withdrawn. Dose is based on the reviewed condition-specific protocol and patient response.
+
+### 3.4 Thrust Manipulation and Cervical Safety Gate
+
+Grade V/HVLA manipulation requires substantially more governance than non-thrust mobilization. Before Relife can authorize any thrust procedure, it must document:
+
+1. authoritative Bangladesh scope/legal review for the practitioner’s qualification;
+2. named advanced education with supervised psychomotor training and assessed competence;
+3. anatomical-region privileges and prohibited techniques;
+4. serious-pathology and instability screening;
+5. intervention-specific consent describing reasonable alternatives, uncertainty and material risks;
+6. emergency response, adverse-event reporting, case review and service-suspension rules;
+7. current evidence review for the specific condition and region.
+
+For the cervical region, a simple vertebral-artery positional test or “5 Ds and 3 Ns” checklist cannot clear manipulation. Assessment must follow the clinical-reasoning approach in the [2020 IFOMPT Cervical Framework](https://www.ifompt.org/Research%2Band%2BResources/OMPT%2BFrameworks%2BResearch%2Band%2BClinical%2BResources.html). The American Heart Association/American Stroke Association states that patients should be informed of the potential association between cervical dissection and cervical manipulative therapy before cervical manipulation; see its [summary](https://professional.heart.org/en/science-news/cervical-arterial-dissections-and-association-with-cervical-manipulative-therapy/top-things-to-know).
+
+Because those local, competency and emergency requirements are not documented for Relife, this manual provides no cervical or other HVLA technique instructions, force/direction recipes or repetition guidance.
+
+### 3.5 Soft-Tissue Techniques
+
+Soft-tissue contact may be used for comfort, short-term symptom modulation or preparation for active movement when acceptable to the patient. Technique labels such as effleurage, petrissage, transverse friction, myofascial release and trigger-point pressure describe forms of contact; they do not establish a unique mechanism or guarantee tissue change.
+
+Minimum controls:
+
+- inspect skin, wounds, infection, bruising/bleeding risk, vascular concern, sensation, recent surgery/trauma, suspected fracture/malignancy and patient preference;
+- define the target and use the least force needed for the trial;
+- avoid deep pressure over suspected DVT, acute neurovascular compromise, unstable tissue, infection, unhealed repair or undiagnosed mass;
+- do not promise to break adhesions, realign fascia, remove toxins or increase healing through “circulation” without verified evidence;
+- record site, technique category, approximate duration/pressure description, immediate response and delayed reaction.
+
+The former generic 5–10 minute deep-friction and 5–15 minute soft-tissue prescriptions, routine 2–3-times-weekly frequency, and statement that most techniques are safe daily have been withdrawn. Post-treatment pain lasting 24–48 hours must not automatically be described as an expected therapeutic response; it may represent excessive dose or an adverse response.
+
+### 3.6 Muscle Energy / Resisted Manual Techniques
+
+A low-force isometric or resisted movement may be trialled to support motor control, comfort or range when tissue stability and medical context permit. The explanation should focus on the observable task and response rather than claiming that post-isometric relaxation or reciprocal inhibition produces a guaranteed mechanical lengthening effect.
+
+- Screen fracture/instability, acute muscle/tendon injury, post-operative restrictions, pain irritability, neurological compromise and cardiovascular response where relevant.
+- Use a submaximal effort selected for the patient rather than a universal percentage.
+- Stop for sharp pain, cramping, neurological symptoms, joint instability, breath-holding/unsafe strain or unexpected systemic symptoms.
+- Reassess the relevant movement or function.
+
+The former universal 20–30% effort, 5–10-second hold, 3–5 repetitions and daily-frequency rule is withdrawn pending condition-specific verification.
+
+### 3.7 Neural Mobilization
+
+Neural mobilization is not appropriate merely because pain radiates. First document the neurological examination, symptom distribution, irritability, relevant neurodynamic findings, serious-pathology screen and whether deficits are stable, improving or progressive.
+
+- A slider or another low-load movement may be trialled within an acceptable symptom response when the rationale is clear.
+- Do not repeatedly reproduce strong radiating pain, increasing paraesthesia, numbness or weakness.
+- New/progressive motor loss, reflex change, saddle symptoms, bladder/bowel dysfunction, widespread neurological findings or gait deterioration requires escalation rather than more neural mobilization.
+- A “tensioner” is not an automatic progression; the condition-specific evidence and patient response must justify it.
+- Home techniques require teach-back and explicit stop/referral advice.
+
+The former universal sets/repetitions and “daily sliders” prescription is withdrawn.
+
+### 3.8 Stretching
+
+Stretching is selected for a task-related range goal, not because every feeling of tightness represents a shortened tissue.
+
+- Screen joint/tissue stability, acute injury, fracture risk, neurological symptoms, surgery restrictions, inflammatory/systemic disease and pain irritability.
+- Choose static, dynamic or contract-relax methods according to the task and condition-specific evidence.
+- Do not force end range or use pain as the dosage target.
+- Measure whether the range change improves the agreed activity and whether it persists.
+- In hypermobility or instability, prioritize control/capacity rather than additional range.
+
+The former universal 3–5 × 30-second daily static dose and fixed PNF frequency are withdrawn; population- and condition-specific recommendations belong in Module 4 and Part B.
+
+### 3.9 Safety Screen and Stop Rules
+
+Do not apply manual therapy at the affected site while any of the following remains unresolved:
+
+- suspected fracture/dislocation, serious infection, DVT/vascular emergency, malignancy requiring medical clarification, spinal cord/cauda equina compression, progressive neurological deficit or other Module 1.2 serious-pathology concern;
+- instability, acute neurovascular compromise, unhealed repair, or a post-operative restriction that the technique could violate;
+- inability to obtain valid consent or communicate/monitor an appropriate response.
+
+Modify or defer according to Module 7 for osteoporosis/bone fragility, anticoagulant/bleeding risk, pregnancy, impaired sensation/circulation, skin compromise, systemic illness, hypermobility, frailty and other patient-specific risks.
+
+Stop during or after a technique for:
+
+- sudden/unusual head or neck pain, dizziness, visual/speech/swallowing/balance/coordination symptoms;
+- new or increasing neurological symptoms;
+- severe or unexpected pain, structural instability, chest/systemic symptoms;
+- skin injury, expanding bruising/swelling, faintness or loss of responsiveness;
+- patient withdrawal of consent;
+- any response outside the clinician’s competence or planned effect.
+
+### 3.10 Trial, Reassessment, and Documentation
+
+Every manual-therapy trial records:
+
+1. clinical rationale and target measure;
+2. technique category, anatomical site/side, patient position and dose description;
+3. consent and alternatives;
+4. immediate response and any adverse response;
+5. active follow-through where appropriate;
+6. decision to continue, modify or stop.
+
+Manual therapy should taper or stop when it produces no reproducible meaningful benefit, causes adverse response, reinforces dependency/fear, or displaces active self-management. Immediate improvement alone does not establish long-term effectiveness; Part B must define the relevant follow-up outcome.
+
+> **Module 3 audit status (2026-08-09):** Universal technique recipes and unsupported mechanism claims withdrawn; thrust manipulation placed behind an authorization gate and cervical HVLA prohibited under the current manual. Condition-specific efficacy, non-thrust dosage, Bangladesh scope/legal review, and named competency records remain pending. This module is not yet clinically approved.
+
+*End of Module 3.*
 
 ---
 
