@@ -1014,87 +1014,92 @@ Dry needling is referenced as an adjunct technique in the relevant Part B condit
 
 ---
 
-## Module 7: Contraindications & Precautions (Cross-Cutting Safety Reference)
+## Module 7: Contraindications, Precautions, and Stop Rules
 
-This module consolidates safety information referenced throughout Modules 1–6 and Part B into a single cross-cutting reference. It does not replace the modality-specific contraindication tables in Modules 3, 5, and 6 — it is the single place to check when a patient's overall risk profile (a comorbidity, a medication, a special population) needs to be checked against the whole treatment plan at once, rather than modality by modality.
+This module is the cross-cutting safety screen used before choosing a modality or loading strategy. It does **not** label a person as “contraindicated to physiotherapy” merely because a diagnosis or comorbidity is present. The therapist must decide whether to (1) stop and escalate, (2) defer a specific intervention pending clarification, or (3) proceed with documented modification and monitoring. Modality-specific rules in Modules 3, 5, and 6 still require separate evidence review.
 
-> **Clinical Note:** This module governs when to **withhold, modify, or refer** rather than proceed with a standard protocol. When any content here conflicts with a Part B condition-specific instruction, this module takes precedence, since it reflects patient safety rather than condition-specific technique choice.
+> **Clinical Note:** Safety decisions are intervention-, dose-, site-, timing-, and patient-specific. A condition that prevents one technique may not prevent education, positioning, gentle movement, respiratory care, or another appropriately modified intervention.
 
-### 7.1 Absolute Contraindications to Physiotherapy Treatment
+### 7.1 Three-Level Safety Decision
 
-Treatment should not proceed (beyond the assessment itself) until medical clearance is obtained:
+| Level | Meaning | Required action |
+|---|---|---|
+| **STOP / EMERGENCY ESCALATION** | Features suggest a time-critical medical condition or acute deterioration | Stop routine treatment, provide appropriate immediate support within competence, and activate the local emergency pathway. Do not allow administrative delay or “medical clearance later” to replace urgent assessment. |
+| **DEFER THE AFFECTED INTERVENTION / URGENT CLARIFICATION** | Risk is material but the presentation is not clearly time-critical | Withhold the relevant technique or loading exposure; document the concern; obtain timely medical/surgical or supervising-clinician clarification. Unrelated low-risk care may proceed only when clinically justified. |
+| **PROCEED WITH MODIFICATION AND MONITORING** | The condition is stable and an adapted intervention is reasonable | Record the risk, modification, baseline measures, stop criteria, consent, and reassessment plan. Escalate if symptoms or observations deteriorate. |
 
-- Unstable fracture without surgical or medical stabilization
-- Suspected deep vein thrombosis (calf swelling, warmth, tenderness, especially with recent immobility/surgery)
-- Acute, undiagnosed severe pain out of proportion to the mechanism, or with systemic features (fever, unexplained weight loss)
-- Any positive red flag from Module 1.2 pending medical assessment (cauda equina signs, suspected malignancy, cervical/vertebral artery insufficiency signs, signs of infection)
-- Acute cardiac event or unstable cardiac symptoms (chest pain, unusual shortness of breath) during assessment or treatment
-- Active, uncontrolled infection at or near the treatment site
+### 7.2 Stop and Escalate
 
-### 7.2 Relative Contraindications / Precautions Requiring Modification
+Use Module 1.2 for the full serious-pathology screen. Stop routine treatment and arrange urgent or emergency medical assessment when the presentation includes:
 
-Treatment can generally proceed with specific modification, not withholding:
+- new bladder/bowel dysfunction, saddle/perineal sensory change, widespread or progressive weakness, or major gait deterioration suggesting cauda equina/cord compression;
+- suspected DVT/PE or another vascular emergency;
+- new chest pain, severe unexplained breathlessness, syncope, or unstable cardiac symptoms;
+- suspected unstable fracture/dislocation or acute neurovascular compromise;
+- systemic illness with suspected serious infection;
+- sudden or unusual severe neck/head pain with focal neurological, cranial-nerve, visual, speech, swallowing, balance, or coordination symptoms;
+- any rapid, unexplained deterioration or severe symptoms outside the therapist’s competence.
 
-| Condition | Modification Required |
-|---|---|
-| Osteoporosis | Avoid high-velocity/high-force manual therapy (Maitland Grade V), avoid high-impact/plyometric loading (Module 4.1 Stage 4) until strength criteria are conservatively confirmed, avoid aggressive end-range stretching |
-| Anticoagulant therapy | Reduce force for soft-tissue/friction techniques and dry needling depth, monitor for bruising, confirm medical clearance for needling where indicated (Module 6.3) |
-| Diabetes (uncontrolled) | Monitor skin/wound healing at needling or manipulation sites, screen for peripheral neuropathy affecting sensation-dependent modalities (Module 5.9), monitor for delayed tissue response |
-| Pregnancy | Position modification (avoid prolonged supine after first trimester), avoid specific electrotherapy application sites (abdomen/lower back — Module 5.9), avoid specific needling point areas (Module 6.3), modify exercise dosage per trimester |
-| Hypermobility (e.g., EDS spectrum) | Favor stability-oriented manual technique and exercise selection over further mobilization (cross-reference Module 3.9, Module 4.14) |
-| Cardiovascular disease (controlled) | Monitor exertion level during higher-intensity Stage 3-4 exercise, avoid unsupervised high-intensity loading without medical clearance where cardiac history is significant |
-| Recent surgery | Defer to the surgeon's specific protocol over this manual's default staging whenever the two conflict (Module 4.6) |
-| Malignancy history (in remission/treated) | Avoid electrotherapy/thermotherapy directly over a previous malignancy site per Module 5.9 unless specifically cleared |
+For suspected DVT, clinical features alone do not confirm or exclude the diagnosis. Use an appropriate clinical pathway rather than massage, exercise, or compression intended as treatment. NICE specifies structured assessment and timely testing for suspected DVT/PE; the APTA VTE guideline addresses PT screening, mobilization, and compression decisions. See [NICE NG158](https://www.nice.org.uk/guidance/ng158/chapter/recommendations) and the [APTA VTE CPG](https://www.apta.org/patient-care/evidence-based-practice-resources/cpgs/role-of-physical-therapists-in-the-management-of-individuals-at-risk-for-or-diagnosed-with-venous-thromboembolism-evidence-based-clinical-practice-guideline-cpg).
 
-### 7.3 Red Flag Recap and Escalation Pathway
+> **Evidence status:** `VERIFIED` at guideline level for the cited serious-spinal-pathology, VTE, and cervical-vascular escalation principles. Exact Bangladesh emergency routing remains `LOCAL POLICY — APPROVAL REQUIRED`.
 
-This is the operational escalation sequence when a red flag (Module 1.2) is identified, whether at initial assessment or during ongoing care:
+### 7.3 Defer or Modify by Risk Context
 
-1. **Stop and document** the specific finding precisely (what was found, when, under what circumstances).
-2. **Do not proceed with treatment** of the affected region beyond what is safe pending clarification (unrelated, clearly low-risk complaints in other regions may continue).
-3. **Inform the supervising clinician** the same day the finding is identified — this is not deferred to the next scheduled review.
-4. **Refer** per Module 2.10 Referral Criteria, with clear written communication of the specific finding to the receiving clinician.
-5. **Document the outcome** of the referral in the patient record once available, and do not resume the affected treatment until clearance is documented.
+| Context | Do not assume | Minimum safe approach | Status |
+|---|---|---|---|
+| Osteoporosis / major bone-fragility risk | That all exercise or manual therapy is prohibited | Avoid unassessed high-force, high-velocity, impact, or aggressive end-range exposure at the at-risk region. Choose graded loading, balance/fall-risk work, and lower-force techniques according to fracture risk, symptoms, competence, and medical context. | Claim-level technique limits require review |
+| Anticoagulant/antiplatelet therapy or bleeding disorder | That medication alone is an absolute bar to all physiotherapy—or that “medical clearance” removes bleeding risk | Review indication, medication, bruising/bleeding history, recent laboratory/medical information when relevant, and the invasiveness/site of the proposed technique. Defer deep/invasive techniques when risk cannot be reasonably assessed; document shared decision-making. | Dry-needling/manual-technique detail pending |
+| Diabetes / impaired sensation / vascular disease | That skin tolerance and tissue healing are normal | Inspect skin, sensation, circulation, footwear and wounds as relevant; adjust heat, cold, electrical stimulation, pressure, loading, and monitoring. Active infection, critical ischaemia, or a deteriorating wound requires medical/appropriate wound-care escalation. | Modality details pending |
+| Pregnancy | That pregnancy itself prohibits activity—or that a generic trimester rule fits every patient | Screen obstetric contraindications and warning symptoms; coordinate with maternity care when needed; modify position, intensity, fall/trauma risk, heat exposure, and symptom monitoring. After 20 weeks, prolonged supine exercise may reduce venous return, so position modification should be considered. See [ACOG Committee Opinion 804](https://journals.lww.com/greenjournal/fulltext/10.1097/aog.0000000000003772~physical-activity-and-exercise-during-pregnancy-and-the) and [WHO physical-activity guidance](https://iris.who.int/server/api/core/bitstreams/f3885485-e7eb-4504-8026-edd9bb53a6ee/content). | Guideline principle verified; modality/site rules pending |
+| Hypermobility | That more range is the default goal | Prioritize control, capacity, pacing, proprioception, and function. Avoid repeatedly driving symptomatic joints into uncontrolled end range. Individualize manual therapy rather than banning it categorically. | Clinical review required |
+| Cardiovascular or respiratory disease | That a stable diagnosis automatically requires clearance—or that an unstable presentation can exercise | Screen current symptoms, stability, functional capacity, treatment history, and planned intensity. Stop/escalate unstable symptoms; use graded, monitored activity when stable and within competence. | Intensity thresholds pending |
+| Recent surgery | That generic manual timelines override the operative procedure | Follow documented surgeon/team restrictions and tissue-healing considerations; clarify missing or contradictory restrictions before exposing the repair to material risk. | Local pathway required |
+| Current or previous cancer | That exercise is automatically prohibited—or that all modalities are safe over every site | Screen disease/treatment status, bone involvement, blood counts/immune status when relevant, cardiotoxicity, neuropathy, wounds, fatigue, and team restrictions. Individualized exercise can be appropriate, including for some people with advanced disease, but limitations may require medical supervision. See the [US National Cancer Institute summary](https://www.cancer.gov/news-events/cancer-currents-blog/2019/cancer-survivors-exercise-guidelines-schmitz). | Exercise principle verified; modality rules pending |
+| Pediatric patient | That an adult protocol can be scaled only by body size | Use developmentally appropriate assessment, dosing, communication, consent/assent, safeguarding, and growth-related considerations. | Pediatric governance review required |
+| Older adult / frailty | That chronological age alone determines treatment tolerance | Base dosage on frailty, function, cognition, falls risk, bone health, comorbidities, medication effects, and recovery response. | Clinical review required |
 
-### 7.4 Special Population Quick Reference
+### 7.4 Pregnancy Exercise Stop/Referral Screen
 
-| Population | Key Considerations |
-|---|---|
-| Pediatric | Growth plate loading modification (Module 4.12), parent/guardian involvement in consent and home program, pediatric-specific red flags (unresolving limp, apophysitis patterns) |
-| Geriatric | Lower starting loads, longer recovery windows, fall-risk/balance priority, polypharmacy and osteoporosis screening (Module 4.13) |
-| Pregnancy | Position, electrotherapy site, and needling point modifications above; exercise dosage modified per trimester and obstetric guidance |
-| Post-surgical | Surgical protocol takes precedence over this manual's default staging (Module 4.6) |
-| Oncology (active treatment) | Electrotherapy/thermotherapy avoided over the malignancy site; exercise dosage individualized with medical team input; fatigue and immune status considered in session planning |
-| Hypermobile | Stability-oriented technique selection over further mobilization (Module 3.9, Module 4.14) |
+Pregnancy requires its own obstetric screen; it should not be represented only by “avoid supine after the first trimester.” For uncomplicated pregnancy, moderate physical activity is generally supported, but warning symptoms and obstetric contraindications change the plan. See [WHO guidance](https://iris.who.int/server/api/core/bitstreams/f3885485-e7eb-4504-8026-edd9bb53a6ee/content), [ACOG Committee Opinion 804](https://journals.lww.com/greenjournal/fulltext/10.1097/aog.0000000000003772~physical-activity-and-exercise-during-pregnancy-and-the), and the [2019 Canadian guideline](https://bjsm.bmj.com/content/52/21/1339).
 
-### 7.5 Modality-Specific Contraindication Cross-Reference
+Stop exercise and obtain urgent obstetric/medical advice for new concerning symptoms such as vaginal bleeding, fluid leakage, regular painful contractions, chest pain, faintness, severe breathlessness before exertion, calf pain/swelling, or other acute maternal/fetal concerns. The treating therapist must use the patient’s maternity-care pathway; this manual does not independently diagnose obstetric complications.
 
-Rather than duplicating full tables here, this section indexes where each modality's specific contraindications are detailed:
+> **Evidence status:** Guideline principle `VERIFIED`; the final symptom list, local routing, and scope language require named obstetric/clinical review before approval.
 
-- **Manual therapy (mobilization, MET, soft tissue, neural mobilization, stretching):** Module 3.9
-- **Electrotherapy (TENS, IFT, ultrasound, laser, NMES, SWD, cryo/thermotherapy):** Module 5.9
-- **Dry needling:** Module 6.3
-- **Exercise/loading (including post-surgical, pediatric, geriatric, hypermobile modification):** Module 4.18 (general stop criteria) and Module 4.12–4.14 (population-specific)
+### 7.5 Modality-Specific Cross-Reference
 
-Use this module (7.1–7.4) to screen the patient's *overall* risk profile at intake and at any change in status; use the cross-referenced modality-specific sections when selecting or dosing a *specific* technique.
+A general risk screen cannot clear a specific technique. Before treatment, check the relevant module:
 
-### 7.6 Medical Clearance and Referral Triggers
+- **Manual therapy, manipulation, MET, soft-tissue work, neural mobilization, stretching:** Module 3.9
+- **Electrophysical agents, heat/cold, ultrasound, laser, NMES/TENS/IFT, SWD:** Module 5.9
+- **Dry needling/acupuncture:** Module 6.3
+- **Exercise/loading and population-specific modifications:** Module 4.12–4.14 and Module 4.18
 
-Obtain medical clearance before proceeding, or refer outright, when any of the following are present:
+Until those sections complete their claim-level evidence audit, their numerical limits and categorical “absolute/relative” labels remain `EVIDENCE NOT VERIFIED — CLINICAL REVIEW REQUIRED`.
 
-- Any Module 1.2 red flag, per the escalation pathway in 7.3
-- A comorbidity in 7.2 that is uncontrolled or newly diagnosed (e.g., newly diagnosed or poorly controlled diabetes, osteoporosis without a bone density result on file, cardiovascular disease without recent medical review)
-- Planned use of dry needling or higher-force manual therapy (Grade V) in a patient on anticoagulant therapy
-- No meaningful progress by the second reassessment point despite plan adjustment (Module 2.10)
-- Any presentation outside the conditions covered in Part B and outside the treating therapist's own scope of confidence
+### 7.6 Clearance, Consultation, and Referral
 
-### 7.7 Documentation and Consent Requirements for Higher-Risk Interventions
+Do not use “obtain medical clearance” as a vague transfer of responsibility. A useful consultation request states:
 
-- Obtain and document specific informed consent before dry needling (Module 6) and before Grade V manipulation (Module 3.1), distinct from general treatment consent — explain the specific technique, its purpose, and its specific risks (e.g., pneumothorax risk region for needling, as applicable).
-- Document any relative contraindication identified (7.2) and the specific modification applied, so the reasoning is traceable at reassessment or if care is handed to another therapist.
-- Any adverse event (Module 6.7, or an unexpected reaction to any modality) is documented at the time it occurs, including management taken and outcome, regardless of severity.
+1. the proposed intervention and site;
+2. the specific risk or uncertainty;
+3. relevant findings, symptom behavior, medication/procedure context, and current restrictions;
+4. the precise question needing clarification;
+5. the intended interim plan and stop criteria.
 
-*End of Module 7. Module 8 (Differential Diagnosis Matrices) returns to the diagnostic side of practice, organizing the differential reasoning introduced in Module 1.10 by body region.*
+Consult or refer when the presentation is outside the therapist’s competence, diagnosis/risk is materially uncertain, recovery is unexpectedly poor or worsening, a post-operative restriction is missing/conflicting, or the proposed intervention carries a risk that cannot be adequately assessed in the clinic. A clinician response does not replace the therapist’s duty to select and monitor an appropriate intervention.
+
+### 7.7 Consent, Documentation, and Incident Response
+
+- Obtain and document intervention-specific informed consent for higher-risk or invasive procedures, including material benefits, alternatives, uncertainties, and risks relevant to the site and patient.
+- Record the identified risk, the decision level from 7.1, modifications, baseline status, monitoring plan, and stop criteria.
+- For any deterioration or adverse event: stop the intervention, assess and manage within competence, escalate appropriately, document facts and timing, preserve relevant device/settings information, provide safety-net instructions, and follow the clinic incident-reporting policy.
+- Legal requirements, protected-title/scope rules, consent capacity, safeguarding, and incident-reporting obligations for Bangladesh must be verified against authoritative local sources before this module can be approved as organizational policy.
+
+> **Module 7 audit status (2026-08-09):** Cross-cutting decision logic audited against cited guideline-level sources. Modality-specific contraindications in Modules 3, 5, and 6, local legal/scope requirements, and several population-specific details remain pending. This module is not yet clinically approved.
+
+*End of Module 7.*
 
 ---
 
