@@ -22,8 +22,9 @@ import os
 import sys
 import json
 from datetime import datetime
+from pathlib import Path
 
-REPO_ROOT = os.path.expanduser("~/relife-clinic-os")
+REPO_ROOT = str(Path(__file__).resolve().parents[2])
 os.chdir(REPO_ROOT)
 sys.path.insert(0, os.path.join(REPO_ROOT, "15_AI_Brain", "Monitor"))
 

@@ -357,7 +357,9 @@ class WorkerCoordinator:
         text = text[:insert_at].rstrip() + "\n" + done_row + "\n\n" + text[insert_at:].lstrip("\n")
         self.queue.write_text(text, encoding="utf-8")
 
-        status = "REVIEW-READY" if review else "DONE"
+        # This event closes only the worker claim; it is not the task result.
+        # Task success/failure is recorded independently by dispatcher/logger.
+        status = "CLAIM-RELEASED"
         detail = evidence.strip() or "Evidence not supplied"
         self._handover(task, active.worker_id, status, f"{active.module}; {detail}")
         return active

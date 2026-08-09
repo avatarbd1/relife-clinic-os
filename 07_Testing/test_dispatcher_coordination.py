@@ -1,12 +1,19 @@
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
-MODULE_PATH = ROOT / "15_AI_Brain" / "Control" / "dispatcher_bridge.py"
+CONTROL_DIR = ROOT / "15_AI_Brain" / "Control"
+CORE_DIR = ROOT / "15_AI_Brain" / "Core"
+LOGS_DIR = ROOT / "15_AI_Brain" / "Logs"
+sys.path.insert(0, str(CONTROL_DIR))
+sys.path.insert(0, str(CORE_DIR))
+sys.path.insert(0, str(LOGS_DIR))
+MODULE_PATH = CONTROL_DIR / "dispatcher_bridge.py"
 
 SPEC = importlib.util.spec_from_file_location("dispatcher_phase5", MODULE_PATH)
 dispatcher = importlib.util.module_from_spec(SPEC)
@@ -20,6 +27,7 @@ ROW = {
     "type": "Testing",
     "priority": "NORMAL",
     "status": "QUEUED",
+    "description": "Use the persisted task description",
     "target_file": "03_Bot/bot.py",
     "assigned": "-",
     "raw_line": "| TASK-PHASE5 | Testing | NORMAL | QUEUED |",
@@ -177,6 +185,75 @@ class DispatcherCoordinationTests(unittest.TestCase):
             send_alert.call_args.kwargs["stage"],
             "coordination",
         )
+
+
+    def test_process_task_keeps_output_in_memory_until_validation_and_gate(self):
+        bridge = MagicMock()
+        bridge.router.provider_router.route.return_value = {
+            "status": "SUCCESS",
+            "selected_provider": "groq",
+            "fallback_used": False,
+            "retry_count": 0,
+        }
+        bridge.set_queue_row_status.return_value = ROW["raw_line"]
+
+        executor = MagicMock()
+        executor.execute.return_value = {
+            "status": "SUCCESS",
+            "task_id": ROW["task_id"],
+            "provider": "groq",
+            "output": "# Valid output",
+            "attempts": 1,
+        }
+        validator = MagicMock()
+        validator.validate.return_value = {"valid": True, "errors": []}
+        gate = MagicMock()
+        gate.propose.return_value = {"status": "APPLIED", "auto_approved": True}
+        logger = MagicMock()
+
+        ok, _ = dispatcher.process_task(
+            bridge, executor, validator, gate, logger, ROW.copy()
+        )
+
+        self.assertTrue(ok)
+        prompt = executor.execute.call_args.kwargs["prompt"]
+        self.assertIn(ROW["description"], prompt)
+        self.assertFalse(executor.execute.call_args.kwargs["persist_output"])
+        gate.propose.assert_called_once_with(
+            task_id=ROW["task_id"],
+            content="# Valid output",
+            target_path="15_AI_Brain/Outputs/TASK-PHASE5.py",
+        )
+
+    def test_queue_rows_load_persisted_description_and_target(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            brainos = root / "15_BrainOS"
+            brainos.mkdir()
+            queue = brainos / "BRAIN_QUEUE.md"
+            queue.write_text(
+                "# Queue\n## Active Queue\n"
+                "| TASK_ID | Type | Priority | Status | Assigned | Created |\n"
+                "|---|---|---|---|---|---|\n"
+                "| TASK-META | Documentation | NORMAL | QUEUED | groq | now |\n"
+                "\n## Completed\n",
+                encoding="utf-8",
+            )
+            (brainos / "TASK_DESCRIPTIONS.json").write_text(
+                '{"TASK-META":{"description":"real requested report",'
+                '"target_file":"03_Bot/bot.py"}}',
+                encoding="utf-8",
+            )
+            router_bridge = dispatcher.TaskRouterBridge.__new__(
+                dispatcher.TaskRouterBridge
+            )
+            router_bridge.brain_queue_path = str(queue)
+
+            with patch("task_router_bridge.REPO_ROOT", str(root)):
+                rows = router_bridge.get_active_queue_rows()
+
+        self.assertEqual(rows[0]["description"], "real requested report")
+        self.assertEqual(rows[0]["target_file"], "03_Bot/bot.py")
 
 
 if __name__ == "__main__":

@@ -8,8 +8,9 @@ Phase 2: Real autonomous execution (Items 1, 3, 4 wired)
 import sys
 import os
 import time
+from pathlib import Path
 
-REPO_ROOT = os.path.expanduser("~/relife-clinic-os")
+REPO_ROOT = str(Path(__file__).resolve().parents[2])
 sys.path.insert(0, os.path.join(REPO_ROOT, "15_AI_Brain"))
 sys.path.insert(0, os.path.join(REPO_ROOT, "15_AI_Brain", "Control"))
 sys.path.insert(0, os.path.join(REPO_ROOT, "15_AI_Brain", "Core"))
@@ -199,6 +200,7 @@ def process_task(bridge, executor, validator, gate, logger, row):
         task_type=row["type"],
         prompt=prompt,
         output_path=output_path,
+        persist_output=False,
     )
     exec_time_ms = int((time.time() - start_time) * 1000)
 
@@ -256,6 +258,7 @@ def process_task(bridge, executor, validator, gate, logger, row):
             task_type=row["type"],
             prompt=prompt,
             output_path=output_path,
+        persist_output=False,
         )
         retry_time_ms = int((time.time() - start_time) * 1000)
 

@@ -197,14 +197,15 @@ class WorkerCoordinatorTests(unittest.TestCase):
         self.assertIn("| Bot task | Claude-1 |", queue)
         self.assertIn("Bot task - ASSIGNED", self.handover.read_text(encoding="utf-8"))
 
-    def test_complete_releases_worker_and_marks_review_ready(self):
+    def test_complete_releases_worker_and_marks_claim_released(self):
         self.coordinator.assign("Docs", "09_SOP", "Gemini-1")
         self.coordinator.complete("Docs", "tests passed")
         self.assertNotIn("Docs", [item.task for item in self.coordinator.active_tasks()])
         ids = {worker.worker_id for worker in self.coordinator.available_workers()}
         self.assertIn("Gemini-1", ids)
         handover = self.handover.read_text(encoding="utf-8")
-        self.assertIn("Docs - REVIEW-READY", handover)
+        self.assertIn("Docs - CLAIM-RELEASED", handover)
+        self.assertNotIn("Docs - DONE", handover)
         self.assertIn("tests passed", handover)
 
 

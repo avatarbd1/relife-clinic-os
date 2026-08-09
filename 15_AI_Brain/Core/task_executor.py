@@ -16,9 +16,8 @@ from typing import Dict, Optional
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-REPO_ROOT = os.path.expanduser("~/relife-clinic-os")
-if os.path.isdir(REPO_ROOT):
-    os.chdir(REPO_ROOT)
+REPO_ROOT = str(Path(__file__).resolve().parents[2])
+os.chdir(REPO_ROOT)
 sys.path.insert(0, os.path.join(REPO_ROOT, "15_AI_Brain", "Core"))
 sys.path.insert(0, os.path.join(REPO_ROOT, "15_AI_Brain", "Control"))
 
@@ -115,6 +114,7 @@ class TaskExecutor:
         task_type: str,
         prompt: str,
         output_path: Optional[str] = None,
+        persist_output: bool = True,
     ) -> Dict:
         if output_path and output_path.replace("\\", "/").startswith(BLOCKED_PREFIX):
             return {
@@ -159,7 +159,9 @@ class TaskExecutor:
             if result["status"] == "SUCCESS":
                 break
 
-        if result["status"] == "SUCCESS":
+        # Dispatcher passes persist_output=False so unvalidated provider output
+        # stays in memory. ConfirmGate becomes the only writer to final Outputs/.
+        if result["status"] == "SUCCESS" and persist_output:
             final_path = Path(output_path) if output_path else DEFAULT_OUTPUT_DIR / f"{task_id}.md"
             final_path.parent.mkdir(parents=True, exist_ok=True)
             final_path.write_text(result["output"], encoding="utf-8")
