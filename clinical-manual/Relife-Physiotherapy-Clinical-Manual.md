@@ -804,131 +804,146 @@ The FITT framework (Frequency, Intensity, Time, Type) is used here as an organiz
 ---
 
 
-## Module 5: Electrotherapy Parameter Library
+## Module 5: Electrophysical Agents — Governance, Safety, and Device-Specific Use
 
-This module is the modality-by-modality reference for every electrotherapy and physical agent used at Relife Physiotherapy Center. Part B condition protocols reference these sections in their "Electrotherapy Detail" subsection rather than repeating parameters — this module is the authoritative source for indication, contraindication, and dosage per modality.
+> [!CAUTION]
+> **This module is not a universal machine-settings chart.** Frequency, pulse duration, duty cycle, intensity, treatment time, electrode/probe arrangement, and dose depend on the exact device, indication, patient, treatment site, and manufacturer instructions for use (IFU). The former generic parameter tables have been withdrawn pending device-by-device verification.
 
-> **Clinical Note:** Electrotherapy modalities in this manual are used as **adjuncts** to active exercise and manual therapy, not as standalone treatments. Evidence for most electrotherapy modalities as monotherapy is weak-to-moderate; their role here is short-term pain/symptom modulation to enable more effective active treatment, and this should be explained to patients rather than presenting electrotherapy as the primary intervention.
+Electrophysical agents (EPAs) may be considered only when they have a defined goal, a reasonable evidence/risk rationale, and a plan to measure response. They must not displace assessment, education, graded activity, exercise, or timely referral. “The patient likes the machine” or “the clinic routinely applies it” is not a sufficient indication.
 
-### 5.1 General Principles of Electrotherapy Selection
+The cross-modality safety framework is informed by the peer-reviewed evidence-based resource [Electrophysical Agents—Contraindications and Precautions](https://pmc.ncbi.nlm.nih.gov/articles/PMC3031347/). Because that publication is from 2010, it is a baseline rather than the sole authority; current device IFU, implant manufacturer restrictions, current condition-specific guidelines, and local policy take precedence.
 
-- Select a modality based on the treatment goal (pain modulation, tissue healing stimulation, muscle re-education, edema/swelling management), not by default habit or patient preference for a specific machine.
-- Electrotherapy is prioritized in Stage 1 (pain-dominant presentations) and tapers as the patient transitions into active loading (Stage 2–4), where exercise dosage (Module 4) becomes the primary driver of outcome.
-- Always screen general electrotherapy contraindications (5.9) before any modality, in addition to the modality-specific contraindications listed under each technique below.
+### 5.1 Device Authorization Gate
 
-### 5.2 Transcutaneous Electrical Nerve Stimulation (TENS)
+A device may be used at Relife only when its register contains:
 
-| Parameter | Conventional (High-Frequency) TENS | Acupuncture-Like (Low-Frequency) TENS |
-|---|---|---|
-| Frequency | 80–150 Hz | 2–10 Hz |
-| Pulse width | 50–100 microseconds | 150–250 microseconds |
-| Intensity | Strong, comfortable sensory tingling, no muscle contraction | Strong sensory to visible muscle twitch |
-| Duration | 20–30 minutes | 20–30 minutes |
-| Mechanism | Pain-gate mechanism, fast onset, short-lived effect | Endogenous opioid-mediated, slower onset, longer-lasting effect |
-| Primary use | Acute pain, immediate symptomatic relief within a session | More persistent or chronic pain presentations |
+1. manufacturer, exact model, serial/asset number, regulatory/market status where applicable, and current IFU;
+2. intended uses, contraindications, warnings, maintenance, cleaning, storage, environmental and accessory requirements copied or linked from that exact IFU;
+3. installation/electrical-safety check, maintenance/calibration history where required, fault/repair log, and next check date;
+4. approved electrodes, leads, probes, cables, gels, barriers, eye protection and other accessories;
+5. named staff authorized to use it and documented model-specific training;
+6. a device-specific clinical SOP with pre-use checks, patient screen, dose-recording fields, stop rules, cleaning, and adverse-incident process;
+7. evidence statement for each approved clinical use, including uncertainty and alternatives.
 
-**Electrode placement:** over or around the painful area, along the nerve pathway proximal to the site, or at corresponding dermatomal/segmental levels — placement is adjusted based on patient response, not fixed to one location.
+If the exact model/IFU cannot be identified, the device is **not authorized** by this manual. Never copy settings from another brand/model or infer output from a dial label.
 
-### 5.3 Interferential Therapy (IFT)
+### 5.2 Universal Pre-use and Time-out
 
-Two medium-frequency currents (typically ~4000 Hz) are crossed at the target tissue, producing a low-frequency "beat" (interference) effect at the intersection — allows deeper tissue penetration with more comfortable skin tolerance than low-frequency current applied directly.
+Before every EPA application:
 
-| Parameter | Setting |
-|---|---|
-| Carrier frequency | ~4000 Hz |
-| Beat frequency | 80–150 Hz for pain modulation; 1–10 Hz (or sweep 1–100 Hz) for muscle stimulation/circulation |
-| Intensity | Strong, comfortable sensory level |
-| Duration | 15–20 minutes |
-| Electrode configuration | 4-pole (crossed) most common; 2-pole (pre-modulated) where 4-pole placement is impractical |
+- verify patient, current problem, intended site/side, goal and consent;
+- inspect the device, plug, cable, lead, electrode/probe and accessory integrity; remove faulty equipment from service and label it;
+- review implanted electronic/metallic devices, pregnancy possibility, malignancy/site status, thrombosis/bleeding concern, infection, wound/skin integrity, circulation, sensation, cognition/communication, medication and recent procedures as relevant;
+- test or document the patient’s ability to detect and report the relevant stimulus (electrical, heat or cold);
+- position safely, expose only the required area, provide a call/stop method, and ensure the patient is not left without the monitoring required by the device SOP;
+- record the exact device, mode, settings, site, duration, accessories/electrodes/probe, patient response and any interruption.
 
-**Primary use:** deeper musculoskeletal pain (e.g., lumbar, hip), edema/swelling management (lower beat frequency settings), and as an alternative to TENS where deeper tissue penetration is desired.
+Stop immediately for unexpected pain, burning, marked discomfort, dizziness, chest symptoms, new neurological symptoms, skin change, device alarm/fault, loss of communication, or any response outside the planned effect.
+
+### 5.3 Electrical Stimulation: TENS, IFT, and NMES
+
+TENS, interferential-type currents, and NMES have different goals and outputs, but all require device-specific screening and electrode placement. The former fixed TENS/IFT/NMES tables are not retained as universal prescriptions.
+
+**Minimum safety rules**
+
+- Do not apply current through the chest or in an arrangement that may affect the heart.
+- Do not place electrodes over the anterior neck/carotid-sinus region, eyes, or transcranially unless an exact device is specifically approved for that indication and used under its specialized SOP.
+- Do not use over an area where absent/impaired sensation or inability to communicate prevents safe dose feedback unless the device-specific indication, monitoring, and clinician competence support an alternative control method.
+- Do not apply over suspected DVT, active serious infection, or an undiagnosed unstable presentation.
+- For a pacemaker, implanted defibrillator, neurostimulator, or other implanted electronic system, **do not proceed on a generic “keep away from the implant” rule**. Check both the EPA IFU and implant manufacturer guidance and obtain appropriate specialist clarification. Some TENS product labeling lists implanted electronic devices as a contraindication; for example, this [FDA-cleared TENS summary](https://www.accessdata.fda.gov/cdrh_docs/pdf16/K161537.pdf).
+- NMES intended to create a contraction requires joint/tissue stability, safe positioning, appropriate monitoring and a documented functional goal. “Maximum tolerated” intensity is not a universal instruction.
+
+**Evidence rule**
+
+The clinical effect of TENS, IFT, or NMES must be supported condition-by-condition. Do not claim that IFT necessarily reaches “deeper tissue,” treats oedema by a specific beat frequency, or is superior to TENS without condition- and device-relevant evidence. If used as a trial adjunct, define a same-session target and discontinue when no meaningful benefit is demonstrated.
 
 ### 5.4 Therapeutic Ultrasound
 
-| Parameter | Continuous Mode | Pulsed Mode |
-|---|---|---|
-| Frequency (probe) | 1 MHz (deeper tissue, 3-5cm) or 3 MHz (superficial tissue, 1-2cm) | Same frequency options |
-| Intensity | 0.5–1.5 W/cm² | 0.5–1.0 W/cm² |
-| Duty cycle | 100% | 20–50% (commonly 1:4, i.e. 20%) |
-| Duration | 5–10 minutes per site | 5–10 minutes per site |
-| Primary effect | Thermal (deep heating) — used for chronic stiffness, tissue extensibility goals | Non-thermal (mechanical/cavitation) — used for acute/subacute soft tissue injury, tissue healing stimulation |
+The former universal chart of 1/3 MHz, intensity, duty cycle, time and penetration depth has been withdrawn. Dose depends on the device calibration, effective radiating area, beam characteristics, treatment area, coupling method, target depth and intended thermal/non-thermal exposure.
 
-**Technique:** continuous, slow, overlapping circular or longitudinal strokes with adequate coupling gel; static application at one point is avoided (risk of localized tissue overheating).
+Minimum controls:
 
-> **Clinical Note:** Evidence for therapeutic ultrasound's clinical effect beyond placebo is weak-to-mixed across most musculoskeletal conditions in current literature; use it as a minor adjunct where a patient has responded well subjectively, not as a primary evidence-based modality choice.
+- use only the approved coupling method and applicator technique in the IFU;
+- inspect sensation, circulation and skin, and maintain required applicator movement where specified;
+- never use a static-head technique unless the exact device and approved protocol explicitly support it;
+- do not apply over eyes, testes, pregnant uterus, suspected malignancy, active bleeding/thrombosis, serious infection, or vulnerable central nervous tissue exposed by laminectomy without authoritative device/protocol support;
+- distinguish therapeutic ultrasound from diagnostic ultrasound and from “ultrasound diathermy” terminology used in some implant warnings;
+- with any implant, consult the exact implant and ultrasound device labeling rather than relying on a generic metal-implant rule. Some implanted neurostimulation systems prohibit therapeutic ultrasound diathermy because energy may couple through the system and cause injury; an example is this [FDA implant safety summary](https://www.accessdata.fda.gov/cdrh_docs/pdf8/p080025b.pdf).
 
-### 5.5 Low-Level Laser Therapy (LLLT / Photobiomodulation)
+Condition-specific effectiveness—including claims of accelerated tissue healing—remains `EVIDENCE NOT VERIFIED — CLINICAL REVIEW REQUIRED` until audited.
 
-| Parameter | Typical Range |
+### 5.5 Photobiomodulation / Low-Level Laser
+
+The former 600–1000 nm and 2–8 J/cm² generic dose range is withdrawn. Wavelength, power, irradiance, energy, treatment area, pulsing, aperture and eye-hazard class are device- and indication-specific and are not interchangeable.
+
+Use requires the exact laser/LED model IFU, device classification, approved indication, calculation/recording method, controlled treatment area, and wavelength-appropriate eye protection for patient and operator when required. Never look into the beam or apply over eyes. Malignancy, pregnancy, photosensitivity/medications, thyroid/anterior neck, growth plates, wounds and skin conditions must be handled according to current device labeling and the reviewed indication-specific SOP—not a single blanket table.
+
+Until the Relife device and eye-safety controls are documented, photobiomodulation is **not authorized by this manual**.
+
+### 5.6 Short-Wave Diathermy (SWD)
+
+> [!WARNING]
+> **SWD is not authorized by this manual until the exact Relife unit, IFU, installation environment, operator training, maintenance/electrical-safety status, exclusion screen and emergency procedure are documented.**
+
+SWD can expose tissues and nearby objects/devices to electromagnetic energy; a patient’s report of “mild comfortable warmth” is not a sufficient dose or safety control. The former continuous/pulsed settings and 15–20 minute prescription are withdrawn.
+
+Do not use SWD in a patient with a pacemaker, implanted neurostimulator or other implanted electronic device unless the implant and SWD manufacturers expressly support the proposed exposure. Multiple implant labels prohibit short-wave/microwave/therapeutic-ultrasound diathermy because transferred energy can cause tissue injury or device damage; see the [FDA neurostimulation-system example](https://www.accessdata.fda.gov/cdrh_docs/pdf8/p080025b.pdf). Pregnancy, metal in the field, impaired sensation/circulation, active bleeding/thrombosis, malignancy, infection, growing tissue, treatment near eyes/testes, and environmental exposure to staff or nearby electronics require exact IFU and current safety-policy review.
+
+### 5.7 Superficial Heat
+
+Heat is not automatically appropriate because symptoms are “chronic.” Before application, confirm a clear comfort/movement goal and assess skin, thermal sensation, circulation, cognition/communication, oedema, bleeding/thrombosis concern, infection, recent injury, malignancy/site uncertainty and ability to reposition or call for help.
+
+- Use only clinic-approved packs/covers and heating equipment with a verified temperature-control and inspection process.
+- Follow the device/pack IFU for preparation, layers/barriers, application time and reheating.
+- Inspect the skin before, during as required, and after treatment.
+- Never allow the patient to lie on a hot pack unless that exact product is designed and approved for weight-bearing use.
+- Stop for excessive heat, pain, burning, dizziness, new skin change or inability to provide reliable feedback.
+
+A fixed “15–20 minutes” is not retained as universal. Burn prevention and monitoring take priority over completing a timer.
+
+### 5.8 Cryotherapy
+
+Cold is not automatically required for every injury in the first 24–72 hours. Select it for a defined short-term symptom goal and do not claim that it accelerates tissue healing without condition-specific evidence.
+
+Screen for cold hypersensitivity/urticaria, Raynaud phenomenon, cryoglobulinaemia or other cold-related disorder, impaired circulation, impaired sensation, vulnerable/regenerating nerves, skin/wound risk and inability to report symptoms. Use an approved barrier and product-specific timing; inspect skin and stop for severe pain, marked pallor/cyanosis, wheals, prolonged numbness, or other unexpected response. Combining cold with compression adds risk and requires its own approved protocol.
+
+The former fixed 10–15 minute/every-2–3-hour schedule is withdrawn as a universal prescription.
+
+### 5.9 Pregnancy, Malignancy, Wounds, and Implants
+
+These contexts cannot be managed by one “avoid over the area” sentence:
+
+- **Pregnancy:** apply the obstetric screen in Module 7. Electrical stimulation, ultrasound, SWD, heat and photobiomodulation each require device- and site-specific guidance. SWD remains unauthorized; do not expose the pregnant abdomen/uterus under a generic clinic protocol.
+- **Current/suspected malignancy:** clarify diagnosis, site, treatment status, goals and oncology restrictions. Do not apply an EPA directly over a suspected/known malignant site merely for symptom relief without reviewed indication and appropriate team input.
+- **Open wound/infection:** an open wound is not an automatic contraindication to every specialized EPA, but using a routine non-wound device, reusable accessory or unapproved technique can create infection/electrical/dose risk. Only a specifically approved wound protocol may proceed.
+- **Implants:** identify the exact implant and manufacturer. “Metal implant” and “implanted electronic system” are not equivalent. Check both device labels; if compatibility remains uncertain, defer.
+
+### 5.10 Effectiveness, Trial, and Stop Rules
+
+Before an EPA trial, record:
+
+1. the impairment/symptom target;
+2. why this EPA is preferred over no EPA or a safer alternative;
+3. baseline measure;
+4. planned reassessment time;
+5. success threshold and stop rule.
+
+Do not continue a course solely because temporary sensation occurred. Continue only when a clinically relevant benefit is reproduced and helps the active plan without delaying higher-value care. Each Part B Condition Card must independently state whether the modality is recommended, optional, unsupported, or discouraged and cite the condition-specific source.
+
+### 5.11 Current Relife Authorization Status
+
+| Modality | Manual status |
 |---|---|
-| Wavelength | 600–1000 nm (red to near-infrared) |
-| Dose | 2–8 J/cm² per treatment point (condition- and device-dependent) |
-| Application | Direct contact or near-contact, perpendicular to skin, at specific point(s) — tender points, lesion site, or along the tendon/joint line |
-| Duration | Seconds to a few minutes per point depending on device output power |
-| Frequency | 2–3x/week initially |
+| TENS / IFT | **Conditional:** only under exact-device IFU and completed device-specific SOP; generic parameters withdrawn |
+| NMES / Russian-type stimulation | **Conditional:** requires exact-device SOP, contraction/loading safety screen and functional indication |
+| Therapeutic ultrasound | **Conditional:** exact-device SOP and condition-specific evidence required; generic dosing withdrawn |
+| Photobiomodulation / laser | **Not authorized** until exact device and eye-safety program are documented |
+| SWD | **Not authorized** until full device, environment, implant-screening, operator and maintenance controls are documented |
+| Superficial heat / cold | **Conditional:** approved products, sensation/circulation screen, monitoring and product-specific timing required |
 
-**Primary use:** tendinopathy, localized joint pain, wound healing adjunct. Evidence quality varies by condition and device parameters — dosage in the literature is inconsistently reported, so device manufacturer guidelines should be followed alongside the general ranges above.
+> **Module 5 audit status (2026-08-09):** Generic parameter recipes and unsupported modality-selection claims withdrawn. Cross-modality safety logic is based on the cited evidence review and device-label examples. Exact Relife device inventory/IFUs, Bangladesh device/facility requirements, maintenance records, condition-specific effectiveness, and device-specific SOPs remain pending. This module is not yet clinically approved.
 
-### 5.6 Neuromuscular Electrical Stimulation (NMES) / Russian Current
-
-Used to elicit or augment a muscle contraction electrically, primarily for muscle re-education or strengthening when voluntary activation is inhibited (e.g., post-surgical quadriceps inhibition) or absent (e.g., early nerve injury).
-
-| Parameter | Setting |
-|---|---|
-| Frequency | 35–50 Hz (Russian current, medium-frequency burst-modulated) or 30–80 Hz (standard NMES) |
-| Pulse width | 200–400 microseconds |
-| On:off ratio | 1:3 to 1:5 early stage (more rest); progressing toward 1:2 as tolerance improves |
-| Intensity | To visible, strong tetanic contraction — as high as patient tolerance allows for a strengthening goal |
-| Duration | 10–20 contractions per session |
-| Primary use | Post-surgical/post-injury quadriceps or other target muscle activation deficit (e.g., B14 Post-ACL Reconstruction), muscle re-education where voluntary control is impaired |
-
-> **Clinical Note:** NMES is an adjunct to, not a replacement for, active/voluntary muscle contraction exercise — combine with simultaneous voluntary effort (patient actively contracting along with the stimulated contraction) wherever the patient is able, for the best re-education effect.
-
-### 5.7 Short Wave Diathermy (SWD)
-
-A deep-heating modality using high-frequency electromagnetic energy, generally reserved for chronic, low-irritability, stiffness-dominant presentations where deep tissue heating is the goal and other deep-heat options (ultrasound) are insufficient in area coverage.
-
-| Parameter | Setting |
-|---|---|
-| Mode | Continuous (thermal) or pulsed (non-thermal, lower intensity) |
-| Intensity | Mild, comfortable warmth — patient-reported, not device-standardized, due to variable tissue response |
-| Duration | 15–20 minutes |
-| Primary use | Chronic joint stiffness (e.g., knee/hip OA), deep muscle spasm, large-area deep heating where ultrasound's small treatment area is impractical |
-
-### 5.8 Cryotherapy and Thermotherapy
-
-| Modality | Indication | Parameters | Contraindications |
-|---|---|---|---|
-| Cryotherapy (cold) | Acute injury (first 24-72h), post-exercise soreness management, acute inflammatory flare | 10–15 minutes, ice pack/cold pack with a barrier layer, every 2-3 hours as needed in the acute phase | Cold hypersensitivity/Raynaud's, impaired sensation, cryoglobulinemia, over compromised circulation |
-| Thermotherapy (heat) | Subacute/chronic stiffness, muscle spasm, pre-exercise tissue preparation | 15–20 minutes, moist or dry heat pack, moderate comfortable warmth | Acute inflammation/swelling, impaired sensation, active bleeding/DVT risk, over malignancy, impaired circulation |
-
-> **Clinical Note:** "Ice for acute, heat for chronic" is a simplification, not an absolute rule — the deciding factor is the presence of active inflammation/swelling (favors cold) versus stiffness without active inflammation (favors heat), which can both be present within the same episode of care at different points.
-
-### 5.9 General Contraindications and Precautions Across Electrotherapy
-
-| Category | Applies To | Contraindication |
-|---|---|---|
-| Cardiac | TENS, IFT, NMES, SWD | Cardiac pacemaker or implanted electronic device (electrical modalities), placement across or near the chest/heart |
-| Pregnancy | TENS, IFT, SWD, ultrasound | Avoid over the abdomen/pelvis/lower back; some modalities avoided entirely per local protocol |
-| Malignancy | All modalities | Avoid direct application over a known or suspected malignant site |
-| Impaired sensation | All modalities | Increases risk of burns (thermal modalities) or excessive intensity (electrical stimulation) going unnoticed by the patient |
-| Metal implants | Ultrasound, SWD | Caution over metal implants — device-specific guidance should be followed; TENS/IFT surface application is generally lower risk |
-| Active bleeding/DVT | Thermotherapy, SWD | Avoid — heat increases local blood flow |
-| Skin integrity | All modalities | Avoid over open wounds, active infection, or unhealed surgical incisions unless the modality is specifically indicated for wound healing and applied appropriately |
-
-### 5.10 Modality Selection Quick-Reference
-
-| Treatment Goal | Preferred Modality Options |
-|---|---|
-| Acute pain, immediate relief | Conventional TENS, cryotherapy |
-| Persistent/chronic pain | Acupuncture-like TENS, IFT |
-| Deep tissue heating, chronic stiffness | SWD, continuous ultrasound |
-| Acute soft-tissue injury, non-thermal effect | Pulsed ultrasound |
-| Muscle re-education / inhibited activation | NMES/Russian current |
-| Localized tendinopathy adjunct | LLLT, pulsed ultrasound |
-| Edema/swelling management | IFT (low beat frequency), cryotherapy |
-
-*End of Module 5. Module 6 (Acupuncture / Dry Needling Protocol Library) covers needling-based modalities, which are used alongside — not interchangeably with — the electrotherapy modalities in this module.*
+*End of Module 5.*
 
 ---
 
