@@ -38,7 +38,12 @@ jobs:
             15_AI_Brain/Control/alert_notifier.py \
             15_AI_Brain/Control/worker_coordinator.py \
             15_AI_Brain/Control/provider_router.py \
-            15_AI_Brain/Control/task_router_bridge.py
+            15_AI_Brain/Control/task_router_bridge.py \
+            15_AI_Brain/Control/test_confirm_gate_policy.py
 
       - name: Confirm Gate safety self-test
         run: python 15_AI_Brain/Control/confirm_gate.py self-test
+
+      - name: Confirm Gate unit tests
+        working-directory: 15_AI_Brain/Control
+        run: python -m unittest -v test_confirm_gate_policy.py
