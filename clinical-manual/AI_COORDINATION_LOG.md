@@ -34,11 +34,10 @@
 | 2026-08-09 | Claude | B8 electrotherapy/acupuncture subsections (pre-governance baseline) | SUPERSEDED / NOT MERGED | Owner reports sandbox-only work predating the governance baseline; requires re-audit | Not pushed |
 | 2026-08-09 | Claude | Module 9 (Outcome Measures) | OWNER-REPORTED / NOT MERGED | Owner reports ODI/NDI MCID corrections in a download; content and citations have not been verified or merged on this branch | Download/base commit not yet supplied |
 | 2026-08-09 | ChatGPT | Module 2 (Clinical Management) | DONE | Withdrew fixed phase/session/reassessment recipes; added shared-decision, monitoring, AI verification and escalation gates | `5781855` |
-| 2026-08-09 | ChatGPT | Module 4 (Exercise Prescription Library) | IN PROGRESS | Auditing exercise selection, dose, progression, monitoring and safety claims | Pending |
+| 2026-08-09 | ChatGPT | Module 4 (Exercise Prescription Library) | DONE | Withdrew universal dose/pain/age/RTS recipes; added individualized prescription, monitoring and escalation governance | `e3d34d1` |
 
 ## Next Available Sections
 
-- Module 4: Exercise Prescription Library
 - Module 8: Differential Diagnosis Matrices
 - Module 9: all unmerged content; eight remaining instruments reported unverified
 - Module 10: Home Exercise Program Templates
