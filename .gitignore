@@ -41,3 +41,11 @@ repo_dirs.txt
 15_AI_Brain/Outputs/
 15_AI_Brain/Proposals/Pending/
 15_AI_Brain/Proposals/Rejected/
+
+# ClinicOS CLI runtime state
+16_ClinicOS_CLI/database/*.db
+16_ClinicOS_CLI/database/settings.json
+16_ClinicOS_CLI/logs/*.json
+16_ClinicOS_CLI/backup/
+16_ClinicOS_CLI/workspace/outputs/
+16_ClinicOS_CLI/workspace/temp/
