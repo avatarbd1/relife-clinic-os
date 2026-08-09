@@ -35,10 +35,10 @@
 | 2026-08-09 | Claude | Module 9 (Outcome Measures) | OWNER-REPORTED / NOT MERGED | Owner reports ODI/NDI MCID corrections in a download; content and citations have not been verified or merged on this branch | Download/base commit not yet supplied |
 | 2026-08-09 | ChatGPT | Module 2 (Clinical Management) | DONE | Withdrew fixed phase/session/reassessment recipes; added shared-decision, monitoring, AI verification and escalation gates | `5781855` |
 | 2026-08-09 | ChatGPT | Module 4 (Exercise Prescription Library) | DONE | Withdrew universal dose/pain/age/RTS recipes; added individualized prescription, monitoring and escalation governance | `e3d34d1` |
+| 2026-08-09 | ChatGPT | Module 8 (Differential Diagnosis and Triage) | DONE | Replaced single-test diagnostic certainty with hypothesis clusters, cross-regional triage, imaging stewardship and evidence-status limits | `b005554` |
 
 ## Next Available Sections
 
-- Module 8: Differential Diagnosis Matrices
 - Module 9: all unmerged content; eight remaining instruments reported unverified
 - Module 10: Home Exercise Program Templates
 - Part B: B1–B30 all require governance-era condition-level audit; any pre-baseline work must be rechecked
