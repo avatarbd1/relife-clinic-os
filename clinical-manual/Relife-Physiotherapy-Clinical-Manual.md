@@ -73,7 +73,7 @@ Use these labels during the audit; a section marked “Complete” in the progre
 | 5 | Module 5: Electrotherapy Parameter Library (modality-by-modality: indication, contraindication, dosage/parameters) | ⚠️ Safety/governance audited | Device SOPs and efficacy review pending |
 | 6 | Module 6: Acupuncture / Dry Needling Protocol Library | ⛔ Not authorized | Scope, credential and local approval pending |
 | 7 | Module 7: Contraindications & Precautions (cross-cutting safety reference) | ⚠️ Safety/governance audited | Local pathways and modality details pending |
-| 8 | Module 8: Differential Diagnosis Matrices (symptom-pattern → likely conditions, by region) | ⏳ Evidence audit pending | Content present; not claim-verified |
+| 8 | Module 8: Differential Diagnosis Matrices (symptom-pattern → likely conditions, by region) | ⚠️ Safety/governance audited | Regional diagnostic-accuracy claims and local pathways still require clinical review |
 | 9 | Module 9: Outcome Measure Interpretation (score meaning, MCID, red flags in scoring) | ⏳ Evidence audit pending | Cutoffs/MCIDs not claim-verified |
 | 10 | Module 10: Home Exercise Program Templates | ⏳ Evidence audit pending | Content present; not claim-verified |
 | — | **PART B — DISEASE-WISE PROTOCOLS** (each: Anatomy Link → Assessment Clues → Differential → 7-14-28 day phase goals → Session time-block → Manual/Exercise/Electro/Acupuncture detail → Contraindications → Progression criteria → Red flags → Home program) | | |
@@ -974,95 +974,85 @@ Consult or refer when the presentation is outside the therapist’s competence, 
 
 ---
 
-## Module 8: Differential Diagnosis Matrices
+## Module 8: Differential Diagnosis and Triage Matrices
 
-This module organizes symptom-pattern-to-condition reasoning by body region, supporting the clinical reasoning process defined in Module 1.10. Each matrix lists the conditions covered in the corresponding Part B section alongside key distinguishing features and the red-flag mimics to rule out first (cross-reference Module 1.2 and Module 7.3 for the escalation pathway if a mimic is suspected).
+This module supports hypothesis generation and triage; it does not convert symptom patterns or special tests into a definitive diagnosis. The clinician must integrate history, functional behaviour, objective examination, neurological and vascular findings where relevant, response over time, comorbidities, and serious-pathology screening. A single positive test, imaging finding, age threshold, or pain location must not be treated as diagnostic by itself.
 
-> **Clinical Note:** These matrices are a starting-hypothesis tool, not a diagnostic algorithm to apply mechanically. Confirm any working diagnosis with the correlated objective findings described in Module 1.10 (at least two to three congruent findings), not a single symptom-pattern match.
+> **Clinical Note:** Start with the question “Is this presentation appropriate for routine physiotherapy?” Only after urgent and non-musculoskeletal causes have been considered should a regional working diagnosis be assigned. Record competing hypotheses and the evidence for and against each one.
 
-### 8.1 Shoulder Pain Differential Matrix
+### 8.1 Minimum differential-reasoning sequence
 
-| Presentation Pattern | Likely Condition (Part B ref.) | Key Distinguishing Feature |
+1. **Screen urgency first:** repeat Module 1.2 screening when symptoms are new, changing, severe, systemic, traumatic, neurological, vascular, or inconsistent with an uncomplicated musculoskeletal course.
+2. **Define the dominant presentation:** traumatic versus non-traumatic; local versus referred; mechanical versus non-mechanical; nociceptive, neuropathic, or nociplastic features; stable versus progressive.
+3. **Examine adjacent and referral regions:** regional pain may arise from the spine, peripheral nerve, viscera, vascular system, or another joint.
+4. **Use clusters, not isolated tests:** interpret special tests only in the population and clinical context for which they are appropriate. A test may raise or lower probability; it rarely proves a tissue diagnosis.
+5. **Choose a provisional classification:** document the leading hypothesis, important alternatives, and the reason routine physiotherapy is or is not appropriate.
+6. **Safety-net and reassess:** define what change would trigger urgent escalation, medical review, imaging consideration, or revision of the working diagnosis.
+
+### 8.2 Cross-regional triage matrix
+
+| Finding or pattern | Concern to consider | Action |
 |---|---|---|
-| Global loss of active and passive ROM, capsular pattern, insidious onset | Frozen Shoulder (B1) | Passive ROM restricted proportionally to active — true capsular pattern |
-| Pain with overhead activity, weakness on resisted testing, night pain | Rotator Cuff Tendinopathy/Tear (B2) | Positive resisted testing for the involved tendon, normal passive ROM |
-| Painful arc (60-120°), positive Neer's/Hawkins-Kennedy | Subacromial Impingement (B3) | Pain reproduced specifically in mid-range arc, not at end-range |
-| Apprehension with abduction/external rotation, history of dislocation or repetitive overhead sport | Instability (B4) | Positive apprehension/relocation test, often younger patient with trauma or overuse history |
-| **Red flag mimics to rule out first** | Cardiac referred pain (left shoulder + chest symptoms), cervical radiculopathy referring to shoulder, malignancy (unremitting night pain, no mechanical pattern) | — |
+| New bladder/bowel dysfunction, saddle/perineal sensory change, or progressive/bilateral leg neurological deficit | Cauda equina or major neural compression | Stop routine care and arrange same-day emergency assessment using the local pathway. |
+| Gait deterioration, hand clumsiness, upper-motor-neuron findings, or progressive multi-limb neurological change | Myelopathy or central neurological disorder | Urgent medical assessment; avoid provocative spinal treatment. |
+| Fever/systemic illness with a hot swollen joint, severe rest pain, recent infection/procedure, or immunosuppression | Infection or septic arthritis | Urgent medical assessment; emergency pathway when systemically unwell. |
+| Significant trauma, inability to load, deformity, focal bony tenderness, or important bone-fragility risk | Fracture or structural injury | Protect the region and arrange appropriate medical/imaging assessment. Use a validated decision rule only in its intended population. |
+| Previous cancer, unexplained systemic decline, progressive non-mechanical pain, or new neurological findings | Malignancy or other serious pathology | Escalate according to the overall level of concern; no single feature confirms or excludes malignancy. |
+| Chest pressure, dyspnoea, sweating, syncope, or shoulder/arm pain with possible cardiac features | Cardiopulmonary cause | Emergency medical assessment according to local protocol. |
+| Unilateral limb swelling, warmth, colour change, disproportionate pain, or vascular risk | Vascular disorder including DVT or acute ischaemia | Stop routine treatment and obtain urgent medical assessment. |
+| Symptoms fail to improve as expected, progressively worsen, or no longer fit the working diagnosis | Missed diagnosis or changed condition | Repeat the history/examination, red-flag screen, and differential; refer when uncertainty affects safety. |
 
-### 8.2 Neck Pain Differential Matrix
+The red-flag process follows the checked [IFOMPT International Framework for Red Flags for Potential Serious Spinal Pathologies](https://www.ifompt.org/Research%2Band%2BResources/OMPT%2BFrameworks%2BResearch%2Band%2BClinical%2BResources.html). Cervical vascular risk must be assessed through history and clinical reasoning consistent with the IFOMPT cervical framework; historical positional “vertebral artery tests” must not be used as a stand-alone clearance test.
 
-| Presentation Pattern | Likely Condition (Part B ref.) | Key Distinguishing Feature |
+### 8.3 Regional hypothesis matrix
+
+| Region | Common working hypotheses in this manual | Findings that may support a hypothesis | Important alternatives / escalation checks |
+|---|---|---|---|
+| Shoulder | Frozen shoulder (B1); rotator-cuff-related shoulder pain/tear (B2); subacromial pain presentation (B3); instability (B4) | Compare active and passive motion; strength and load response; traumatic onset; apprehension/instability history; functional pattern. | Cervical referral; fracture/dislocation; infection; inflammatory disease; malignancy; cardiopulmonary referral. No painful arc, Neer, Hawkins-Kennedy, or resisted test is diagnostic alone. |
+| Neck/arm | Mechanical neck pain (B5); cervical radicular presentation (B6); degenerative presentation (B7) | Symptom distribution; movement response; neurological examination; concordant sensory, motor, and reflex findings; test clusters where appropriate. | Myelopathy; vascular pathology; fracture; infection; inflammatory disease; malignancy; peripheral nerve entrapment. Imaging degeneration does not by itself establish the pain source. |
+| Low back/leg | Non-specific LBP (B8); radicular pain/radiculopathy (B9); extension-sensitive presentation (B10); pelvic-girdle/SIJ-region presentation (B11); degenerative/stenotic or spondylolisthesis presentation (B12) | Pain distribution and behaviour; neurological examination; neural mechanosensitivity interpreted with concordant symptoms; repeated-movement/load response; walking/standing tolerance; provocation-test clusters where applicable. | Cauda equina; fracture; infection; malignancy; inflammatory disease; hip disease; visceral/vascular referral. “Facet syndrome,” “SIJ dysfunction,” and a disc level must not be diagnosed from pain location or one test. |
+| Knee | Osteoarthritis presentation (B13); post-ACL reconstruction (B14); meniscal presentation (B15); patellofemoral pain (B16) | Age and history are context, not proof; assess trauma, swelling, motion, load-related function, instability, locking, joint-line findings, and patellofemoral loading tasks. | Fracture; septic arthritis; DVT; inflammatory disease; referred hip/spine pain; extensor-mechanism rupture. True locked knee or major acute instability requires timely medical/orthopaedic assessment. |
+| Hip/lateral thigh | Hip OA presentation (B17); greater trochanteric pain/gluteal tendinopathy presentation (B18) | Groin versus lateral distribution; motion restriction; weight-bearing response; resisted loading; palpation used only as part of a cluster. | Fracture/stress fracture; avascular necrosis risk; infection; malignancy; lumbar/pelvic referral; intra-abdominal or vascular cause. Inability to weight-bear after trauma needs urgent assessment. |
+| Elbow | Lateral epicondylalgia (B19); medial epicondylalgia (B20) | Local load-related pain reproduced by relevant gripping and resisted muscle-tendon loading, with regional and neurological screen. | Cervical referral; radial/ulnar/median neuropathy; fracture; inflammatory arthritis; infection. Local tenderness alone is insufficient. |
+| Wrist/hand | Carpal tunnel presentation (B21); de Quervain presentation (B22) | Symptom distribution, nocturnal symptoms, functional provocation, sensory/motor examination, and appropriate test combination. | Cervical radiculopathy; proximal median neuropathy; ulnar/radial neuropathy; inflammatory arthropathy; fracture; infection. Tinel, Phalen, or Finkelstein/Eichhoff-type provocation alone does not confirm diagnosis. |
+| Ankle/foot | Lateral ankle sprain (B23); plantar heel pain (B24); Achilles tendinopathy (B25) | Mechanism, load tolerance, location, swelling, motion, strength, tendon/ligament loading, and functional testing. | Fracture; Achilles rupture; DVT; infection; neurovascular disorder; stress injury. Apply the Ottawa Ankle Rules only to appropriate acute ankle/midfoot trauma and within local imaging/referral authority. |
+| Jaw/face | Temporomandibular disorder presentation (B28) | Jaw pain/function, opening pattern, joint sounds, load response, and cervical contribution. | Dental infection/pathology, trauma, neurological disorder, temporal arteritis where clinically plausible, and other medical causes. Coordinate with dental/medical services when the source is uncertain. |
+| Widespread pain | Fibromyalgia/chronic widespread or nociplastic presentation (B29) | Widespread symptom distribution, fatigue/sleep/cognitive features, functional impact, and absence of a better single regional explanation after appropriate assessment. | Inflammatory, endocrine, neurological, medication-related, malignant, or infectious causes. Physiotherapists must not use “nociplastic” as a diagnosis of exclusion without adequate medical context. |
+| Post-fracture/post-surgical | Post-fracture stiffness (B26); post-surgical rehabilitation (B27) | Confirmed diagnosis/procedure, date, surgeon restrictions, healing status, complications, and current impairment. | Infection, wound complication, fixation failure, DVT, neurovascular deficit, re-fracture, or surgeon-specific restriction. Operative instructions override generic timelines. |
+| Postural presentation | Postural/upper-quarter movement-coordination presentation (B30) | Symptoms linked to sustained task or load, modifiable movement/endurance findings, and functional response to variation. | Cervical radiculopathy/myelopathy, shoulder pathology, headache disorder, inflammatory disease, or systemic cause. Static posture or a named “upper crossed syndrome” pattern must not be presented as a proven tissue diagnosis. |
+
+### 8.4 Imaging and test stewardship
+
+- Do not request or recommend imaging routinely for uncomplicated low back pain with or without sciatica in a non-specialist setting. NICE recommends considering imaging in specialist care only when the result is likely to change management: [NICE NG59](https://www.nice.org.uk/guidance/ng59/chapter/recommendations).
+- Imaging findings must be correlated with the clinical presentation. Degenerative findings, tendon changes, and disc changes may not identify the pain generator by themselves.
+- Use laboratory testing, electrodiagnostic testing, or medical imaging only through an authorized pathway and when the result is expected to affect management.
+- A negative screen reduces concern only to the extent supported by that test or rule; it never replaces safety-netting when the clinical course is concerning.
+- The Ottawa Ankle Rules are a fracture-screening decision rule, not a diagnosis of ankle sprain. Their diagnostic role and limitations are supported by the checked [BMJ systematic review](https://pmc.ncbi.nlm.nih.gov/articles/PMC149439/) and must be applied only to the intended acute-injury population.
+
+### 8.5 Documentation standard
+
+For every case in which the differential materially affects safety or treatment, document:
+
+- dominant presentation and onset;
+- serious-pathology questions and relevant positive/negative findings;
+- neurological and/or vascular examination when indicated;
+- leading working hypothesis and at least one plausible alternative;
+- why routine physiotherapy is appropriate, modified, deferred, or stopped;
+- referral/escalation action and urgency, if any;
+- safety-net advice and the reassessment trigger.
+
+### 8.6 Evidence status and limitations
+
+| Element | Status | Audit note |
 |---|---|---|
-| Localized neck pain/stiffness, mechanical (movement-related), no neurological signs | Mechanical Neck Pain (B5) | No dermatomal/myotomal findings, pain reproduced by specific movement/position |
-| Neck pain with radiating arm pain, dermatomal sensory change, myotomal weakness | Cervical Radiculopathy (B6) | Positive Spurling's test, correlating myotome/dermatome/reflex findings |
-| Chronic, insidious, age-related stiffness, may have intermittent radicular flares | Cervical Spondylosis (B7) | Gradual onset over years, imaging-consistent degenerative change where available |
-| **Red flag mimics to rule out first** | Cervical/vertebral artery insufficiency (5 D's/3 N's — Module 1.2), cervical myelopathy (gait change, hand clumsiness, hyperreflexia), inflammatory arthropathy | — |
+| Red-flag and cervical vascular reasoning framework | VERIFIED | Checked against IFOMPT framework resources. |
+| Non-routine imaging approach for low back pain/sciatica | VERIFIED | Checked against NICE NG59 recommendations. |
+| Ottawa Ankle Rules as an acute-fracture screening rule | VERIFIED | Checked against a systematic review; population and scope limitations retained. |
+| Regional symptom and examination cues | CONSENSUS / STANDARD-OF-PRACTICE | Presented as hypothesis-supporting cues, not diagnostic rules. The Academy of Orthopaedic Physical Therapy maintains the relevant condition CPG catalogue: [Published CPGs](https://www.orthopt.org/content/publications/pub-cpg). |
+| Exact diagnostic accuracy of individual special tests or clusters | EVIDENCE NOT VERIFIED — CLINICAL REVIEW REQUIRED | No sensitivity, specificity, likelihood ratio, or “rule-in/rule-out” claim is authorized in this module until the exact study, population, threshold, and applicability are verified. |
+| Bangladesh referral, imaging, and professional-scope pathways | LOCAL POLICY — APPROVAL REQUIRED | The clinic must record named receiving services, emergency contacts, and authorized professional roles before approval. |
 
-### 8.3 Low Back Pain Differential Matrix
-
-| Presentation Pattern | Likely Condition (Part B ref.) | Key Distinguishing Feature |
-|---|---|---|
-| Non-specific mechanical pain, no radiation, no neurological signs | Non-specific LBP (B8) | Diagnosis of exclusion once specific patterns and red flags are ruled out |
-| Leg pain often worse than back pain, dermatomal pattern, positive SLR/slump | Sciatica / Disc Prolapse (B9) | Neural tension test positive, correlating dermatome/myotome |
-| Pain worse with extension/rotation, localized to one side, better with flexion | Facet Joint Syndrome (B10) | Extension-quadrant pain pattern, no neurological signs |
-| Pain localized to the SIJ region, positive SIJ provocation cluster | SIJ Dysfunction (B11) | Pain below L5, positive cluster of SIJ-specific special tests, no radicular pattern |
-| Chronic, gradual onset, older patient, possible neurogenic claudication pattern | Lumbar Spondylosis/Spondylolisthesis (B12) | Symptoms worse with extended walking, relieved by flexion/sitting (if stenotic component present) |
-| **Red flag mimics to rule out first** | Cauda equina syndrome (saddle anesthesia, bladder/bowel dysfunction — emergency), malignancy, spinal infection, ankylosing spondylitis/inflammatory pattern (morning stiffness >1 hour, age <40) | — |
-
-### 8.4 Knee Pain Differential Matrix
-
-| Presentation Pattern | Likely Condition (Part B ref.) | Key Distinguishing Feature |
-|---|---|---|
-| Older patient, gradual onset, crepitus, morning stiffness <30 min | Osteoarthritis (B13) | Radiographic/clinical joint space narrowing pattern, activity-related pain |
-| History of ACL reconstruction surgery | Post-ACL Reconstruction (B14) | Surgical history drives staging (Module 4.6), not symptom pattern alone |
-| Twisting mechanism, joint line tenderness, positive McMurray's/joint line pain, mechanical locking/catching | Meniscus Injury (B15) | Mechanical symptoms (locking, catching) more prominent than in OA or PFPS |
-| Anterior knee pain, worse with stairs/squatting/prolonged sitting, younger/active patient | Patellofemoral Pain Syndrome (B16) | Pain around/behind the patella, provoked by patellofemoral loading tasks specifically |
-| **Red flag mimics to rule out first** | Septic arthritis (hot, swollen, systemically unwell), fracture (significant trauma), DVT (calf swelling/tenderness), malignancy | — |
-
-### 8.5 Hip Pain Differential Matrix
-
-| Presentation Pattern | Likely Condition (Part B ref.) | Key Distinguishing Feature |
-|---|---|---|
-| Groin-dominant pain, gradual onset, reduced internal rotation, older patient | Osteoarthritis (B17) | Groin location, capsular pattern restriction (IR/flexion most affected) |
-| Lateral hip pain, tender over greater trochanter, worse lying on the side | Trochanteric Bursitis/Gluteal Tendinopathy (B18) | Lateral (not groin) location, positive resisted abduction/single-leg stance test |
-| **Red flag mimics to rule out first** | Referred pain from lumbar spine or SIJ (screen per 8.3), stress fracture (younger athletic patient, insidious worsening groin pain), avascular necrosis (risk factors: steroid use, alcohol use) | — |
-
-### 8.6 Elbow Pain Differential Matrix
-
-| Presentation Pattern | Likely Condition (Part B ref.) | Key Distinguishing Feature |
-|---|---|---|
-| Lateral elbow pain, worse with gripping/wrist extension, tender at lateral epicondyle | Tennis Elbow / Lateral Epicondylalgia (B19) | Pain on resisted wrist/finger extension, tenderness at common extensor origin |
-| Medial elbow pain, worse with gripping/wrist flexion, tender at medial epicondyle | Golfer's Elbow / Medial Epicondylalgia (B20) | Pain on resisted wrist flexion/pronation, tenderness at common flexor origin |
-| **Red flag mimics to rule out first** | Cervical radiculopathy referring to the elbow/forearm (screen per 8.2), ulnar nerve entrapment (medial-sided cases — check for ulnar distribution sensory change) | — |
-
-### 8.7 Wrist/Hand Pain Differential Matrix
-
-| Presentation Pattern | Likely Condition (Part B ref.) | Key Distinguishing Feature |
-|---|---|---|
-| Numbness/tingling in thumb-index-middle fingers, worse at night, positive Tinel's/Phalen's | Carpal Tunnel Syndrome (B21) | Median nerve distribution specifically, night symptoms prominent |
-| Pain at the radial wrist, worse with thumb/wrist movement, positive Finkelstein's test | De Quervain's Tenosynovitis (B22) | Pain localized to the first dorsal compartment, no neurological symptoms |
-| **Red flag mimics to rule out first** | Cervical radiculopathy (C6 pattern can mimic median distribution — screen per 8.2), inflammatory arthropathy (multiple joint involvement, morning stiffness) | — |
-
-### 8.8 Ankle/Foot Pain Differential Matrix
-
-| Presentation Pattern | Likely Condition (Part B ref.) | Key Distinguishing Feature |
-|---|---|---|
-| Recent inversion/eversion trauma, swelling, positive anterior drawer/talar tilt | Ankle Sprain (B23) | Clear traumatic mechanism, ligamentous special test correlation |
-| Heel/plantar pain, worst with first steps in the morning, improves then worsens with prolonged standing | Plantar Fasciitis (B24) | Classic first-step pain pattern, tenderness at the medial calcaneal tubercle |
-| Posterior heel/ankle pain, worse with push-off, tender/thickened Achilles tendon | Achilles Tendinopathy (B25) | Location at or near the tendon itself, pain with resisted plantarflexion |
-| **Red flag mimics to rule out first** | Fracture (use Ottawa Ankle Rules to screen), Achilles rupture (positive Thompson test, palpable gap), DVT (calf swelling/tenderness), peripheral vascular disease in at-risk patients | — |
-
-### 8.9 Cross-Cutting and Special Conditions — Reasoning Notes
-
-The remaining Part B conditions are less region-specific pattern matches and more presentation-type recognitions:
-
-- **Post-Fracture Stiffness (B26) / Post-Surgical General Rehab (B27):** identified by history (known fracture/surgery), not by symptom-pattern differential — staging follows the surgical/healing timeline (Module 4.6) rather than this module's matrices.
-- **TMJ Dysfunction (B28):** jaw/facial pain with clicking, locking, or restricted opening — differentiate from dental pathology (refer to dental colleagues where indicated, relevant given the shared Relife Dental & Physiotherapy setting) and from cervicogenic referral (screen per 8.2).
-- **Fibromyalgia / Chronic Widespread Pain (B29):** widespread pain not following a single regional or dermatomal pattern, disproportionate to any single tissue finding — differentiate from inflammatory arthropathy (screen for systemic/inflammatory red flags) and from a missed regional diagnosis before attributing symptoms to a central/nociplastic pattern.
-- **Postural Syndrome / Upper Crossed Syndrome (B30):** diffuse neck/upper back discomfort correlating with sustained posture and observable muscle imbalance pattern (tight upper trapezius/pectorals, weak deep neck flexors/lower trapezius) rather than a single provocative special test.
-
-*End of Module 8. Module 9 (Outcome Measure Interpretation) provides the scoring and interpretation detail for the outcome measures listed in Module 1.9 and used to track the conditions differentiated in this module.*
+*End of Module 8. Module 9 governs outcome-measure selection and interpretation. Part B condition sections must remain consistent with this module: single-test diagnoses, fixed diagnostic certainty, and unverified imaging inferences must be removed during their condition-level audits.*
 
 ---
 
