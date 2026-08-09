@@ -86,6 +86,42 @@ class WorkerCoordinatorTests(unittest.TestCase):
             [item.task for item in self.coordinator.active_tasks()],
         )
 
+    def test_assignment_handover_failure_rolls_back_claim(self):
+        original = self.queue.read_text(encoding="utf-8")
+
+        def fail_handover(*args, **kwargs):
+            raise OSError("synthetic handover failure")
+
+        original_handover = self.coordinator._handover
+        self.coordinator._handover = fail_handover
+        try:
+            with self.assertRaises(worker_coordinator.CoordinationError):
+                self.coordinator.assign("Rollback", "03_Bot/bot.py")
+        finally:
+            self.coordinator._handover = original_handover
+
+        self.assertEqual(
+            self.queue.read_text(encoding="utf-8"),
+            original,
+        )
+        self.assertNotIn(
+            "Rollback",
+            [item.task for item in self.coordinator.active_tasks()],
+        )
+
+    def test_release_locked_removes_active_claim(self):
+        self.coordinator.assign("ReleaseMe", "09_SOP", "Gemini-1")
+
+        with worker_coordinator.BrainOSLock(self.lock):
+            released = self.coordinator.release_locked("ReleaseMe")
+
+        self.assertIsNotNone(released)
+        self.assertEqual(released.task, "ReleaseMe")
+        self.assertNotIn(
+            "ReleaseMe",
+            [item.task for item in self.coordinator.active_tasks()],
+        )
+
     def test_assignment_prefers_matching_module_and_writes_handover(self):
         selected = self.coordinator.assign("Bot task", "03_Bot/bot.py")
         self.assertEqual(selected.worker_id, "Claude-1")

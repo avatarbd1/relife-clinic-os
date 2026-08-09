@@ -423,11 +423,30 @@ def _run_dispatcher():
                     bridge, executor, validator, gate, logger, next_row
                 )
             finally:
-                coordinator.complete_locked(
-                    next_row["task_id"],
-                    evidence="dispatcher SUCCESS" if ok else "dispatcher FAILED/ABORTED",
-                    review=ok,
-                )
+                try:
+                    coordinator.complete_locked(
+                        next_row["task_id"],
+                        evidence="dispatcher SUCCESS" if ok else "dispatcher FAILED/ABORTED",
+                        review=ok,
+                    )
+                except Exception as exc:
+                    cleanup_detail = f"completion failed: {exc}"
+                    try:
+                        coordinator.release_locked(next_row["task_id"])
+                        cleanup_detail += "; active claim released"
+                    except Exception as release_exc:
+                        cleanup_detail += f"; claim release also failed: {release_exc}"
+
+                    bridge.log_memory(
+                        f"COORDINATION CLEANUP: {next_row['task_id']} — {cleanup_detail}",
+                        level="ERROR",
+                    )
+                    send_alert(
+                        "Worker coordination cleanup failed",
+                        cleanup_detail,
+                        task_id=next_row["task_id"],
+                        stage="coordination-cleanup",
+                    )
 
             last_task_id = next_row["task_id"]
             processed += 1

@@ -94,6 +94,53 @@ class DispatcherCoordinationTests(unittest.TestCase):
     @patch.object(dispatcher, "TaskExecutor")
     @patch.object(dispatcher, "TaskRouterBridge")
     @patch.object(dispatcher, "SelfHealingBridge")
+    def test_completion_failure_releases_stale_claim(
+        self, healing_cls, bridge_cls, executor_cls, validator_cls,
+        gate_cls, logger_cls, coordinator_cls, process_task, send_alert
+    ):
+        healing_cls.return_value.preflight.return_value = (
+            True, {"missing_required": [], "missing_keys": []}
+        )
+
+        bridge = self.make_bridge()
+        bridge_cls.return_value = bridge
+
+        logger_cls.return_value.stats.return_value = {
+            "total_tasks": 1, "success": 1, "failed": 0
+        }
+
+        worker = MagicMock()
+        worker.worker_id = "Claude-1"
+
+        coordinator = coordinator_cls.return_value
+        coordinator.assign_locked.return_value = worker
+        coordinator.complete_locked.side_effect = (
+            dispatcher.CoordinationError("synthetic completion failure")
+        )
+
+        process_task.return_value = (True, {"provider": "fake"})
+
+        dispatcher._run_dispatcher()
+
+        process_task.assert_called_once()
+        coordinator.release_locked.assert_called_once_with("TASK-PHASE5")
+
+        send_alert.assert_called_once()
+        self.assertEqual(
+            send_alert.call_args.kwargs["stage"],
+            "coordination-cleanup",
+        )
+
+
+    @patch.object(dispatcher, "send_alert")
+    @patch.object(dispatcher, "process_task")
+    @patch.object(dispatcher, "WorkerCoordinator")
+    @patch.object(dispatcher, "TaskResultLogger")
+    @patch.object(dispatcher, "ConfirmGate")
+    @patch.object(dispatcher, "OutputValidator")
+    @patch.object(dispatcher, "TaskExecutor")
+    @patch.object(dispatcher, "TaskRouterBridge")
+    @patch.object(dispatcher, "SelfHealingBridge")
     def test_coordination_conflict_blocks_before_execution(
         self, healing_cls, bridge_cls, executor_cls, validator_cls,
         gate_cls, logger_cls, coordinator_cls, process_task, send_alert

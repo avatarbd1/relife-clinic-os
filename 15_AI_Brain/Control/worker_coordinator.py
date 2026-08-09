@@ -167,6 +167,7 @@ class WorkerCoordinator:
             selected = available[0]
 
         text = self.queue.read_text(encoding="utf-8")
+        original_text = text
         marker = "## In-Progress"
         start = text.find(marker)
         if start < 0:
@@ -176,8 +177,56 @@ class WorkerCoordinator:
         row = f"| {task} | {selected.worker_id} | {date.today().isoformat()} | {module} |\n"
         text = text[:insert_at].rstrip() + "\n" + row + "\n" + text[insert_at:].lstrip("\n")
         self.queue.write_text(text, encoding="utf-8")
-        self._handover(task, selected.worker_id, "ASSIGNED", module)
+        try:
+            self._handover(task, selected.worker_id, "ASSIGNED", module)
+        except Exception as exc:
+            try:
+                self.queue.write_text(original_text, encoding="utf-8")
+            except Exception as rollback_exc:
+                raise CoordinationError(
+                    f"assignment handover failed for '{task}' and queue rollback also failed: "
+                    f"{rollback_exc}"
+                ) from exc
+            raise CoordinationError(
+                f"assignment handover failed for '{task}'; queue claim rolled back: {exc}"
+            ) from exc
         return selected
+
+    def release_locked(self, task: str) -> ActiveTask | None:
+        """Best-effort claim release for callers already holding the BrainOS lock."""
+        text = self.queue.read_text(encoding="utf-8")
+        active = next((item for item in self.active_tasks() if item.task == task), None)
+        if active is None:
+            return None
+
+        lines = text.splitlines(keepends=True)
+        in_progress = False
+        removed = False
+
+        for index, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped.startswith("## "):
+                in_progress = stripped == "## In-Progress"
+                continue
+            if not in_progress or not stripped.startswith("|"):
+                continue
+            if _cells(line) == [
+                active.task,
+                active.worker_id,
+                active.started,
+                active.module,
+            ]:
+                del lines[index]
+                removed = True
+                break
+
+        if not removed:
+            raise CoordinationError(
+                f"could not structurally release active task '{task}'"
+            )
+
+        self.queue.write_text("".join(lines), encoding="utf-8")
+        return active
 
     def complete(self, task: str, evidence: str = "", review: bool = True) -> ActiveTask:
         try:
