@@ -3,11 +3,59 @@
 
 *OPD Musculoskeletal Physiotherapy — Standard Operating Procedure & Clinical Reference*
 
-**Version:** 0.3 — Living Document
+**Version:** 0.4-draft — Governance and evidence-audit baseline
 **Build started:** July 2026
 **Purpose:** Internal clinical training, patient-care standardization, and the evidence-based knowledge base powering the Relife Clinic OS AI Clinical Assistant.
 
 **Strategic goal:** This manual is not a generic SOP. The target is an internationally competitive standard of care — protocols detailed enough that a Relife-trained therapist, following this manual, can move a patient from worst-case presentation to functional recovery in the shortest evidence-supported time, with outcomes benchmarked against international best practice (not just "acceptable" local practice).
+
+> [!WARNING]
+> **DRAFT — NOT YET AN APPROVED CLINICAL SOP.** The document is structurally complete against its original 40-section plan, but its clinical claims, dosage rules, contraindications, cutoffs, evidence grades, and references have not yet completed a claim-by-claim evidence and clinical-governance review. Until that review and named clinical approval are recorded, clinicians must use independent clinical judgment, work within their competence and local scope, obtain informed consent, and escalate or refer when indicated. This manual does not replace patient-specific assessment or applicable law, regulation, or organizational policy.
+
+## Document governance
+
+| Field | Value |
+|---|---|
+| Canonical source | `clinical-manual/Relife-Physiotherapy-Clinical-Manual.md` |
+| Source-of-truth rule | This Markdown file is the only editable master source. |
+| Derived formats | DOCX/PDF may be generated on request but must never be edited back into, or treated as authoritative over, the Markdown source. |
+| Document owner | Relife Physiotherapy Centre |
+| Clinical approval status | **Pending named clinical review and approval** |
+| Structural status | Original 40-section plan present; schema and evidence audit pending |
+| Evidence-review status | Claim-by-claim verification pending |
+| Last governance update | 2026-08-09 |
+| Next review trigger | Any material clinical change, evidence update, safety incident, or Condition Card release |
+
+### Intended use
+
+1. **Internal SOP and clinical training:** a consistent reference for assessment, treatment planning, intervention dosage, contraindications, therapist onboarding, and quality control.
+2. **Evidence base for a future AI Clinical Assistant:** Part B conditions may later be condensed into separately reviewed 2–5 page Condition Cards.
+
+### AI and RAG safety boundary
+
+- The complete manual must not be sent to a production AI API as case context.
+- A production assistant may retrieve only the matching, approved Condition Card.
+- Every Condition Card must record its stable condition ID, master-manual version, source headings, evidence-review date, reviewer/approval status, and expiry or review trigger.
+- A generated card is not production-ready until its claims and citations are checked against this master and its clinical approval is recorded.
+- Retrieval must fail safely when no approved matching card exists; the system must not improvise a protocol from unrelated sections.
+- Patient-specific recommendations remain subject to assessment, consent, competence, red-flag screening, and referral/escalation requirements.
+
+### Evidence-status vocabulary
+
+Use these labels during the audit; a section marked “Complete” in the progress tracker means content is present, not that every claim is verified.
+
+- `VERIFIED` — supported by a checked, traceable authoritative source.
+- `CONSENSUS / STANDARD-OF-PRACTICE` — supported by a checked professional or clinical consensus source; limitations stated.
+- `EVIDENCE UNCERTAIN` — evidence is mixed, indirect, or insufficient; uncertainty stated.
+- `EVIDENCE NOT VERIFIED — CLINICAL REVIEW REQUIRED` — no source has yet been checked for the claim.
+- `LOCAL POLICY — APPROVAL REQUIRED` — an organizational choice, not a universal clinical rule.
+
+### Change log
+
+| Version | Date | Status | Change |
+|---|---|---|---|
+| 0.4-draft | 2026-08-09 | Draft | Added source-of-truth, intended-use, AI/RAG boundary, approval status, and evidence-audit governance. Existing clinical content retained. |
+| 0.3 | July–August 2026 | Historical draft | Original 40-section content build. |
 
 ---
 
@@ -60,7 +108,7 @@
 | B29 | Fibromyalgia / Chronic Widespread Pain (nociplastic pain approach) | ✅ Complete | 100% |
 | B30 | Postural Syndrome / Upper Crossed Syndrome | ✅ Complete | 100% |
 
-**Overall completion: 40 of 40 planned sections (100%) — updated 2026-08-05. All ten Part A Foundation Modules (1-10) and all thirty Part B Disease-Wise Protocols (B1-B30) are now complete. The manual is feature-complete per the original plan; future work is refinement/expansion of individual sections (e.g. the review-and-grade process already applied to Module 4) rather than new sections.**
+**Structural completion: 40 of 40 originally planned sections are present — updated 2026-08-05. This is not evidence-verification or clinical-approval completion. The standardized condition-schema audit, claim-by-claim source verification, contradiction review, and named clinical approval remain outstanding.**
 
 ---
 
