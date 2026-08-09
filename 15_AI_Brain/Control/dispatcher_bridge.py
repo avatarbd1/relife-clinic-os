@@ -23,6 +23,7 @@ from confirm_gate import ConfirmGate
 from task_result_logger import TaskResultLogger
 from alert_notifier import send_alert
 from concurrency_lock import BrainOSLock, LockBusyError
+from worker_coordinator import WorkerCoordinator, CoordinationError
 from datetime import datetime
 
 MAX_TASKS_PER_RUN = 3
@@ -349,6 +350,7 @@ def _run_dispatcher():
     validator = OutputValidator()
     gate = ConfirmGate()
     logger = TaskResultLogger()
+    coordinator = WorkerCoordinator()
 
     lock = bridge.get_lock_token()
     if lock and lock.upper() != "FREE":
@@ -381,7 +383,52 @@ def _run_dispatcher():
             if next_row["priority"].upper() == "CRITICAL":
                 active_critical += 1
 
-            ok, result = process_task(bridge, executor, validator, gate, logger, next_row)
+            coordination_module = next_row.get("target_file", "")
+            try:
+                worker = coordinator.assign_locked(
+                    next_row["task_id"],
+                    coordination_module,
+                )
+                bridge.log_memory(
+                    f"COORDINATE: {next_row['task_id']} -> {worker.worker_id} "
+                    f"[{coordination_module or 'unspecified'}]"
+                )
+            except CoordinationError as exc:
+                bridge.move_queue_row(
+                    next_row["raw_line"],
+                    "BLOCKED",
+                    section="Failed / Blocked",
+                    provider=next_row["assigned"],
+                )
+                bridge.log_memory(
+                    f"COORDINATION BLOCKED: {next_row['task_id']} — {exc}",
+                    level="WARN",
+                )
+                send_alert(
+                    "Worker coordination blocked",
+                    str(exc),
+                    task_id=next_row["task_id"],
+                    stage="coordination",
+                )
+                last_task_id = next_row["task_id"]
+                processed += 1
+                failed += 1
+                print(f" BLOCKED — {exc}")
+                continue
+
+            ok = False
+            result = {}
+            try:
+                ok, result = process_task(
+                    bridge, executor, validator, gate, logger, next_row
+                )
+            finally:
+                coordinator.complete_locked(
+                    next_row["task_id"],
+                    evidence="dispatcher SUCCESS" if ok else "dispatcher FAILED/ABORTED",
+                    review=ok,
+                )
+
             last_task_id = next_row["task_id"]
             processed += 1
             if ok:

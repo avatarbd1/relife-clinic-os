@@ -146,6 +146,10 @@ class WorkerCoordinator:
         except LockBusyError as exc:
             raise CoordinationError(str(exc)) from exc
 
+    def assign_locked(self, task: str, module: str, worker_id: str | None = None) -> Worker:
+        """Assign when the caller already holds the shared BrainOS lock."""
+        return self._assign_locked(task, module, worker_id)
+
     def _assign_locked(self, task: str, module: str, worker_id: str | None = None) -> Worker:
         self.check_module(module)
         available = self.available_workers(module)
@@ -181,6 +185,10 @@ class WorkerCoordinator:
                 return self._complete_locked(task, evidence, review)
         except LockBusyError as exc:
             raise CoordinationError(str(exc)) from exc
+
+    def complete_locked(self, task: str, evidence: str = "", review: bool = True) -> ActiveTask:
+        """Complete when the caller already holds the shared BrainOS lock."""
+        return self._complete_locked(task, evidence, review)
 
     def _complete_locked(self, task: str, evidence: str = "", review: bool = True) -> ActiveTask:
         text = self.queue.read_text(encoding="utf-8")

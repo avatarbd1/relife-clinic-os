@@ -74,6 +74,18 @@ class WorkerCoordinatorTests(unittest.TestCase):
             with self.assertRaises(worker_coordinator.CoordinationError):
                 self.coordinator.assign("Locked", "09_SOP")
 
+    def test_locked_lifecycle_works_when_caller_holds_brainos_lock(self):
+        with worker_coordinator.BrainOSLock(self.lock):
+            selected = self.coordinator.assign_locked("Phase5", "09_SOP")
+            self.assertTrue(selected.worker_id)
+            completed = self.coordinator.complete_locked("Phase5", "phase5 test")
+            self.assertEqual(completed.task, "Phase5")
+
+        self.assertNotIn(
+            "Phase5",
+            [item.task for item in self.coordinator.active_tasks()],
+        )
+
     def test_assignment_prefers_matching_module_and_writes_handover(self):
         selected = self.coordinator.assign("Bot task", "03_Bot/bot.py")
         self.assertEqual(selected.worker_id, "Claude-1")
