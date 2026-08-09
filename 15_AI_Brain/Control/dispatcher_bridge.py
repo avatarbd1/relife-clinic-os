@@ -211,14 +211,15 @@ def process_task(bridge, executor, validator, gate, logger, row):
 
     gate_result = None
     if exec_result.get("status") == "SUCCESS":
+        # Confirm Gate সিদ্ধান্ত অনুযায়ী চলবে — risk classification নিজেই ঠিক
+        # করে auto-apply হবে (15_AI_Brain/Outputs/, low-risk) নাকি owner
+        # review-এর জন্য pending থাকবে (confirm_gate.py list / preview /
+        # approve <task_id>)। এখানে জোর করে override করা হয় না।
         gate_result = gate.propose(
             task_id=row["task_id"],
             content=exec_result["output"],
             target_path=output_path,
         )
-        # আগে auto-approve হতো, এখন সব সময় owner রিভিউ করে approve করবে
-        # (confirm_gate.py list / preview / approve <task_id> দিয়ে)
-        gate_result["auto_approved"] = False
 
     logger.log(
         task_id=row["task_id"],
@@ -267,7 +268,6 @@ def process_task(bridge, executor, validator, gate, logger, row):
                 )
             else:
                 gate_result = gate.propose(row["task_id"], retry_result["output"], output_path)
-                gate_result["auto_approved"] = False
 
         if retry_result.get("status") == "SUCCESS":
             logger.log(
