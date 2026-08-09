@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-MODULE_PATH = ROOT / "15_AI_Brain" / "Control" / "worker_coordinator.py"
+MODULE_PATH = ROOT / "development/15_AI_Brain" / "Control" / "worker_coordinator.py"
 SPEC = importlib.util.spec_from_file_location("worker_coordinator", MODULE_PATH)
 worker_coordinator = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
@@ -18,7 +18,7 @@ REGISTRY = """# Registry
 ## ID তালিকা
 | ID | Platform | Module | Status |
 |----|----------|--------|--------|
-| ChatGPT-1 | ChatGPT | 15_AI_Brain | Active |
+| ChatGPT-1 | ChatGPT | development/15_AI_Brain | Active |
 | Claude-1 | Claude | 03_Bot | |
 | Gemini-1 | Gemini | | |
 """
@@ -31,7 +31,7 @@ QUEUE = """# Queue
 ## In-Progress
 | কাজ | AI ID | শুরুর তারিখ | মডিউল/ফাইল |
 |-----|-------|-------------|-------------|
-| Existing | ChatGPT-1 | 2026-08-09 | 15_AI_Brain/Integration |
+| Existing | ChatGPT-1 | 2026-08-09 | development/15_AI_Brain/Integration |
 
 ## Done
 | কাজ | AI ID | তারিখ | মডিউল/ফাইল |
@@ -76,7 +76,7 @@ class WorkerCoordinatorTests(unittest.TestCase):
 
     def test_parent_child_module_conflict_is_blocked(self):
         with self.assertRaises(worker_coordinator.CoordinationError):
-            self.coordinator.assign("Conflict", "15_AI_Brain/Integration/V2")
+            self.coordinator.assign("Conflict", "development/15_AI_Brain/Integration/V2")
 
     def test_worker_can_hold_only_one_active_task(self):
         with self.assertRaises(worker_coordinator.CoordinationError):

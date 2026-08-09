@@ -5,14 +5,14 @@ REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$REPO_ROOT" || exit 1
 
 RUNTIME_TRACKED_FILES=(
-    "12_Handover/HANDOVER.md"
-    "13_AI_Tasks/TASK_QUEUE.md"
-    "15_AI_Brain/Monitor/DASHBOARD.md"
-    "15_AI_Brain/Monitor/PHASE2_PROGRESS.md"
-    "15_BrainOS/BRAIN_MEMORY.md"
-    "15_BrainOS/BRAIN_QUEUE.md"
-    "15_BrainOS/BRAIN_STATE.md"
-    "15_BrainOS/TASK_DESCRIPTIONS.json"
+    "development/12_Handover/HANDOVER.md"
+    "development/13_AI_Tasks/TASK_QUEUE.md"
+    "development/15_AI_Brain/Monitor/DASHBOARD.md"
+    "development/15_AI_Brain/Monitor/PHASE2_PROGRESS.md"
+    "development/15_BrainOS/BRAIN_MEMORY.md"
+    "development/15_BrainOS/BRAIN_QUEUE.md"
+    "development/15_BrainOS/BRAIN_STATE.md"
+    "development/15_BrainOS/TASK_DESCRIPTIONS.json"
 )
 
 git config core.fileMode false

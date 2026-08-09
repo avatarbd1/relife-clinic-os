@@ -2,7 +2,7 @@
 set -eu
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
-LOG_DIR="$REPO_ROOT/15_AI_Brain/Logs"
+LOG_DIR="$REPO_ROOT/development/15_AI_Brain/Logs"
 MARKER="# BrainOS managed cron cycle"
 BASH_BIN="$(command -v bash)"
 CRON_LINE="*/10 * * * * $BASH_BIN $REPO_ROOT/brainos_cron_cycle.sh >> $LOG_DIR/cron-cycle.log 2>&1"
@@ -34,7 +34,7 @@ if [ -f "$PID_FILE" ]; then
     if [ -n "$scheduler_pid" ] && kill -0 "$scheduler_pid" 2>/dev/null; then
         cmdline="$(tr '\0' ' ' < "/proc/$scheduler_pid/cmdline" 2>/dev/null || true)"
         case "$cmdline" in
-            *"15_AI_Brain/Control/scheduler.py"*)
+            *"development/15_AI_Brain/Control/scheduler.py"*)
                 kill "$scheduler_pid"
                 echo "Stopped legacy scheduler PID $scheduler_pid"
                 ;;

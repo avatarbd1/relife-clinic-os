@@ -34,9 +34,9 @@ def load_env():
 
 load_env()
 
-sys.path.insert(0, os.path.join(REPO_ROOT, "15_AI_Brain"))
-sys.path.insert(0, os.path.join(REPO_ROOT, "15_AI_Brain", "Control"))
-sys.path.insert(0, os.path.join(REPO_ROOT, "15_AI_Brain", "Core"))
+sys.path.insert(0, os.path.join(REPO_ROOT, "development/15_AI_Brain"))
+sys.path.insert(0, os.path.join(REPO_ROOT, "development/15_AI_Brain", "Control"))
+sys.path.insert(0, os.path.join(REPO_ROOT, "development/15_AI_Brain", "Core"))
 
 from task_router_bridge import TaskRouterBridge
 
@@ -112,7 +112,7 @@ def classify(text):
 def save_description(task_id, description, original_text, target_file=""):
     """description আলাদা ফাইলে সেভ করি, যাতে BRAIN_QUEUE.md-এর টেবিল
     ফরম্যাট নষ্ট না হয়, কিন্তু dispatcher পরে পুরো বর্ণনা পড়তে পারে।"""
-    path = os.path.join(REPO_ROOT, "15_BrainOS", "TASK_DESCRIPTIONS.json")
+    path = os.path.join(REPO_ROOT, "development/15_BrainOS", "TASK_DESCRIPTIONS.json")
     data = {}
     if os.path.exists(path):
         try:

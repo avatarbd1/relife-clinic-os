@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CONTROL_DIR = ROOT / "15_AI_Brain" / "Control"
-CORE_DIR = ROOT / "15_AI_Brain" / "Core"
-LOGS_DIR = ROOT / "15_AI_Brain" / "Logs"
+CONTROL_DIR = ROOT / "development/15_AI_Brain" / "Control"
+CORE_DIR = ROOT / "development/15_AI_Brain" / "Core"
+LOGS_DIR = ROOT / "development/15_AI_Brain" / "Logs"
 sys.path.insert(0, str(CONTROL_DIR))
 sys.path.insert(0, str(CORE_DIR))
 sys.path.insert(0, str(LOGS_DIR))
@@ -222,14 +222,14 @@ class DispatcherCoordinationTests(unittest.TestCase):
         gate.propose.assert_called_once_with(
             task_id=ROW["task_id"],
             content="# Valid output",
-            target_path="15_AI_Brain/Outputs/TASK-PHASE5.py",
+            target_path="development/15_AI_Brain/Outputs/TASK-PHASE5.py",
         )
 
     def test_queue_rows_load_persisted_description_and_target(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            brainos = root / "15_BrainOS"
-            brainos.mkdir()
+            brainos = root / "development/15_BrainOS"
+            brainos.mkdir(parents=True)
             queue = brainos / "BRAIN_QUEUE.md"
             queue.write_text(
                 "# Queue\n## Active Queue\n"

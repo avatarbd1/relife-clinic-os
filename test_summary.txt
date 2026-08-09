@@ -21,6 +21,6 @@ Performance:
 
 Log Location:
 ------------
-~/relife-clinic-os/15_AI_Brain/Logs/provider_router.log
+~/relife-clinic-os/development/15_AI_Brain/Logs/provider_router.log
 
 ===========================================

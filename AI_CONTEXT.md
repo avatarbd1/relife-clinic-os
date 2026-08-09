@@ -15,11 +15,11 @@ main
 ~/relife-clinic-os
 
 ## Main Entry Points
-- 16_ClinicOS_CLI/cli/relife
-- 16_ClinicOS_CLI/cli/task.py
-- 16_ClinicOS_CLI/cli/run.py
-- 15_AI_Brain/Core/provider_router.py
-- 15_AI_Brain/Control/TASK_ROUTER.py
+- development/16_ClinicOS_CLI/cli/relife
+- development/16_ClinicOS_CLI/cli/task.py
+- development/16_ClinicOS_CLI/cli/run.py
+- development/15_AI_Brain/Core/provider_router.py
+- development/15_AI_Brain/Control/TASK_ROUTER.py
 
 ## Current Goal
 Transform the project into a fully autonomous AI Development OS.

@@ -1,8 +1,8 @@
 import re
 import subprocess
 
-REG = "11_AIOS/AI_REGISTRY.md"
-TQ = "13_AI_Tasks/TASK_QUEUE.md"
+REG = "development/11_AIOS/AI_REGISTRY.md"
+TQ = "development/13_AI_Tasks/TASK_QUEUE.md"
 
 reg_text = open(REG, encoding="utf-8").read()
 tq_text = open(TQ, encoding="utf-8").read()

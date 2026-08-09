@@ -29,10 +29,10 @@
    - AI_BRAIN.md-এ master prompt v2 তৈরি হয়েছে — প্রজেক্ট context, rules, entry points সংজ্ঞায়িত করা আছে।
 
 2. ✅ **BrainOS 5-file bootstrap (STATE/QUEUE/REGISTRY/DISPATCHER/MEMORY)**
-   - 15_BrainOS/ ফোল্ডারে BRAIN_STATE.md, BRAIN_QUEUE.md, BRAIN_REGISTRY.md, BRAIN_DISPATCHER.md, BRAIN_MEMORY.md — core OS foundation তৈরি।
+   - development/15_BrainOS/ ফোল্ডারে BRAIN_STATE.md, BRAIN_QUEUE.md, BRAIN_REGISTRY.md, BRAIN_DISPATCHER.md, BRAIN_MEMORY.md — core OS foundation তৈরি।
 
-3. ✅ **Brain-AIOS sync (11_AIOS linked to BrainOS)**
-   - 11_AIOS/ (MASTER_PROMPT, AI_CONSTITUTION, AI_REGISTRY, ONBOARDING_MESSAGE) BRAIN_DISPATCHER এবং BRAIN_REGISTRY-এর সাথে লিংক করা হয়েছে।
+3. ✅ **Brain-AIOS sync (development/11_AIOS linked to BrainOS)**
+   - development/11_AIOS/ (MASTER_PROMPT, AI_CONSTITUTION, AI_REGISTRY, ONBOARDING_MESSAGE) BRAIN_DISPATCHER এবং BRAIN_REGISTRY-এর সাথে লিংক করা হয়েছে।
 
 4. ✅ **BRAIN_DISPATCHER execution loop**
    - dispatcher.py v1.0 — 6টা control সহ: LOCK_TOKEN check, 1 task/run, no 03_Bot/ touch, whitelist paths, confirm prompt, memory logging।
@@ -50,7 +50,7 @@
    - registry_provider_bridge.py ProviderRouter-কে AI_REGISTRY.md-এর সাথে কানেক্ট করে — registry-aware routing, provider health reports, actual vs registry status auto-sync।
 
 9. ⏳ **Self-Healing Monitor** (PENDING)
-   - করতে হবে: 15_AI_Brain/Monitor/self_healing.py তৈরি — broken references, missing files, API key issues, provider failures auto-detect করে health report জেনারেট করবে।
+   - করতে হবে: development/15_AI_Brain/Monitor/self_healing.py তৈরি — broken references, missing files, API key issues, provider failures auto-detect করে health report জেনারেট করবে।
 
 10. ⏳ **Full Autonomous Loop Test** (PENDING)
     - করতে হবে: 3টা test task সম্পূর্ণ flow-এ চালাতে হবে (Task → Route → Execute → Log → Update) কোনো human intervention ছাড়া, সব control ভেরিফাই করতে হবে, তারপর Phase 1 COMPLETE মার্ক করতে হবে।
@@ -67,6 +67,6 @@
 
 ## ➡️ পরবর্তী ধাপ (Immediate Next Steps)
 Phase 1 শেষ করতে বাকি ২টা কাজ:
-1. Self-Healing Monitor বানানো (15_AI_Brain/Monitor/self_healing.py)
+1. Self-Healing Monitor বানানো (development/15_AI_Brain/Monitor/self_healing.py)
 2. Full Autonomous Loop Test চালানো এবং Phase 1 COMPLETE মার্ক করা
 

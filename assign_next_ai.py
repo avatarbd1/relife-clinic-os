@@ -10,8 +10,8 @@ if len(sys.argv) < 2:
 PLATFORM = sys.argv[1]
 TASK_MATCH = sys.argv[2] if len(sys.argv) > 2 else None
 
-REG = "11_AIOS/AI_REGISTRY.md"
-TQ = "13_AI_Tasks/TASK_QUEUE.md"
+REG = "development/11_AIOS/AI_REGISTRY.md"
+TQ = "development/13_AI_Tasks/TASK_QUEUE.md"
 REPO_URL = "https://github.com/avatarbd1/relife-clinic-os"
 
 reg_text = open(REG, encoding="utf-8").read()
@@ -111,11 +111,11 @@ msg = f"""GitHub repo: {REPO_URL}
 তুমি এই প্রজেক্টে কাজ করছ। তোমার ID: {chosen_id}
 
 শুরুতে এই ফাইলগুলো GitHub থেকে পড়ো:
-1. 11_AIOS/MASTER_PROMPT.md
-2. 11_AIOS/AI_CONSTITUTION.md
-3. 11_AIOS/AI_REGISTRY.md
-4. 12_Handover/HANDOVER.md
-5. 13_AI_Tasks/TASK_QUEUE.md
+1. development/11_AIOS/MASTER_PROMPT.md
+2. development/11_AIOS/AI_CONSTITUTION.md
+3. development/11_AIOS/AI_REGISTRY.md
+4. development/12_Handover/HANDOVER.md
+5. development/13_AI_Tasks/TASK_QUEUE.md
 
 তোমার বরাদ্দকৃত কাজ: {task_name}
 মডিউল/ফাইল: {task_module}

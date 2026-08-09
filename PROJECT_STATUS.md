@@ -40,11 +40,11 @@ Never assume any duplicate file outside this folder is live unless the owner exp
 Required reading:
 
 - START_HERE.md
-- 11_AIOS/MASTER_PROMPT.md
-- 11_AIOS/AI_CONSTITUTION.md
-- 11_AIOS/AI_REGISTRY.md
-- 12_Handover/HANDOVER.md
-- 13_AI_Tasks/TASK_QUEUE.md
+- development/11_AIOS/MASTER_PROMPT.md
+- development/11_AIOS/AI_CONSTITUTION.md
+- development/11_AIOS/AI_REGISTRY.md
+- development/12_Handover/HANDOVER.md
+- development/13_AI_Tasks/TASK_QUEUE.md
 
 ---
 

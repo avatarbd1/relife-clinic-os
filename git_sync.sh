@@ -13,7 +13,7 @@ set -e
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$REPO_ROOT"
 
-LOG_DIR="15_AI_Brain/Logs"
+LOG_DIR="development/15_AI_Brain/Logs"
 LOG_FILE="$LOG_DIR/GIT_SYNC_LOG.md"
 mkdir -p "$LOG_DIR"
 
