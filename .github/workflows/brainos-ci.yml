@@ -39,8 +39,17 @@ jobs:
             15_AI_Brain/Control/worker_coordinator.py \
             15_AI_Brain/Control/provider_router.py \
             15_AI_Brain/Control/task_router_bridge.py \
-            15_AI_Brain/Control/test_confirm_gate_policy.py
+            15_AI_Brain/Core/task_executor.py \
+            15_AI_Brain/Control/test_confirm_gate_policy.py \
+            07_Testing/test_dispatcher_coordination.py \
+            07_Testing/test_worker_coordinator.py
 
       - name: Confirm Gate unit tests
         working-directory: 15_AI_Brain/Control
         run: python -m unittest -v test_confirm_gate_policy.py
+
+      - name: Pipeline wiring regression tests
+        run: |
+          python -m unittest -v \
+            07_Testing/test_dispatcher_coordination.py \
+            07_Testing/test_worker_coordinator.py
