@@ -14,9 +14,29 @@ Risk classification (see classify_target):
   BLOCKED_PATH_ESCAPE  -> paths that try to leave the repo root via ".." or
                            an absolute path. Always denied.
 
-Path tricks (e.g. "15_AI_Brain/Outputs/../../03_Bot/x") are resolved with
-posixpath.normpath BEFORE any decision is made, so they cannot disguise a
-production write as a safe one.
+Two independent layers keep a write from landing outside the intended
+directory:
+
+  1. String-level classification (classify_target): ".."/"." segments are
+     resolved with posixpath.normpath BEFORE any decision is made, so a
+     path trick like "15_AI_Brain/Outputs/../../03_Bot/x" cannot disguise
+     a production write as a safe one.
+
+  2. Filesystem-level containment (_resolve_and_contain): right before any
+     write, the real on-disk destination is resolved (Path.resolve) and
+     checked to still be inside the repo root. This catches what string
+     matching alone cannot — e.g. if 15_AI_Brain/Outputs/ (or something
+     inside it) has been replaced with a symlink pointing outside the repo.
+     A path can pass layer 1 and still be rejected by layer 2.
+
+Both layers are re-checked at approve() time using the CURRENT content of
+the stored proposal, not just the flags that were computed when the
+proposal was first created. A proposal's "blocked"/"safe_auto" flags are
+kept for display/logging convenience only — they are never trusted as the
+authority for whether a write is allowed. If a proposal file were edited
+on disk between propose() and approve() (e.g. target_path changed to point
+at 03_Bot/), the fresh classification still catches it and the write is
+refused.
 """
 
 import os
@@ -44,6 +64,11 @@ DECISION_AUTO_APPLY = "AUTO_APPLY"
 DECISION_BLOCKED_PRODUCTION = "BLOCKED_PRODUCTION"
 DECISION_MANUAL_REVIEW = "MANUAL_REVIEW"
 DECISION_BLOCKED_PATH_ESCAPE = "BLOCKED_PATH_ESCAPE"
+DECISION_BLOCKED_SYMLINK_ESCAPE = "BLOCKED_SYMLINK_ESCAPE"
+
+# Decisions that must NEVER result in a write, no matter how approve() is
+# called (manual or automatic).
+NEVER_WRITE_DECISIONS = (DECISION_BLOCKED_PRODUCTION, DECISION_BLOCKED_PATH_ESCAPE)
 
 
 def _normalize(target_path: str) -> str:
@@ -93,38 +118,88 @@ class ConfirmGate:
         # E. Anything unrecognized fails closed to manual review.
         return {"decision": DECISION_MANUAL_REVIEW, "normalized_path": normalized}
 
+    def _resolve_and_contain(self, normalized_path: str) -> Optional[Path]:
+        """Resolve the REAL filesystem destination (following any symlinks
+        in the path) and verify it still lands inside repo_root. Returns
+        the resolved Path if safe, or None if containment is violated —
+        e.g. 15_AI_Brain/Outputs/ (or a directory inside it) has been
+        replaced with a symlink pointing outside the repo. String-prefix
+        checks in classify_target() cannot catch this; only touching the
+        real filesystem can, which is why this is a separate, mandatory
+        second check performed immediately before every write."""
+        candidate = self.repo_root / normalized_path
+        resolved = candidate.resolve(strict=False)
+        root_resolved = self.repo_root.resolve(strict=False)
+        if resolved != root_resolved and root_resolved not in resolved.parents:
+            return None
+        return resolved
+
     def _log(self, entry: Dict):
         self.gate_log.parent.mkdir(parents=True, exist_ok=True)
         entry = {"timestamp": datetime.now().isoformat(), **entry}
         with open(self.gate_log, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
-    def safe_auto_apply(self, task_id: str, target_path: str, content: str) -> Dict:
-        """Apply content directly ONLY when classification is AUTO_APPLY.
-        Anything else is refused and logged — fail closed."""
+    def _write_if_safe(self, task_id: str, target_path: str, content: str, automatic: bool) -> Dict:
+        """Single choke point for every write this module performs.
+        Re-derives the decision from target_path (never trusts a
+        previously-stored flag), enforces NEVER_WRITE_DECISIONS
+        unconditionally, enforces AUTO_APPLY-only for automatic writes,
+        and enforces filesystem-level containment right before writing.
+        Returns a dict describing what happened; never raises for policy
+        violations — those are refusals, not errors."""
         decision = self.classify_target(target_path)
 
-        if decision["decision"] != DECISION_AUTO_APPLY:
-            self._log({
-                "action": "SAFE_AUTO_APPLY_DENIED",
-                "task_id": task_id,
-                "target_path": target_path,
-                "decision": decision["decision"],
-            })
+        if decision["decision"] in NEVER_WRITE_DECISIONS:
+            self._log({"action": "WRITE_DENIED", "task_id": task_id, "target_path": target_path,
+                        "decision": decision["decision"]})
             return {"applied": False, "task_id": task_id, "target_path": target_path,
                     "decision": decision["decision"]}
 
-        target = self.repo_root / decision["normalized_path"]
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(content, encoding="utf-8")
+        if automatic and decision["decision"] != DECISION_AUTO_APPLY:
+            self._log({"action": "AUTO_APPROVE_DENIED", "task_id": task_id, "target_path": target_path,
+                        "decision": decision["decision"]})
+            return {"applied": False, "task_id": task_id, "target_path": target_path,
+                     "decision": decision["decision"]}
 
-        self._log({
-            "action": "SAFE_AUTO_APPLY",
-            "task_id": task_id,
-            "target_path": decision["normalized_path"],
-        })
+        if not automatic and decision["decision"] not in (DECISION_AUTO_APPLY, DECISION_MANUAL_REVIEW):
+            # Defensive: should be unreachable since NEVER_WRITE_DECISIONS
+            # already covers the remaining cases, but fail closed anyway.
+            self._log({"action": "WRITE_DENIED", "task_id": task_id, "target_path": target_path,
+                        "decision": decision["decision"]})
+            return {"applied": False, "task_id": task_id, "target_path": target_path,
+                    "decision": decision["decision"]}
+
+        resolved = self._resolve_and_contain(decision["normalized_path"])
+        if resolved is None:
+            self._log({"action": "WRITE_DENIED_SYMLINK_ESCAPE", "task_id": task_id,
+                        "target_path": target_path, "decision": decision["decision"]})
+            return {"applied": False, "task_id": task_id, "target_path": target_path,
+                    "decision": DECISION_BLOCKED_SYMLINK_ESCAPE}
+
+        resolved.parent.mkdir(parents=True, exist_ok=True)
+        # Re-check containment after mkdir: mkdir only creates plain
+        # directories and cannot itself introduce a symlink, but this
+        # keeps the check adjacent to the write for defense in depth.
+        resolved = self._resolve_and_contain(decision["normalized_path"])
+        if resolved is None:
+            self._log({"action": "WRITE_DENIED_SYMLINK_ESCAPE", "task_id": task_id,
+                        "target_path": target_path, "decision": decision["decision"]})
+            return {"applied": False, "task_id": task_id, "target_path": target_path,
+                    "decision": DECISION_BLOCKED_SYMLINK_ESCAPE}
+
+        resolved.write_text(content, encoding="utf-8")
+        self._log({"action": "AUTO_APPLY" if automatic else "APPLY", "task_id": task_id,
+                    "target_path": decision["normalized_path"]})
         return {"applied": True, "task_id": task_id, "target_path": decision["normalized_path"],
                 "decision": decision["decision"]}
+
+    def safe_auto_apply(self, task_id: str, target_path: str, content: str) -> Dict:
+        """Apply content directly ONLY when classification is AUTO_APPLY
+        AND the resolved destination stays inside the repo. Anything else
+        is refused and logged — fail closed."""
+        result = self._write_if_safe(task_id, target_path, content, automatic=True)
+        return result
 
     # ---------- proposal lifecycle (propose / approve / reject / preview) ----------
 
@@ -138,8 +213,13 @@ class ConfirmGate:
         return self.proposals_dir / STATUS_SUBDIR["PENDING"] / f"{task_id}.proposal.json"
 
     def propose(self, task_id: str, content: str, target_path: str) -> Dict:
+        # NOTE: "blocked"/"safe_auto" below are stored for display/logging
+        # only. The real gate is _write_if_safe(), which re-classifies
+        # target_path from scratch at approve() time and never trusts
+        # these stored flags — so editing this JSON on disk cannot bypass
+        # the gate.
         decision = self.classify_target(target_path)
-        blocked = decision["decision"] in (DECISION_BLOCKED_PRODUCTION, DECISION_BLOCKED_PATH_ESCAPE)
+        blocked = decision["decision"] in NEVER_WRITE_DECISIONS
         safe_auto = decision["decision"] == DECISION_AUTO_APPLY
 
         proposal = {
@@ -186,30 +266,32 @@ class ConfirmGate:
 
         data = json.loads(proposal_path.read_text(encoding="utf-8"))
 
-        if automatic and not data.get("safe_auto", False):
-            self._log({"action": "AUTO_APPROVE_DENIED", "task_id": task_id,
-                        "target_path": data.get("target_path")})
-            return {"status": "MANUAL_REVIEW_REQUIRED", "task_id": task_id,
-                    "target_path": data.get("target_path")}
+        # Fresh classification from the CURRENT on-disk proposal content —
+        # this is the enforcement point. data["blocked"]/data["safe_auto"]
+        # (computed back at propose() time) are read nowhere below; only
+        # this fresh call decides whether the write proceeds.
+        write_result = self._write_if_safe(
+            task_id, data["target_path"], data["content"], automatic=automatic
+        )
 
-        if data.get("blocked"):
+        if not write_result["applied"]:
+            decision = write_result["decision"]
+            if decision in NEVER_WRITE_DECISIONS or decision == DECISION_BLOCKED_SYMLINK_ESCAPE:
+                message = (
+                    f"'{data['target_path']}' resolves to a blocked or repo-escaping "
+                    "path; automatic apply is forbidden. Owner review is required."
+                )
+            else:
+                message = None
             result = {
                 "status": "MANUAL_REVIEW_REQUIRED",
                 "task_id": task_id,
                 "target_path": data["target_path"],
-                "message": (
-                    f"'{data['target_path']}' resolves to a blocked or repo-escaping path; "
-                    "automatic apply is forbidden. Owner review is required."
-                ),
+                "decision": decision,
             }
-            self._log({"action": "APPROVE_BLOCKED", "task_id": task_id,
-                        "target_path": data["target_path"]})
+            if message:
+                result["message"] = message
             return result
-
-        decision = self.classify_target(data["target_path"])
-        target = self.repo_root / decision["normalized_path"]
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(data["content"], encoding="utf-8")
 
         data["status"] = "APPROVED"
         data["approved_at"] = datetime.now().isoformat()
@@ -219,10 +301,8 @@ class ConfirmGate:
         new_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
         proposal_path.unlink()
 
-        self._log({"action": "AUTO_APPROVE" if automatic else "APPROVE",
-                    "task_id": task_id, "target_path": data["target_path"]})
         return {"status": "APPLIED", "task_id": task_id,
-                "target_path": data["target_path"], "automatic": automatic}
+                "target_path": write_result["target_path"], "automatic": automatic}
 
     def reject(self, task_id: str) -> Dict:
         proposal_path = self._proposal_path(task_id, status="PENDING")
@@ -301,6 +381,10 @@ def _self_test() -> None:
     assert escape["auto_approved"] is False
     assert not (gate.repo_root / "03_Bot" / "escape.py").exists()
     gate.reject(escape_id)
+
+    # Tampered-proposal and symlink-escape scenarios need direct filesystem
+    # manipulation between propose() and approve() — covered by
+    # test_confirm_gate_policy.py rather than this quick smoke test.
 
     print("ALL CONFIRM GATE SELF-TESTS PASSED")
 
