@@ -110,6 +110,17 @@ THERAPIST_NAMES_FALLBACK = ["Nipa", "Saiful"]
 
 BN_WEEKDAYS = ["সোম", "মঙ্গল", "বুধ", "বৃহঃ", "শুক্র", "শনি", "রবি"]
 
+PATIENT_LOOKUP_PROMPT = (
+    "🔎 রোগী শনাক্ত করতে নাম, ফোন নম্বর অথবা Patient ID লিখুন:"
+)
+STATUS_DOCUMENT_ANALYSIS = "🖼️ ছবি/রিপোর্টের তথ্য বিশ্লেষণ করছি…"
+STATUS_CLINICAL_ANALYSIS = (
+    "🧠 ক্লিনিক্যাল তথ্য ও প্রাসঙ্গিক ম্যানুয়াল বিশ্লেষণ করছি…"
+)
+STATUS_BUSINESS_ANALYSIS = (
+    "📊 ক্লিনিকের তথ্য বিশ্লেষণ করে উত্তর প্রস্তুত করছি…"
+)
+
 _ALL_MENU_ITEMS = [
     roles.MENU_HOME,
     roles.MENU_PATIENT_REG,
@@ -1116,7 +1127,7 @@ async def reg_photo_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     photo = update.message.photo[-1]
     tg_file = await photo.get_file()
     image_bytes = bytes(await tg_file.download_as_bytearray())
-    await update.message.reply_text("⏳ ছবিটা পড়া হচ্ছে...")
+    await update.message.reply_text(STATUS_DOCUMENT_ANALYSIS)
     debug_error = None
     try:
         extracted = await async_runtime.run_ai(
@@ -1360,7 +1371,7 @@ async def apt_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
     context.user_data["new_appointment"] = {}
     await update.message.reply_text(
-        "রোগীর নাম, ফোন নম্বর, অথবা Patient ID লিখো (খুঁজতে):",
+        PATIENT_LOOKUP_PROMPT,
         reply_markup=ReplyKeyboardRemove(),
     )
     recent_kb = _recent_patient_buttons("aptsel_")
@@ -1427,8 +1438,8 @@ async def apt_back_to_search_callback(update: Update, context: ContextTypes.DEFA
     await query.answer()
     context.user_data.pop("apt_dates", None)
     context.user_data.pop("new_appointment", None)
-    await query.edit_message_text("⬅️ রোগী খোঁজার ধাপে ফিরে যাওয়া হলো।")
-    await query.message.reply_text("রোগীর নাম, ফোন নম্বর, অথবা Patient ID লিখো (খুঁজতে):")
+    await query.edit_message_text("⬅️ রোগী নির্বাচনের ধাপে ফিরে এসেছেন।")
+    await query.message.reply_text(PATIENT_LOOKUP_PROMPT)
     recent_kb = _recent_patient_buttons("aptsel_")
     if recent_kb:
         await query.message.reply_text(
@@ -1961,7 +1972,7 @@ async def pay_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
     context.user_data["payment"] = {}
     await update.message.reply_text(
-        "রোগীর নাম, ফোন নম্বর, অথবা Patient ID লিখো (খুঁজতে):",
+        PATIENT_LOOKUP_PROMPT,
         reply_markup=ReplyKeyboardRemove(),
     )
     recent_kb = _recent_patient_buttons("paysel_")
@@ -2411,7 +2422,7 @@ async def treat_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["treatment"] = {}
     context.user_data["treat_selected"] = set()
     await update.message.reply_text(
-        "রোগীর নাম, ফোন নম্বর, অথবা Patient ID লিখো (খুঁজতে):",
+        PATIENT_LOOKUP_PROMPT,
         reply_markup=ReplyKeyboardRemove(),
     )
     recent_kb = _recent_patient_buttons("treatsel_")
@@ -2535,8 +2546,8 @@ async def treat_back_to_search_callback(update: Update, context: ContextTypes.DE
     await query.answer()
     context.user_data.pop("treatment", None)
     context.user_data.pop("treat_selected", None)
-    await query.edit_message_text("⬅️ রোগী খোঁজার ধাপে ফিরে যাওয়া হলো।")
-    await query.message.reply_text("রোগীর নাম, ফোন নম্বর, অথবা Patient ID লিখো (খুঁজতে):")
+    await query.edit_message_text("⬅️ রোগী নির্বাচনের ধাপে ফিরে এসেছেন।")
+    await query.message.reply_text(PATIENT_LOOKUP_PROMPT)
     recent_kb = _recent_patient_buttons("treatsel_")
     if recent_kb:
         await query.message.reply_text(
@@ -2993,7 +3004,7 @@ async def tplan_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
     context.user_data["tplan"] = {}
     await update.message.reply_text(
-        "রোগীর নাম, ফোন নম্বর, অথবা Patient ID লিখো (খুঁজতে):",
+        PATIENT_LOOKUP_PROMPT,
         reply_markup=ReplyKeyboardRemove(),
     )
     recent_kb = _recent_patient_buttons("tplansel_")
@@ -3120,7 +3131,7 @@ def _build_tplan_case_text(context: ContextTypes.DEFAULT_TYPE) -> str:
 async def tplan_ai_suggest_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    await query.message.reply_text("🤔 Manual খুঁজছি...")
+    await query.message.reply_text(STATUS_CLINICAL_ANALYSIS)
     case_text = _build_tplan_case_text(context)
     answer, matched_summary = await async_runtime.run_ai(
         clinical_ai.get_clinical_guidance,
@@ -3287,7 +3298,7 @@ async def reg_new_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if staff is None:
         return ConversationHandler.END
     context.user_data["payment"] = {}
-    await query.message.reply_text("রোগীর নাম, ফোন নম্বর, অথবা Patient ID লিখো (খুঁজতে):")
+    await query.message.reply_text(PATIENT_LOOKUP_PROMPT)
     recent_kb = _recent_patient_buttons("paysel_")
     if recent_kb:
         await query.message.reply_text(
@@ -3500,7 +3511,7 @@ async def thist_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
     if not roles.can_access(staff.get("Role", ""), roles.MENU_TREATMENT_HISTORY):
         return ConversationHandler.END
-    await update.effective_message.reply_text("রোগীর নাম, ফোন নম্বর, অথবা Patient ID লেখো (খুঁজতে):")
+    await update.effective_message.reply_text(PATIENT_LOOKUP_PROMPT)
     return "THIST_SEARCH"
 
 
@@ -3729,7 +3740,7 @@ async def hist_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
     if not roles.can_access(staff.get("Role", ""), roles.MENU_PATIENT_HISTORY):
         return ConversationHandler.END
-    await update.effective_message.reply_text("রোগীর নাম, ফোন নম্বর, অথবা Patient ID লেখো (খুঁজতে):")
+    await update.effective_message.reply_text(PATIENT_LOOKUP_PROMPT)
     return "HIST_SEARCH"
 
 
@@ -3793,7 +3804,7 @@ async def unknown_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     await update.message.reply_text(
-        "এই ফিচারটা এখনো তৈরি হচ্ছে 🚧",
+        "এই সুবিধাটি এখনো সক্রিয় করা হয়নি।",
         reply_markup=_menu_keyboard(staff.get("Role", "")),
     )
 
@@ -3961,7 +3972,10 @@ async def _send_patient_list_page(message, context: ContextTypes.DEFAULT_TYPE, p
         nav.append(InlineKeyboardButton("পরের ➡️", callback_data=f"plistpage_{page + 1}"))
     if nav:
         buttons.append(nav)
-    text = f"📋 রোগীর তালিকা (পাতা {page + 1}) — নাম চাপো, অথবা নাম/ফোন/আইডি টাইপ করে খোঁজো:"
+    text = (
+        f"📋 রোগীর তালিকা (পাতা {page + 1}) — রোগী নির্বাচন করুন, "
+        "অথবা নাম/ফোন/আইডি লিখুন:"
+    )
     markup = InlineKeyboardMarkup(buttons)
     if edit:
         await message.edit_text(text, reply_markup=markup)
@@ -4322,7 +4336,7 @@ async def staffai_start(update, context):
 async def staffai_receive(update, context):
     staff = context.user_data.get("staff", {})
     question = update.message.text.strip()
-    await update.message.reply_text("\U0001F914 খুঁজছি...")
+    await update.message.reply_text(STATUS_BUSINESS_ANALYSIS)
     staff = context.user_data.get("staff", {})
     answer = await async_runtime.run_ai(
         staff_ai_query.answer_staff_query,
@@ -4361,7 +4375,7 @@ async def clinicalai_start(update, context):
 async def clinicalai_receive(update, context):
     staff = context.user_data.get("staff", {})
     case_text = update.message.text.strip()
-    await update.message.reply_text("\U0001F914 Manual খুঁজছি...")
+    await update.message.reply_text(STATUS_CLINICAL_ANALYSIS)
     answer, matched_summary = await async_runtime.run_ai(
         clinical_ai.get_clinical_guidance,
         case_text,
@@ -4582,7 +4596,9 @@ async def casestudy_extra_receive(update, context):
 
     context.user_data["cs_case_text"] = case_text
     context.user_data["cs_lesson"] = 1
-    await update.message.reply_text("\U0001F914 কেস বিশ্লেষণ করছি, Lesson 1 তৈরি হচ্ছে...")
+    await update.message.reply_text(
+        "🧠 কেসের তথ্য বিশ্লেষণ করে Lesson 1 প্রস্তুত করছি…"
+    )
     answer = await async_runtime.run_ai(
         case_study_ai.answer_case_lesson,
         case_text,
@@ -4613,7 +4629,9 @@ async def casestudy_lesson_callback(update, context):
     lesson = context.user_data.get("cs_lesson", 1)
 
     lesson += 1
-    await query.message.reply_text(f"\U0001F914 Lesson {lesson} তৈরি হচ্ছে...")
+    await query.message.reply_text(
+        f"🧠 কেসের অগ্রগতি বিশ্লেষণ করে Lesson {lesson} প্রস্তুত করছি…"
+    )
     answer = await async_runtime.run_ai(
         case_study_ai.answer_case_lesson,
         case_text,
