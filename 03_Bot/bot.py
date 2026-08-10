@@ -48,6 +48,7 @@ import config
 from config import bd_now
 import sheets
 from attendance_location import validate_location
+from observability import capture_exception, init_sentry
 import roles
 import calendar_helper
 import staff_ai_query
@@ -5233,6 +5234,7 @@ async def costtracker_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(lines))
 
 def main():
+    init_sentry()
     app = Application.builder().token(config.BOT_TOKEN).build()
     app.job_queue.run_daily(
         send_break_reminder,
@@ -5742,6 +5744,7 @@ def main():
 
     async def _global_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
         logger.exception("Unhandled error", exc_info=context.error)
+        capture_exception(context.error)
         try:
             if isinstance(update, Update) and update.effective_message:
                 await update.effective_message.reply_text(
@@ -5754,7 +5757,11 @@ def main():
     app.add_error_handler(_global_error_handler)
 
     logger.info("Relife Clinic OS Bot চালু হচ্ছে...")
-    _start_health_server()
+    try:
+        _start_health_server()
+    except Exception as error:
+        capture_exception(error)
+        raise
 
     app.run_polling()
 
