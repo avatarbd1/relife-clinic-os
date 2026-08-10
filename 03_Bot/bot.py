@@ -525,6 +525,18 @@ def _pt_workspace_text(patient: dict, plan: dict, notes: list[dict], treatment: 
     )
 
 
+def _load_patient_workspace(patient_id: str) -> tuple[dict | None, dict, list[dict]]:
+    """Load related patient rows together so one thread hop serves the screen."""
+    patient = sheets.get_patient_by_id(patient_id)
+    plan = (
+        sheets.get_active_plan_for_patient(patient_id)
+        or sheets.get_last_plan_for_patient(patient_id)
+        or {}
+    )
+    notes = sheets.get_treatment_notes_for_patient(patient_id)
+    return patient, plan, notes
+
+
 def _parse_pt_edit_message(text: str) -> dict:
     raw = str(text or "").strip()
     if not raw:
@@ -569,7 +581,7 @@ async def pt_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
     await update.effective_message.reply_text(
-        _pt_dashboard_text(staff),
+        await async_runtime.run_sheets_read(_pt_dashboard_text, staff),
         reply_markup=_pt_dashboard_keyboard(staff),
     )
 
@@ -582,7 +594,7 @@ async def pt_dashboard_refresh_callback(update: Update, context: ContextTypes.DE
         await query.edit_message_text("❌ স্টাফ প্রোফাইল পাওয়া যায়নি। /start দাও।")
         return
     await query.edit_message_text(
-        _pt_dashboard_text(staff),
+        await async_runtime.run_sheets_read(_pt_dashboard_text, staff),
         reply_markup=_pt_dashboard_keyboard(staff),
     )
 
@@ -591,7 +603,9 @@ async def pt_dashboard_history_callback(update: Update, context: ContextTypes.DE
     query = update.callback_query
     await query.answer()
     patient_id = query.data.replace("ptdashhist_", "", 1)
-    history = _build_full_history_text(patient_id) or "কোনো history পাওয়া যায়নি।"
+    history = await async_runtime.run_sheets_read(
+        _build_full_history_text, patient_id
+    ) or "কোনো history পাওয়া যায়নি।"
     await query.message.reply_text(history, reply_markup=_therapist_patient_action_keyboard(patient_id))
 
 
@@ -599,18 +613,24 @@ async def pt_dashboard_receive_callback(update: Update, context: ContextTypes.DE
     query = update.callback_query
     await query.answer()
     _, appointment_id, patient_id = query.data.split("_", 2)
-    patient = sheets.get_patient_by_id(patient_id)
+    patient = await async_runtime.run_sheets_read(
+        sheets.get_patient_by_id, patient_id
+    )
     if not patient:
         await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
         return ConversationHandler.END
-    plan = sheets.get_active_plan_for_patient(patient_id)
+    plan = await async_runtime.run_sheets_read(
+        sheets.get_active_plan_for_patient, patient_id
+    )
     if plan is None:
         await query.edit_message_text(
             f"⚠️ {patient.get('Full_Name')} ({patient_id})-এর কোনো Active protocol নেই। আগে ট্রিটমেন্ট প্ল্যান তৈরি করো।"
         )
         return ConversationHandler.END
 
-    notes = sheets.get_treatment_notes_for_patient(patient_id)
+    notes = await async_runtime.run_sheets_read(
+        sheets.get_treatment_notes_for_patient, patient_id
+    )
     last_note = notes[-1] if notes else {}
     session_no = _safe_int(plan.get("Sessions_Done", 0), 0) + 1
     treatment = {
@@ -661,9 +681,10 @@ async def pt_dashboard_done_callback(update: Update, context: ContextTypes.DEFAU
         await query.edit_message_text("❌ Session context পাওয়া যায়নি। আবার dashboard থেকে শুরু করো।")
         return ConversationHandler.END
 
-    patient = sheets.get_patient_by_id(patient_id) or {"Full_Name": treatment.get("Patient_Name", "")}
-    plan = sheets.get_active_plan_for_patient(patient_id) or sheets.get_last_plan_for_patient(patient_id) or {}
-    notes = sheets.get_treatment_notes_for_patient(patient_id)
+    patient, plan, notes = await async_runtime.run_sheets_read(
+        _load_patient_workspace, patient_id
+    )
+    patient = patient or {"Full_Name": treatment.get("Patient_Name", "")}
     ai_summary, _ = _ai_summary_for_patient(plan, notes)
 
     treatment.setdefault("Machines", ", ".join(
@@ -726,7 +747,7 @@ async def pt_dashboard_done_callback(update: Update, context: ContextTypes.DEFAU
     context.user_data.pop("pt_patient_id", None)
     context.user_data.pop("pt_appointment_id", None)
     await query.message.reply_text(
-        _pt_dashboard_text(staff),
+        await async_runtime.run_sheets_read(_pt_dashboard_text, staff),
         reply_markup=_pt_dashboard_keyboard(staff),
     )
     return ConversationHandler.END
@@ -756,9 +777,10 @@ async def pt_dashboard_edit_message(update: Update, context: ContextTypes.DEFAUL
         return ConversationHandler.END
 
     treatment.update(_parse_pt_edit_message(update.message.text))
-    patient = sheets.get_patient_by_id(patient_id) or {"Patient_ID": patient_id, "Full_Name": treatment.get("Patient_Name", "")}
-    plan = sheets.get_active_plan_for_patient(patient_id) or sheets.get_last_plan_for_patient(patient_id) or {}
-    notes = sheets.get_treatment_notes_for_patient(patient_id)
+    patient, plan, notes = await async_runtime.run_sheets_read(
+        _load_patient_workspace, patient_id
+    )
+    patient = patient or {"Patient_ID": patient_id, "Full_Name": treatment.get("Patient_Name", "")}
     await update.message.reply_text(
         _pt_workspace_text(patient, plan, notes, treatment),
         reply_markup=_pt_workspace_keyboard(patient_id),
@@ -774,9 +796,10 @@ async def pt_dashboard_edit_back_callback(update: Update, context: ContextTypes.
     if not treatment or not patient_id:
         await query.edit_message_text("❌ Session মেয়াদ শেষ হয়েছে।")
         return ConversationHandler.END
-    patient = sheets.get_patient_by_id(patient_id) or {"Patient_ID": patient_id, "Full_Name": treatment.get("Patient_Name", "")}
-    plan = sheets.get_active_plan_for_patient(patient_id) or sheets.get_last_plan_for_patient(patient_id) or {}
-    notes = sheets.get_treatment_notes_for_patient(patient_id)
+    patient, plan, notes = await async_runtime.run_sheets_read(
+        _load_patient_workspace, patient_id
+    )
+    patient = patient or {"Patient_ID": patient_id, "Full_Name": treatment.get("Patient_Name", "")}
     await query.edit_message_text(
         _pt_workspace_text(patient, plan, notes, treatment),
         reply_markup=_pt_workspace_keyboard(patient_id),
@@ -795,7 +818,7 @@ async def pt_dashboard_back_callback(update: Update, context: ContextTypes.DEFAU
     context.user_data.pop("pt_patient_id", None)
     context.user_data.pop("pt_appointment_id", None)
     await query.edit_message_text(
-        _pt_dashboard_text(staff),
+        await async_runtime.run_sheets_read(_pt_dashboard_text, staff),
         reply_markup=_pt_dashboard_keyboard(staff),
     )
     return ConversationHandler.END
@@ -805,7 +828,9 @@ async def pt_workspace_history_callback(update: Update, context: ContextTypes.DE
     query = update.callback_query
     await query.answer()
     patient_id = query.data.replace("ptwhist_", "", 1)
-    history = _build_full_history_text(patient_id) or "কোনো history পাওয়া যায়নি।"
+    history = await async_runtime.run_sheets_read(
+        _build_full_history_text, patient_id
+    ) or "কোনো history পাওয়া যায়নি।"
     await query.message.reply_text(history)
     return "PT_DASH_WORKSPACE"
 
@@ -1141,7 +1166,9 @@ async def _reg_check_duplicate_then_note(update: Update, context: ContextTypes.D
     phone = str(p.get("Phone", "")).strip()
     if phone and not context.user_data.get("new_patient_dup_checked"):
         context.user_data["new_patient_dup_checked"] = True
-        existing = sheets.find_patient_by_phone(phone)
+        existing = await async_runtime.run_sheets_read(
+            sheets.find_patient_by_phone, phone
+        )
         if existing:
             dup_keyboard = ReplyKeyboardMarkup(
                 [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
@@ -1385,7 +1412,9 @@ async def reg_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"✅ রোগী রেজিস্ট্রেশন সম্পন্ন! Patient ID: {patient_id}",
             reply_markup=_menu_keyboard(staff.get("Role", "")),
         )
-        new_patient_row = sheets.get_patient_by_id(patient_id)
+        new_patient_row = await async_runtime.run_sheets_read(
+            sheets.get_patient_by_id, patient_id
+        )
         if new_patient_row:
             await update.message.reply_text(
                 _patient_card_text(new_patient_row),
@@ -1428,7 +1457,9 @@ async def apt_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         PATIENT_LOOKUP_PROMPT,
         reply_markup=ReplyKeyboardRemove(),
     )
-    recent_kb = _recent_patient_buttons("aptsel_")
+    recent_kb = await async_runtime.run_sheets_read(
+        _recent_patient_buttons, "aptsel_"
+    )
     if recent_kb:
         await update.message.reply_text(
             "👥 অথবা সাম্প্রতিক রোগীদের মধ্য থেকে সরাসরি বেছে নাও:",
@@ -1439,7 +1470,7 @@ async def apt_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def apt_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.message.text.strip()
-    results = sheets.search_patients(query)
+    results = await async_runtime.run_sheets_read(sheets.search_patients, query)
     if not results:
         await update.message.reply_text(
             "❌ কোনো রোগী পাওয়া যায়নি। আবার নাম/ফোন/আইডি লেখো, অথবা /cancel দাও।"
@@ -1463,7 +1494,9 @@ async def apt_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     await query.answer()
     patient_id = query.data.replace("aptsel_", "", 1)
     results = context.user_data.get("apt_search_results", {})
-    patient = results.get(patient_id) or sheets.get_patient_by_id(patient_id)
+    patient = results.get(patient_id) or await async_runtime.run_sheets_read(
+        sheets.get_patient_by_id, patient_id
+    )
     if not patient:
         await query.edit_message_text(
             "❌ রোগী পাওয়া যায়নি। আবার শুরু করতে /cancel দাও, তারপর 📅 অ্যাপয়েন্টমেন্ট বুকিং চাপো।"
@@ -1494,7 +1527,9 @@ async def apt_back_to_search_callback(update: Update, context: ContextTypes.DEFA
     context.user_data.pop("new_appointment", None)
     await query.edit_message_text("⬅️ রোগী নির্বাচনের ধাপে ফিরে এসেছেন।")
     await query.message.reply_text(PATIENT_LOOKUP_PROMPT)
-    recent_kb = _recent_patient_buttons("aptsel_")
+    recent_kb = await async_runtime.run_sheets_read(
+        _recent_patient_buttons, "aptsel_"
+    )
     if recent_kb:
         await query.message.reply_text(
             "👥 অথবা সাম্প্রতিক রোগীদের মধ্য থেকে সরাসরি বেছে নাও:",
@@ -1620,7 +1655,7 @@ async def apt_time_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(f"✅ সময় নির্বাচন করা হয়েছে: {time_str}")
     await query.message.reply_text(
         "থেরাপিস্ট বেছে নাও (অথবা টাইপ করো):",
-        reply_markup=_therapist_keyboard(),
+        reply_markup=await async_runtime.run_sheets_read(_therapist_keyboard),
     )
     return APT_THERAPIST
 
@@ -1631,7 +1666,7 @@ async def apt_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.setdefault("new_appointment", {})["Times"] = times
     await update.message.reply_text(
         "থেরাপিস্ট বেছে নাও (অথবা টাইপ করো):",
-        reply_markup=_therapist_keyboard(),
+        reply_markup=await async_runtime.run_sheets_read(_therapist_keyboard),
     )
     return APT_THERAPIST
 
@@ -1665,7 +1700,7 @@ async def apt_time_done_callback(update: Update, context: ContextTypes.DEFAULT_T
     await query.edit_message_text(f"✅ সময় বাছাই করা হয়েছে: {', '.join(selected)}")
     await query.message.reply_text(
         "থেরাপিস্ট বেছে নাও (অথবা টাইপ করো):",
-        reply_markup=_therapist_keyboard(),
+        reply_markup=await async_runtime.run_sheets_read(_therapist_keyboard),
     )
     return APT_THERAPIST
 
@@ -1782,7 +1817,7 @@ async def search_patient(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not query:
         await update.message.reply_text("ব্যবহার: /search <নাম বা ফোন নম্বর>")
         return
-    results = sheets.search_patients(query)
+    results = await async_runtime.run_sheets_read(sheets.search_patients, query)
     if not results:
         await update.message.reply_text("কোনো রোগী পাওয়া যায়নি।")
         return
@@ -1877,7 +1912,9 @@ async def attendance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     staff_id = staff.get("Staff_ID", "") or str(staff.get("Telegram_ID", ""))
     date_str = bd_now().strftime("%Y-%m-%d")
-    record = sheets.get_today_attendance(staff_id, date_str)
+    record = await async_runtime.run_sheets_read(
+        sheets.get_today_attendance, staff_id, date_str
+    )
 
     buttons = []
     if not record:
@@ -1916,7 +1953,9 @@ async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     action = query.data
 
     if action == "att_checkin":
-        existing = sheets.get_today_attendance(staff_id, date_str)
+        existing = await async_runtime.run_sheets_read(
+            sheets.get_today_attendance, staff_id, date_str
+        )
         if existing:
             await query.edit_message_text(
                 f"✅ আজকের Check In আগেই হয়েছে: {existing.get('Check_In', '')}"
@@ -2024,8 +2063,11 @@ async def today_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
     date_str = bd_now().strftime("%Y-%m-%d")
+    all_appts = await async_runtime.run_sheets_read(
+        sheets.get_appointments_for_date, date_str
+    )
     appts = [
-        a for a in sheets.get_appointments_for_date(date_str)
+        a for a in all_appts
         if a.get("Status", "").strip() == "Scheduled"
     ]
     if not appts:
@@ -2061,7 +2103,9 @@ async def apt_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     if status_code == "Completed" and patient_id:
         # Present চাপার পরপরই Patient Action Panel — Payment/Note এখন ১ ট্যাপ দূরে।
-        patient = sheets.get_patient_by_id(patient_id)
+        patient = await async_runtime.run_sheets_read(
+            sheets.get_patient_by_id, patient_id
+        )
         if patient:
             await query.edit_message_text(
                 f"✅ {appointment_id} — উপস্থিত হয়েছে।\n\n" + _patient_card_text(patient),
@@ -2084,7 +2128,9 @@ async def apt_today_back_callback(update: Update, context: ContextTypes.DEFAULT_
     query = update.callback_query
     await query.answer()
     appointment_id = query.data.replace("apttodayback_", "", 1)
-    a = sheets.get_appointment_by_id(appointment_id)
+    a = await async_runtime.run_sheets_read(
+        sheets.get_appointment_by_id, appointment_id
+    )
     if not a:
         await query.edit_message_text("❌ এই অ্যাপয়েন্টমেন্টটা আর পাওয়া যাচ্ছে না।")
         return
@@ -2113,7 +2159,9 @@ async def pay_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         PATIENT_LOOKUP_PROMPT,
         reply_markup=ReplyKeyboardRemove(),
     )
-    recent_kb = _recent_patient_buttons("paysel_")
+    recent_kb = await async_runtime.run_sheets_read(
+        _recent_patient_buttons, "paysel_"
+    )
     if recent_kb:
         await update.message.reply_text(
             "👥 অথবা সাম্প্রতিক রোগীদের মধ্য থেকে সরাসরি বেছে নাও:",
@@ -2127,7 +2175,9 @@ async def pay_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     ai_data = await async_runtime.run_ai(ai_helper.parse_register_entry, query)
     if ai_data:
-        ai_results = sheets.search_patients(ai_data["name"])
+        ai_results = await async_runtime.run_sheets_read(
+            sheets.search_patients, ai_data["name"]
+        )
         if len(ai_results) == 1:
             patient = ai_results[0]
             context.user_data.setdefault("payment", {})
@@ -2156,7 +2206,7 @@ async def pay_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return PAY_SELECT
 
-    results = sheets.search_patients(query)
+    results = await async_runtime.run_sheets_read(sheets.search_patients, query)
     if not results:
         await update.message.reply_text(
             "❌ কোনো রোগী পাওয়া যায়নি। আবার নাম/ফোন/আইডি লেখো, অথবা /cancel দাও।"
@@ -2179,7 +2229,9 @@ async def pay_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     await query.answer()
     patient_id = query.data.replace("paysel_", "")
     results = context.user_data.get("pay_search_results", {})
-    patient = results.get(patient_id) or sheets.get_patient_by_id(patient_id)
+    patient = results.get(patient_id) or await async_runtime.run_sheets_read(
+        sheets.get_patient_by_id, patient_id
+    )
     if not patient:
         await query.edit_message_text(
             "❌ তালিকার মেয়াদ শেষ। আবার শুরু করতে /cancel দাও, তারপর 📋 আজকের রেজিস্টার থেকে ➕ নতুন এন্ট্রি চাপো।"
@@ -2339,7 +2391,9 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "\n".join(lines), reply_markup=_menu_keyboard(staff.get("Role", ""))
         )
-        reg_text, reg_kb = _register_view_text_and_keyboard()
+        reg_text, reg_kb = await async_runtime.run_sheets_read(
+            _register_view_text_and_keyboard
+        )
         await update.message.reply_text(reg_text, reply_markup=reg_kb)
     except Exception as e:
         logger.exception("pay_confirm ব্যর্থ হয়েছে")
@@ -2391,7 +2445,9 @@ async def paydel_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
 
     staff_name = staff.get("Full_Name", "")
-    entries = sheets.get_today_payments_by_staff(staff_name)
+    entries = await async_runtime.run_sheets_read(
+        sheets.get_today_payments_by_staff, staff_name
+    )
     if not entries:
         await update.message.reply_text(
             "আজকে তোমার নামে কোনো এন্ট্রি নেই।",
@@ -2505,7 +2561,9 @@ async def _treat_prepare_for_patient(patient: dict, context: ContextTypes.DEFAUL
     নিচের মেশিন-চেকলিস্ট (TENS/Ultrasound/SWD/IFT ইত্যাদি) দিয়ে ক্যাপচার হয়।
     """
     patient_id = patient.get("Patient_ID", "")
-    plan = sheets.get_active_plan_for_patient(patient_id)
+    plan = await async_runtime.run_sheets_read(
+        sheets.get_active_plan_for_patient, patient_id
+    )
     if plan is None:
         stop_text = (
             f"⚠️ {patient.get('Full_Name')} ({patient_id})-এর কোনো Active ট্রিটমেন্ট প্ল্যান নেই।\n\n"
@@ -2515,7 +2573,9 @@ async def _treat_prepare_for_patient(patient: dict, context: ContextTypes.DEFAUL
 
     session_no = int(plan.get("Sessions_Done", 0) or 0) + 1
 
-    last_note = sheets.get_last_treatment_note_for_patient(patient_id)
+    last_note = await async_runtime.run_sheets_read(
+        sheets.get_last_treatment_note_for_patient, patient_id
+    )
 
     exercise = plan.get("Exercise_Plan", "")
     manual = plan.get("Manual_Therapy_Plan", "")
@@ -2566,7 +2626,9 @@ async def treat_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         PATIENT_LOOKUP_PROMPT,
         reply_markup=ReplyKeyboardRemove(),
     )
-    recent_kb = _recent_patient_buttons("treatsel_")
+    recent_kb = await async_runtime.run_sheets_read(
+        _recent_patient_buttons, "treatsel_"
+    )
     if recent_kb:
         await update.message.reply_text(
             "👥 অথবা সাম্প্রতিক রোগীদের মধ্য থেকে সরাসরি বেছে নাও:",
@@ -2577,7 +2639,7 @@ async def treat_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def treat_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.message.text.strip()
-    results = sheets.search_patients(query)
+    results = await async_runtime.run_sheets_read(sheets.search_patients, query)
     if not results:
         await update.message.reply_text(
             "❌ কোনো রোগী পাওয়া যায়নি। আবার নাম/ফোন/আইডি লেখো, অথবা /cancel দাও।"
@@ -2600,7 +2662,9 @@ async def treat_select_callback(update: Update, context: ContextTypes.DEFAULT_TY
     await query.answer()
     patient_id = query.data.replace("treatsel_", "")
     results = context.user_data.get("treat_search_results", {})
-    patient = results.get(patient_id) or sheets.get_patient_by_id(patient_id)
+    patient = results.get(patient_id) or await async_runtime.run_sheets_read(
+        sheets.get_patient_by_id, patient_id
+    )
     if not patient:
         await query.edit_message_text(
             "❌ তালিকার মেয়াদ শেষ। আবার শুরু করতে /cancel দাও, তারপর 📝 ট্রিটমেন্ট নোট চাপো।"
@@ -2689,7 +2753,9 @@ async def treat_back_to_search_callback(update: Update, context: ContextTypes.DE
     context.user_data.pop("treat_selected", None)
     await query.edit_message_text("⬅️ রোগী নির্বাচনের ধাপে ফিরে এসেছেন।")
     await query.message.reply_text(PATIENT_LOOKUP_PROMPT)
-    recent_kb = _recent_patient_buttons("treatsel_")
+    recent_kb = await async_runtime.run_sheets_read(
+        _recent_patient_buttons, "treatsel_"
+    )
     if recent_kb:
         await query.message.reply_text(
             "👥 অথবা সাম্প্রতিক রোগীদের মধ্য থেকে সরাসরি বেছে নাও:",
@@ -2706,7 +2772,9 @@ async def treat_back_to_confirm_callback(update: Update, context: ContextTypes.D
     await query.answer()
     t = context.user_data.get("treatment", {})
     patient_id = t.get("Patient_ID", "")
-    plan = sheets.get_active_plan_for_patient(patient_id)
+    plan = await async_runtime.run_sheets_read(
+        sheets.get_active_plan_for_patient, patient_id
+    )
     total = plan.get("Total_Sessions", "N/A") if plan else "N/A"
     summary = (
         f"📋 {t.get('Patient_Name')} ({patient_id}) — সেশন {t.get('Session_No', '?')}/{total}\n\n"
@@ -2789,7 +2857,9 @@ async def treat_patient_comment_receive(update: Update, context: ContextTypes.DE
         t["Remarks"] = f"[রোগীর মন্তব্য] {text}"
     context.user_data["treatment"] = t
 
-    due, mandatory, _days_since = _treat_progress_status(t.get("Patient_ID", ""))
+    due, mandatory, _days_since = await async_runtime.run_sheets_read(
+        _treat_progress_status, t.get("Patient_ID", "")
+    )
     if due:
         note = "📈 আজ রোগীর ব্যথা ০-১০ স্কেলে কত? (০ = ব্যথা নেই, ১০ = সর্বোচ্চ ব্যথা)\n\n" + (
             "⚠️ শেষ ৭+ দিন কোনো Pain Score রেকর্ড হয়নি — এবার স্কিপ করা যাবে না।"
@@ -2923,7 +2993,7 @@ async def inventory_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
     await update.message.reply_text(
-        _inventory_list_text(),
+        await async_runtime.run_sheets_read(_inventory_list_text),
         reply_markup=ReplyKeyboardMarkup([[roles.MENU_BACK_MAIN]], resize_keyboard=True),
     )
     return INV_UPDATE
@@ -2960,7 +3030,9 @@ async def inventory_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if result.get("low_stock"):
         msg += "\n⚠️ স্টক Minimum লেভেলের নিচে/সমান নেমে গেছে — রিঅর্ডার করার কথা ভাবো।"
     await update.message.reply_text(msg)
-    await update.message.reply_text(_inventory_list_text())
+    await update.message.reply_text(
+        await async_runtime.run_sheets_read(_inventory_list_text)
+    )
     return INV_UPDATE
 
 
@@ -3163,7 +3235,9 @@ async def tplan_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         PATIENT_LOOKUP_PROMPT,
         reply_markup=ReplyKeyboardRemove(),
     )
-    recent_kb = _recent_patient_buttons("tplansel_")
+    recent_kb = await async_runtime.run_sheets_read(
+        _recent_patient_buttons, "tplansel_"
+    )
     if recent_kb:
         await update.message.reply_text(
             "👥 অথবা সাম্প্রতিক রোগীদের মধ্য থেকে সরাসরি বেছে নাও:",
@@ -3174,7 +3248,7 @@ async def tplan_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def tplan_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.message.text.strip()
-    results = sheets.search_patients(query)
+    results = await async_runtime.run_sheets_read(sheets.search_patients, query)
     if not results:
         await update.message.reply_text(
             "❌ কোনো রোগী পাওয়া যায়নি। আবার নাম/ফোন/আইডি লেখো, অথবা /cancel দাও।"
@@ -3196,7 +3270,9 @@ async def tplan_select_callback(update: Update, context: ContextTypes.DEFAULT_TY
     await query.answer()
     patient_id = query.data.replace("tplansel_", "")
     results = context.user_data.get("tplan_search_results", {})
-    patient = results.get(patient_id) or sheets.get_patient_by_id(patient_id)
+    patient = results.get(patient_id) or await async_runtime.run_sheets_read(
+        sheets.get_patient_by_id, patient_id
+    )
     if not patient:
         await query.edit_message_text(
             "❌ তালিকার মেয়াদ শেষ। আবার শুরু করতে /cancel দাও, তারপর 🩺 ট্রিটমেন্ট প্ল্যান চাপো।"
@@ -3209,7 +3285,9 @@ async def tplan_select_callback(update: Update, context: ContextTypes.DEFAULT_TY
     }
 
     warn = ""
-    active = sheets.get_active_plan_for_patient(patient_id)
+    active = await async_runtime.run_sheets_read(
+        sheets.get_active_plan_for_patient, patient_id
+    )
     if active:
         warn = (
             f"⚠️ খেয়াল করো — এই রোগীর ইতিমধ্যে একটা Active প্ল্যান আছে "
@@ -3217,7 +3295,9 @@ async def tplan_select_callback(update: Update, context: ContextTypes.DEFAULT_TY
             "নতুন প্ল্যান বানালে সেটা আলাদা হিসেবে যোগ হবে।\n\n"
         )
 
-    last_plan = sheets.get_last_plan_for_patient(patient_id)
+    last_plan = await async_runtime.run_sheets_read(
+        sheets.get_last_plan_for_patient, patient_id
+    )
     context.user_data["tplan_prev"] = last_plan or {}
     await query.edit_message_text(
         f"{warn}✅ রোগী বাছাই হলো: {patient.get('Full_Name')} ({patient_id})"
@@ -3447,7 +3527,9 @@ async def register_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not roles.can_access(staff.get("Role", ""), roles.MENU_DAILY_REGISTER):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
-    text, keyboard = _register_view_text_and_keyboard()
+    text, keyboard = await async_runtime.run_sheets_read(
+        _register_view_text_and_keyboard
+    )
     await update.message.reply_text(text, reply_markup=keyboard)
 
 
@@ -3459,7 +3541,9 @@ async def reg_new_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
     context.user_data["payment"] = {}
     await query.message.reply_text(PATIENT_LOOKUP_PROMPT)
-    recent_kb = _recent_patient_buttons("paysel_")
+    recent_kb = await async_runtime.run_sheets_read(
+        _recent_patient_buttons, "paysel_"
+    )
     if recent_kb:
         await query.message.reply_text(
             "👥 অথবা সাম্প্রতিক রোগীদের মধ্য থেকে সরাসরি বেছে নাও:",
@@ -3538,7 +3622,10 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     today_str = now.strftime("%Y-%m-%d")
     this_month_str, _ = _month_bounds(now)
 
-    patients = sheets.get_all_patients()
+    patients, payments = await _asyncio_p314.gather(
+        async_runtime.run_sheets_read(sheets.get_all_patients),
+        async_runtime.run_sheets_read(sheets.get_all_payments),
+    )
     today_new_patients = sum(
         1 for p in patients
         if str(p.get("Registration_Date", "")).strip() == today_str
@@ -3548,7 +3635,6 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if str(p.get("Registration_Date", "")).strip().startswith(this_month_str)
     )
 
-    payments = sheets.get_all_payments()
     today_payments = [p for p in payments if str(p.get("Date", "")).strip() == today_str]
     today_collection = sum(float(p.get("Amount", 0) or 0) for p in today_payments)
 
@@ -3581,9 +3667,11 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def rpt_totals_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    patients = sheets.get_all_patients()
+    patients, payments = await _asyncio_p314.gather(
+        async_runtime.run_sheets_read(sheets.get_all_patients),
+        async_runtime.run_sheets_read(sheets.get_all_payments),
+    )
     total_patients = len(patients)
-    payments = sheets.get_all_payments()
     total_collection = sum(float(p.get("Amount", 0) or 0) for p in payments)
     text = (
         "\U0001F465 মোট রোগী ও সর্বমোট আদায়\n\n"
@@ -3598,7 +3686,7 @@ async def rpt_lastmonth_callback(update: Update, context: ContextTypes.DEFAULT_T
     await query.answer()
     now = bd_now()
     _, last_month_str = _month_bounds(now)
-    payments = sheets.get_all_payments()
+    payments = await async_runtime.run_sheets_read(sheets.get_all_payments)
     last_month_payments = [
         p for p in payments
         if str(p.get("Date", "")).strip().startswith(last_month_str)
@@ -3621,7 +3709,9 @@ async def rpt_daterep_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 async def rpt_todayregister_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    text, keyboard = _register_view_text_and_keyboard()
+    text, keyboard = await async_runtime.run_sheets_read(
+        _register_view_text_and_keyboard
+    )
     await query.message.reply_text(text, reply_markup=keyboard)
 
 def _pain_bar(score) -> str:
@@ -3639,7 +3729,9 @@ async def thist_progress_callback(update: Update, context: ContextTypes.DEFAULT_
     query = update.callback_query
     await query.answer()
     patient_id = query.data.replace("thistprog_", "", 1)
-    notes = sheets.get_treatment_notes_for_patient(patient_id)
+    notes = await async_runtime.run_sheets_read(
+        sheets.get_treatment_notes_for_patient, patient_id
+    )
     scored = [n for n in notes if str(n.get("Pain", "")).strip() != ""]
     if not scored:
         await query.message.reply_text(
@@ -3677,7 +3769,9 @@ async def thist_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def thist_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query_text = update.message.text.strip()
-    results = sheets.search_patients(query_text)
+    results = await async_runtime.run_sheets_read(
+        sheets.search_patients, query_text
+    )
     if not results:
         await update.message.reply_text("কোনো রোগী পাওয়া যায়নি। আবার চেষ্টা করো, অথবা /cancel দাও।")
         return "THIST_SEARCH"
@@ -3693,7 +3787,9 @@ async def thist_patient_callback(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     await query.answer()
     patient_id = query.data.replace("thpsel_", "", 1)
-    notes = sheets.get_treatment_notes_for_patient(patient_id)
+    notes = await async_runtime.run_sheets_read(
+        sheets.get_treatment_notes_for_patient, patient_id
+    )
     if not notes:
         await query.edit_message_text("এই রোগীর কোনো ট্রিটমেন্ট নোট পাওয়া যায়নি।")
         return ConversationHandler.END
@@ -3789,7 +3885,9 @@ async def thist_back_to_dates_callback(update: Update, context: ContextTypes.DEF
     query = update.callback_query
     await query.answer()
     patient_id = query.data.replace("thistback_", "", 1)
-    notes = sheets.get_treatment_notes_for_patient(patient_id)
+    notes = await async_runtime.run_sheets_read(
+        sheets.get_treatment_notes_for_patient, patient_id
+    )
     if not notes:
         await query.edit_message_text("এই রোগীর কোনো ট্রিটমেন্ট নোট পাওয়া যায়নি।")
         return
@@ -3906,7 +4004,9 @@ async def hist_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def hist_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query_text = update.message.text.strip()
-    results = sheets.search_patients(query_text)
+    results = await async_runtime.run_sheets_read(
+        sheets.search_patients, query_text
+    )
     if not results:
         await update.message.reply_text("কোনো রোগী পাওয়া যায়নি। আবার চেষ্টা করো, অথবা /cancel দাও।")
         return "HIST_SEARCH"
@@ -3923,7 +4023,9 @@ async def hist_select_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.answer()
     patient_id = query.data.replace("histsel_", "", 1)
 
-    full_text = _build_full_history_text(patient_id)
+    full_text = await async_runtime.run_sheets_read(
+        _build_full_history_text, patient_id
+    )
     if full_text is None:
         await query.edit_message_text("রোগী পাওয়া যায়নি।")
         return ConversationHandler.END
@@ -4067,8 +4169,9 @@ async def patient_list_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not roles.can_access(staff.get("Role", ""), roles.MENU_PATIENT_LIST):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
+    all_patients = await async_runtime.run_sheets_read(sheets.get_all_patients)
     patients = [
-        p for p in sheets.get_all_patients()
+        p for p in all_patients
         if str(p.get("Status", "")).strip() == "Active"
     ]
     patients.sort(key=lambda p: p.get("Full_Name", ""))
@@ -4086,7 +4189,9 @@ async def patient_list_search(update: Update, context: ContextTypes.DEFAULT_TYPE
     """📋 রোগীর তালিকায় নাম/ফোন/আইডি টাইপ করলে এই হ্যান্ডলার ফিল্টার করা রেজাল্ট দেখায়
     (patch29) — আগে/পরের বাটনও কাজ করে, আবার সরাসরি টাইপ করেও খোঁজা যায়।"""
     query_text = update.message.text.strip()
-    results = sheets.search_patients(query_text)
+    results = await async_runtime.run_sheets_read(
+        sheets.search_patients, query_text
+    )
     results = [
         p for p in results
         if str(p.get("Status", "")).strip() == "Active"
@@ -4173,8 +4278,9 @@ async def patient_list_back_callback(update: Update, context: ContextTypes.DEFAU
         # Action Panel অন্য ফ্লো (Present/History/Treatment History) থেকে এলে
         # plist_patients cache করা নাও থাকতে পারে — তখন এখানে বানিয়ে নেওয়া হয়,
         # যাতে "🔙 তালিকায় ফিরুন" কখনো খালি স্ক্রিন না দেখায়।
+        all_patients = await async_runtime.run_sheets_read(sheets.get_all_patients)
         patients = [
-            p for p in sheets.get_all_patients()
+            p for p in all_patients
             if str(p.get("Status", "")).strip() == "Active"
         ]
         patients.sort(key=lambda p: p.get("Full_Name", ""))
@@ -4189,7 +4295,9 @@ async def plist_action_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     patient_id = query.data.replace("plistact_pay_", "")
-    patient = sheets.get_patient_by_id(patient_id)
+    patient = await async_runtime.run_sheets_read(
+        sheets.get_patient_by_id, patient_id
+    )
     if not patient:
         await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
         return ConversationHandler.END
@@ -4210,7 +4318,9 @@ async def plist_action_apt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     patient_id = query.data.replace("plistact_apt_", "")
-    patient = sheets.get_patient_by_id(patient_id)
+    patient = await async_runtime.run_sheets_read(
+        sheets.get_patient_by_id, patient_id
+    )
     if not patient:
         await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
         return ConversationHandler.END
@@ -4234,7 +4344,9 @@ async def plist_action_treat(update: Update, context: ContextTypes.DEFAULT_TYPE)
     query = update.callback_query
     await query.answer()
     patient_id = query.data.replace("plistact_treat_", "")
-    patient = sheets.get_patient_by_id(patient_id)
+    patient = await async_runtime.run_sheets_read(
+        sheets.get_patient_by_id, patient_id
+    )
     if not patient:
         await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
         return ConversationHandler.END
@@ -4253,7 +4365,9 @@ async def plist_action_hist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     patient_id = query.data.replace("plistact_hist_", "")
 
-    full_text = _build_full_history_text(patient_id)
+    full_text = await async_runtime.run_sheets_read(
+        _build_full_history_text, patient_id
+    )
     if full_text is None:
         await query.edit_message_text("রোগী পাওয়া যায়নি।")
         return
@@ -4269,7 +4383,9 @@ async def plist_action_report(update: Update, context: ContextTypes.DEFAULT_TYPE
     query = update.callback_query
     await query.answer()
     patient_id = query.data.replace("plistact_report_", "")
-    patient = sheets.get_patient_by_id(patient_id)
+    patient = await async_runtime.run_sheets_read(
+        sheets.get_patient_by_id, patient_id
+    )
     if not patient:
         await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
         return ConversationHandler.END
@@ -4384,7 +4500,9 @@ async def plist_action_viewfiles(update: Update, context: ContextTypes.DEFAULT_T
     staff = await _require_staff(update, context)
     if staff is None:
         return
-    patient = sheets.get_patient_by_id(patient_id)
+    patient = await async_runtime.run_sheets_read(
+        sheets.get_patient_by_id, patient_id
+    )
     if not patient:
         await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
         return
@@ -4393,7 +4511,9 @@ async def plist_action_viewfiles(update: Update, context: ContextTypes.DEFAULT_T
     if not allowed:
         await query.edit_message_text("⛔ এই রোগীর ফাইল দেখার অনুমতি তোমার নেই।")
         return
-    reports = sheets.get_reports_for_patient(patient_id)
+    reports = await async_runtime.run_sheets_read(
+        sheets.get_reports_for_patient, patient_id
+    )
     if not reports:
         await query.edit_message_text(f"📂 {patient.get('Full_Name')}-এর কোনো ফাইল এখনো আপলোড হয়নি।")
         return
@@ -4418,11 +4538,15 @@ async def plist_action_getfile(update: Update, context: ContextTypes.DEFAULT_TYP
     staff = await _require_staff(update, context)
     if staff is None:
         return
-    record = sheets.get_report_by_id(report_id)
+    record = await async_runtime.run_sheets_read(
+        sheets.get_report_by_id, report_id
+    )
     if not record:
         await query.message.reply_text("❌ ফাইল পাওয়া যায়নি।")
         return
-    patient = sheets.get_patient_by_id(record.get("Patient_ID", ""))
+    patient = await async_runtime.run_sheets_read(
+        sheets.get_patient_by_id, record.get("Patient_ID", "")
+    )
     role = staff.get("Role", "").strip()
     allowed = patient and role in ("Owner", "Manager", "Therapist")
     if not allowed:
@@ -4467,7 +4591,9 @@ async def date_report_day_selected(update, context):
     date_str = query.data.split("_", 1)[1]
     year, month, day = map(int, date_str.split("-"))
 
-    patient_list = sheets.get_daily_patient_list(date_str)
+    patient_list = await async_runtime.run_sheets_read(
+        sheets.get_daily_patient_list, date_str
+    )
     if patient_list:
         list_lines = "\n".join(
             f"{i+1}. {p['name']} — {p['session']} — {p['amount']:.0f} টাকা"
@@ -4685,7 +4811,9 @@ async def casestudy_start(update, context):
 
 async def casestudy_search_receive(update, context):
     query_text = update.message.text.strip()
-    results = sheets.search_patients(query_text)
+    results = await async_runtime.run_sheets_read(
+        sheets.search_patients, query_text
+    )
     if not results:
         await update.message.reply_text("কোনো রোগী পাওয়া যায়নি। আবার চেষ্টা করো, অথবা /cancel দাও।")
         return CASESTUDY_SEARCH
@@ -4702,14 +4830,18 @@ async def casestudy_select_callback(update, context):
     await query.answer()
     patient_id = query.data.replace("cssel_", "", 1)
 
-    case_context = _build_case_study_context(patient_id)
+    case_context = await async_runtime.run_sheets_read(
+        _build_case_study_context, patient_id
+    )
     if case_context is None:
         await query.edit_message_text("রোগী পাওয়া যায়নি।")
         return ConversationHandler.END
 
     context.user_data["cs_case_context"] = case_context
     context.user_data["cs_patient_id"] = patient_id
-    patient = sheets.get_patient_by_id(patient_id) or {}
+    patient = await async_runtime.run_sheets_read(
+        sheets.get_patient_by_id, patient_id
+    ) or {}
     context.user_data["cs_patient_name"] = patient.get("Full_Name") or patient.get("Name") or ""
     context.user_data["cs_session_id"] = f"CS-{patient_id}-{int(time.time())}"
     await query.edit_message_text(
@@ -4745,7 +4877,9 @@ async def _download_report_images(context, patient_id: str, limit: int = 4) -> l
     আগে Google Drive থেকে চেষ্টা করে (স্থায়ী, প্রোডাকশনে reliable), Drive লিংক না থাকলে
     বা ফেইল করলে Telegram file_id দিয়ে ফলব্যাক করে। সর্বোচ্চ `limit` টা ছবি নেয়
     (ফ্রি ভিশন মডেলের রেট-লিমিট বাঁচাতে)।"""
-    reports = sheets.get_reports_for_patient(patient_id)
+    reports = await async_runtime.run_sheets_read(
+        sheets.get_reports_for_patient, patient_id
+    )
     image_reports = [r for r in reports if str(r.get("File_Type", "")).lower() in ("photo", "image") or str(r.get("File_Type", "")).lower().startswith("image")]
     image_reports = image_reports[-limit:]
     out = []
@@ -4884,7 +5018,8 @@ async def salary_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not roles.can_access(staff.get("Role", ""), roles.MENU_SALARY):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
-    all_staff = [s for s in sheets.get_all_staff() if s.get("Staff_ID")]
+    staff_rows = await async_runtime.run_sheets_read(sheets.get_all_staff)
+    all_staff = [s for s in staff_rows if s.get("Staff_ID")]
     if not all_staff:
         await update.message.reply_text("❌ কোনো স্টাফ পাওয়া যায়নি।")
         return ConversationHandler.END
@@ -4904,7 +5039,9 @@ async def salary_select_callback(update: Update, context: ContextTypes.DEFAULT_T
     await query.answer()
     staff_id = query.data.replace("salsel_", "", 1)
     month = bd_now().strftime("%Y-%m")
-    summary = sheets.get_salary_summary(staff_id, month)
+    summary = await async_runtime.run_sheets_read(
+        sheets.get_salary_summary, staff_id, month
+    )
     if not summary:
         await query.edit_message_text("❌ স্টাফ পাওয়া যায়নি।")
         return ConversationHandler.END
@@ -5034,7 +5171,8 @@ async def salary_confirm_receive(update: Update, context: ContextTypes.DEFAULT_T
                 logger.exception(f"salary_confirm_receive: স্টাফ {staff_telegram_id}-কে notify করতে ব্যর্থ")
 
         try:
-            for o in sheets.get_all_staff():
+            owner_rows = await async_runtime.run_sheets_read(sheets.get_all_staff)
+            for o in owner_rows:
                 if str(o.get("Role", "")).strip() != "Owner":
                     continue
                 if str(o.get("Staff_ID", "")) == str(staff.get("Staff_ID", "")):
@@ -5124,7 +5262,8 @@ async def salhist_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not roles.can_access(staff.get("Role", ""), roles.MENU_SALARY_HISTORY):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
-    all_staff = [s for s in sheets.get_all_staff() if s.get("Staff_ID")]
+    staff_rows = await async_runtime.run_sheets_read(sheets.get_all_staff)
+    all_staff = [s for s in staff_rows if s.get("Staff_ID")]
     if not all_staff:
         await update.message.reply_text("❌ কোনো স্টাফ পাওয়া যায়নি।")
         return
@@ -5145,8 +5284,12 @@ async def salhist_select_callback(update: Update, context: ContextTypes.DEFAULT_
     await query.answer()
     staff_id = query.data.replace("salhist_", "", 1)
     month = bd_now().strftime("%Y-%m")
-    summary = sheets.get_salary_summary(staff_id, month)
-    history = sheets.get_staff_salary_history(staff_id, limit=15)
+    summary, history = await _asyncio_p314.gather(
+        async_runtime.run_sheets_read(sheets.get_salary_summary, staff_id, month),
+        async_runtime.run_sheets_read(
+            sheets.get_staff_salary_history, staff_id, limit=15
+        ),
+    )
 
     name = summary.get("Full_Name", "") if summary else staff_id
     lines = [f"📜 {name} — বেতন হিস্টোরি\n"]
@@ -5177,7 +5320,9 @@ async def mypayments_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
     my_name = staff.get("Full_Name") or staff.get("Name") or str(staff.get("Staff_ID", ""))
-    rows = sheets.get_payments_made_by(my_name, limit=30)
+    rows = await async_runtime.run_sheets_read(
+        sheets.get_payments_made_by, my_name, limit=30
+    )
     if not rows:
         await update.message.reply_text("🧾 তুমি এখনো কাউকে বেতন দাওনি।")
         return
@@ -5279,7 +5424,8 @@ async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
             reply_markup=_menu_keyboard(staff.get("Role", "")),
         )
         try:
-            for o in sheets.get_all_staff():
+            owner_rows = await async_runtime.run_sheets_read(sheets.get_all_staff)
+            for o in owner_rows:
                 if str(o.get("Role", "")).strip() != "Owner":
                     continue
                 if str(o.get("Staff_ID", "")) == str(staff.get("Staff_ID", "")):
@@ -5327,8 +5473,12 @@ async def costtracker_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     today_str = bd_now().strftime("%Y-%m-%d")
     month_str = bd_now().strftime("%Y-%m")
-    today_rows = sheets.get_expenses_for_date(today_str)
-    month_total = sheets.get_expense_total_for_month(month_str)
+    today_rows, month_total = await _asyncio_p314.gather(
+        async_runtime.run_sheets_read(sheets.get_expenses_for_date, today_str),
+        async_runtime.run_sheets_read(
+            sheets.get_expense_total_for_month, month_str
+        ),
+    )
     today_total = sum(float(r.get("Amount", 0) or 0) for r in today_rows)
 
     lines = [f"💸 দৈনিক খরচ ট্র্যাকার — {today_str}\n"]
