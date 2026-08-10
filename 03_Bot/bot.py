@@ -4327,7 +4327,13 @@ async def staffai_start(update, context):
     if not roles.can_access(staff.get("Role", ""), roles.MENU_STAFF_AI_QUERY):
         return ConversationHandler.END
     await update.message.reply_text(
-        "\U0001F916 কী জানতে চাও? সাধারণ ভাষায় লেখো (যেমন: \"গত সপ্তাহে income কত হয়েছে?\")।\n"
+        "🤖 ক্লিনিক সম্পর্কে কী জানতে চান? সাধারণ ভাষায় লিখুন।\n\n"
+        "উদাহরণ:\n"
+        "• আজকে মোট কত টাকা জমা হয়েছে?\n"
+        "• আজকে ফিজিও থেকে কত টাকা এসেছে?\n"
+        "• এই মাসে মোট খরচ কত হয়েছে?\n"
+        "• আজকে কতজন নতুন রোগী রেজিস্ট্রেশন করেছেন?\n"
+        "• আজকে কতজন স্টাফ দেরিতে এসেছেন?\n\n"
         "বাতিল করতে /cancel লেখো।"
     )
     return STAFFAI_QUESTION
