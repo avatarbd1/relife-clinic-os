@@ -15,6 +15,8 @@ class UserFacingCopyTests(unittest.TestCase):
             "Lesson 1 তৈরি হচ্ছে",
             "লিখো (খুঁজতে)",
             "লেখো (খুঁজতে)",
+            "গত সপ্তাহে income কত হয়েছে",
+            "আজকের মোট আয় কত",
         ]
         for phrase in deprecated:
             with self.subTest(phrase=phrase):
@@ -26,6 +28,19 @@ class UserFacingCopyTests(unittest.TestCase):
             "ক্লিনিক্যাল তথ্য ও প্রাসঙ্গিক ম্যানুয়াল বিশ্লেষণ করছি",
             "ক্লিনিকের তথ্য বিশ্লেষণ করে উত্তর প্রস্তুত করছি",
             "রোগী শনাক্ত করতে নাম, ফোন নম্বর অথবা Patient ID লিখুন",
+        ]
+        for phrase in expected:
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, BOT_SOURCE)
+
+
+    def test_staff_ai_examples_use_natural_clinic_language(self):
+        expected = [
+            "আজকে মোট কত টাকা জমা হয়েছে?",
+            "আজকে ফিজিও থেকে কত টাকা এসেছে?",
+            "এই মাসে মোট খরচ কত হয়েছে?",
+            "আজকে কতজন নতুন রোগী রেজিস্ট্রেশন করেছেন?",
+            "আজকে কতজন স্টাফ দেরিতে এসেছেন?",
         ]
         for phrase in expected:
             with self.subTest(phrase=phrase):
