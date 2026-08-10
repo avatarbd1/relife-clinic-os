@@ -456,9 +456,15 @@ def _update_attendance_cell(row_number: int, col_index: int, value):
 
 
 def attendance_check_in(staff: dict) -> str:
-    ws = _worksheet(config.SHEET_ATTENDANCE)
     now = bd_now()
     date_str = now.strftime("%Y-%m-%d")
+    staff_id = staff.get("Staff_ID", "") or str(staff.get("Telegram_ID", ""))
+
+    existing = get_today_attendance(staff_id, date_str)
+    if existing:
+        return str(existing.get("Check_In", "")).strip() or "আগেই Check In করা হয়েছে"
+
+    ws = _worksheet(config.SHEET_ATTENDANCE)
     time_str = now.strftime("%I:%M %p")
     attendance_id = _next_attendance_id(ws)
 
@@ -466,7 +472,6 @@ def attendance_check_in(staff: dict) -> str:
     late_min = max(0, int((now - shift_start).total_seconds() // 60))
     status = "Late" if late_min > 15 else "Present"
 
-    staff_id = staff.get("Staff_ID", "") or str(staff.get("Telegram_ID", ""))
     row = [
         attendance_id,
         date_str,
