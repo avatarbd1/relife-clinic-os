@@ -27,4 +27,4 @@ jobs:
       - name: Compile production bot modules
         run: python -m compileall -q 03_Bot
       - name: Verify external-AI data minimization
-        run: python -m unittest -v 07_Testing/test_staff_ai_data_minimization.py
+        run: |\n          python -m unittest -v \\\n            07_Testing/test_staff_ai_data_minimization.py \\\n            07_Testing/test_user_facing_copy.py
