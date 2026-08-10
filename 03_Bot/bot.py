@@ -1858,8 +1858,23 @@ async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     action = query.data
 
     if action == "att_checkin":
-        time_str = sheets.attendance_check_in(staff)
-        await query.edit_message_text(f"✅ Check In হয়েছে: {time_str}")
+        existing = sheets.get_today_attendance(staff_id, date_str)
+        if existing:
+            await query.edit_message_text(
+                f"✅ আজকের Check In আগেই হয়েছে: {existing.get('Check_In', '')}"
+            )
+            return
+        context.user_data["attendance_location_requested_at"] = bd_now().timestamp()
+        location_keyboard = ReplyKeyboardMarkup(
+            [[KeyboardButton("📍 বর্তমান লোকেশন পাঠান", request_location=True)]],
+            resize_keyboard=True,
+            one_time_keyboard=True,
+        )
+        await query.edit_message_text("📍 Check In করতে বর্তমান লোকেশন পাঠান।")
+        await query.message.reply_text(
+            "নিচের বাটনে চাপ দিয়ে লোকেশন পাঠান। অনুরোধটি ২ মিনিট কার্যকর থাকবে।",
+            reply_markup=location_keyboard,
+        )
     elif action == "att_breakout":
         time_str = sheets.attendance_break_out(staff_id, date_str)
         await query.edit_message_text(f"☕ Break শুরু: {time_str}" if time_str else "❌ আজকের রেকর্ড পাওয়া যায়নি।")
@@ -5257,7 +5272,7 @@ def main():
     )
     app.add_handler(CallbackQueryHandler(schedule_attendance_callback, pattern="^sched_att$"))
     app.add_handler(CallbackQueryHandler(schedule_appointments_callback, pattern="^sched_apt$"))
-    app.add_handler(CallbackQueryHandler(attendance_callback, pattern="^att_"))
+    app.add_handler(CallbackQueryHandler(attendance_callback, pattern="^att_"))\n    app.add_handler(MessageHandler(filters.LOCATION, attendance_location_receive))
     app.add_handler(
         MessageHandler(filters.Regex(f"^{roles.MENU_TODAY_APPOINTMENTS}$"), today_appointments)
     )
