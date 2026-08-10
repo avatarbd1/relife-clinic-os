@@ -71,4 +71,3 @@ Keep PTB update processing sequential. The bot intentionally does not enable
 `concurrent_updates=True`, because its `ConversationHandler` state depends on
 ordered updates. Blocking Sheet writes run in bounded worker threads, and writes
 for the same clinic are serialized.
-
