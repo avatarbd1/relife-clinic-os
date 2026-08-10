@@ -28,6 +28,7 @@ import re
 from datetime import datetime, timedelta, time as dt_time, timezone
 from telegram import (
     Update,
+    KeyboardButton,
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
     InlineKeyboardMarkup,
@@ -46,6 +47,7 @@ from telegram.ext import (
 import config
 from config import bd_now
 import sheets
+from attendance_location import validate_location
 import roles
 import calendar_helper
 import staff_ai_query
@@ -1891,6 +1893,57 @@ async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             )
         else:
             await query.edit_message_text("❌ আজকের রেকর্ড পাওয়া যায়নি।")
+
+
+async def attendance_location_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    requested_at = context.user_data.pop("attendance_location_requested_at", None)
+    if not requested_at or bd_now().timestamp() - requested_at > 120:
+        await update.message.reply_text(
+            "⌛ লোকেশন অনুরোধের সময় শেষ হয়েছে। হাজিরা মেনু থেকে আবার Check In করুন।",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return
+
+    staff = await _require_staff(update, context)
+    if staff is None:
+        return
+    location = update.message.location
+    result = validate_location(
+        location.latitude,
+        location.longitude,
+        location.horizontal_accuracy,
+        clinic_latitude=config.CLINIC_LATITUDE,
+        clinic_longitude=config.CLINIC_LONGITUDE,
+        radius_m=config.ATTENDANCE_RADIUS_METERS,
+        max_accuracy_m=config.ATTENDANCE_MAX_ACCURACY_METERS,
+    )
+    if not result["allowed"]:
+        messages = {
+            "not_configured": "⚠️ Attendance location এখনো configure করা হয়নি। Owner-কে জানান।",
+            "low_accuracy": "📡 লোকেশন যথেষ্ট নির্ভুল নয়। GPS চালু করে আবার চেষ্টা করুন।",
+            "outside": (
+                f"⛔ আপনি ক্লিনিকের অনুমোদিত এলাকার বাইরে আছেন "
+                f"(প্রায় {result['distance_m']:.0f} মিটার দূরে)।"
+            ),
+            "invalid_location": "❌ সঠিক লোকেশন পাওয়া যায়নি। আবার চেষ্টা করুন।",
+        }
+        await update.message.reply_text(
+            messages.get(result["reason"], "❌ লোকেশন যাচাই করা যায়নি।"),
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return
+
+    accuracy = location.horizontal_accuracy
+    audit_note = (
+        f"Location verified | lat={location.latitude:.6f} | "
+        f"lng={location.longitude:.6f} | distance_m={result['distance_m']:.1f} | "
+        f"accuracy_m={accuracy if accuracy is not None else 'unknown'}"
+    )
+    time_str = sheets.attendance_check_in(staff, location_note=audit_note)
+    await update.message.reply_text(
+        f"✅ Check In হয়েছে: {time_str}\n📍 লোকেশন যাচাই হয়েছে।",
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
 
 
 # ---------- আজকের অ্যাপয়েন্টমেন্ট (রোগীর ভিজিট হাজিরা) ----------
