@@ -484,7 +484,7 @@ def attendance_check_in(staff: dict, location_note: str = "") -> str:
         late_min,
         "",
         status,
-        "",
+        location_note,
     ]
     _append_unified_row(
         ws, row, "attendance", attendance_id,
