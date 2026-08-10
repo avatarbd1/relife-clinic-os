@@ -147,4 +147,3 @@ class MasterTenantResolver:
             if time.monotonic() - self._cache_time >= self._cache_ttl:
                 self._reload()
             return self._tenants
-
