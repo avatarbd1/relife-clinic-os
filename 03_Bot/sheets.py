@@ -8,8 +8,15 @@ Google Sheets-কে ডেটাবেস হিসেবে ব্যবহা
 import json
 import gspread
 import re
+import os
+import random
 
 import time
+import threading
+
+import config
+from tenant_runtime import current_tenant
+from gspread.http_client import HTTPClient
 
 
 def _safe_float(value):
@@ -34,8 +41,37 @@ def _safe_bool(value, default: bool = False) -> bool:
     return str(value).strip().lower() in {"1", "true", "yes", "y"}
 
 
-_records_cache = {}  # {worksheet_title: (timestamp, records)}
+_records_cache = {}  # {(spreadsheet_id, worksheet_id): (timestamp, records)}
 _RECORDS_CACHE_TTL = 2.0  # সেকেন্ড — একই ড্যাশবোর্ড রেন্ডারের মধ্যে বারবার একই শীট না পড়ার জন্য
+
+
+def _active_sheet_id() -> str:
+    if config.MULTITENANT_ENABLED:
+        return current_tenant().sheet_id
+    return config.GOOGLE_SHEET_ID
+
+
+def _worksheet_sheet_id(ws) -> str:
+    sheet_id = getattr(ws, "spreadsheet_id", None)
+    if not sheet_id:
+        sheet_id = getattr(getattr(ws, "spreadsheet", None), "id", None)
+    if not sheet_id:
+        raise RuntimeError("Cannot verify worksheet spreadsheet identity")
+    return str(sheet_id)
+
+
+def _assert_current_worksheet(ws) -> str:
+    actual = _worksheet_sheet_id(ws)
+    expected = str(_active_sheet_id())
+    if actual != expected:
+        raise RuntimeError(
+            f"Tenant isolation violation: expected sheet {expected}, got {actual}"
+        )
+    return actual
+
+
+def _records_cache_key(ws) -> tuple[str, int | str]:
+    return (_assert_current_worksheet(ws), getattr(ws, "id", ws.title))
 
 
 def safe_get_all_records(ws, _retries: int = 2, _use_cache: bool = True):
@@ -43,7 +79,7 @@ def safe_get_all_records(ws, _retries: int = 2, _use_cache: bool = True):
     Google Sheets rate-limit/temporary error হলে ১-২ বার retry করে, যাতে দ্রুত পরপর ক্লিকে
     ভুল করে 'কিছুই নেই' না দেখায়। কয়েক সেকেন্ডের জন্য ফলাফল ক্যাশে রাখে যাতে একই Dashboard
     রেন্ডারের মধ্যে (যেখানে অনেক রোগীর জন্য বারবার একই শীট পড়া লাগে) API কল কম হয় এবং দ্রুত হয়।"""
-    cache_key = ws.title
+    cache_key = _records_cache_key(ws)
     if _use_cache and cache_key in _records_cache:
         ts, cached = _records_cache[cache_key]
         if time.time() - ts < _RECORDS_CACHE_TTL:
@@ -58,12 +94,12 @@ def safe_get_all_records(ws, _retries: int = 2, _use_cache: bool = True):
             else:
                 dupes = {h for h in first_row if h and first_row.count(h) > 1}
                 if dupes:
-                    _sheet_warnings[ws.title] = (
+                    _sheet_warnings[(cache_key[0], ws.title)] = (
                         f"শীট '{ws.title}'-এ ডুপ্লিকেট হেডার কলাম আছে: {', '.join(dupes)} — "
                         f"ডেটা ভুল/খালি দেখাতে পারে। হেডার রো ঠিক করো।"
                     )
                 else:
-                    _sheet_warnings.pop(ws.title, None)
+                    _sheet_warnings.pop((cache_key[0], ws.title), None)
                 result = ws.get_all_records()
         _records_cache[cache_key] = (time.time(), result)
         return result
@@ -72,10 +108,10 @@ def safe_get_all_records(ws, _retries: int = 2, _use_cache: bool = True):
         if _retries > 0 and status in (429, 500, 503):
             time.sleep(1.5)
             return safe_get_all_records(ws, _retries - 1, _use_cache)
-        _sheet_warnings[ws.title] = f"শীট '{ws.title}' পড়তে API এরর: {e}"
+        _sheet_warnings[(cache_key[0], ws.title)] = f"শীট '{ws.title}' পড়তে API এরর: {e}"
         return []
     except Exception as e:
-        _sheet_warnings[ws.title] = f"শীট '{ws.title}' পড়তে সমস্যা: {e}"
+        _sheet_warnings[(cache_key[0], ws.title)] = f"শীট '{ws.title}' পড়তে সমস্যা: {e}"
         return []
 
 
@@ -85,19 +121,18 @@ _sheet_warnings: dict = {}
 def get_sheet_warning(sheet_name: str) -> str:
     """সংশ্লিষ্ট শীটে সবশেষ কোনো read-warning (যেমন duplicate header) থাকলে সেটা রিটার্ন করে ও মুছে দেয়।
     bot.py-এর কোনো ফাংশন এটা ইউজারকে দেখাতে চাইলে reply-তে জুড়ে দিতে পারে।"""
-    return _sheet_warnings.pop(sheet_name, "")
+    return _sheet_warnings.pop((_active_sheet_id(), sheet_name), "")
 
 
 def _invalidate_cache(ws) -> None:
     """কোনো শীটে write (append/update) হওয়ার পর সেই শীটের cache মুছে দেয়, যাতে সাথে সাথে
     করা পরবর্তী read পুরনো (stale) ডেটা না দেখায়।"""
-    _records_cache.pop(ws.title, None)
+    _records_cache.pop(_records_cache_key(ws), None)
 
 
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
-import config
 from config import bd_now
 from data_contract import apply_to_headers, encounter_id_from_treatment, metadata, new_record_id
 
@@ -106,32 +141,100 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-_client = None
-_spreadsheet = None
+
+class _SyncTokenBucket:
+    def __init__(self, per_minute: int, burst: int):
+        self.rate = max(1, per_minute) / 60.0
+        self.capacity = max(1, min(burst, per_minute))
+        self.tokens = float(self.capacity)
+        self.updated = time.monotonic()
+        self.lock = threading.Lock()
+
+    def acquire(self):
+        while True:
+            with self.lock:
+                now = time.monotonic()
+                self.tokens = min(
+                    self.capacity,
+                    self.tokens + (now - self.updated) * self.rate,
+                )
+                self.updated = now
+                if self.tokens >= 1:
+                    self.tokens -= 1
+                    return
+                delay = (1 - self.tokens) / self.rate
+            time.sleep(delay)
+
+
+_read_rate = _SyncTokenBucket(
+    int(os.getenv("SHEETS_READ_REQUESTS_PER_MINUTE", "240")),
+    int(os.getenv("SHEETS_READ_BURST", "20")),
+)
+_write_rate = _SyncTokenBucket(
+    int(os.getenv("SHEETS_WRITE_REQUESTS_PER_MINUTE", "45")),
+    int(os.getenv("SHEETS_WRITE_BURST", "5")),
+)
+
+
+class RateLimitedHTTPClient(HTTPClient):
+    """Rate-limit actual HTTP requests, rather than high-level business calls."""
+
+    def request(self, method, endpoint, **kwargs):
+        is_read = str(method).upper() in {"GET", "HEAD", "OPTIONS"}
+        bucket = _read_rate if is_read else _write_rate
+        for attempt in range(4):
+            bucket.acquire()
+            try:
+                return super().request(method, endpoint, **kwargs)
+            except gspread.exceptions.APIError as error:
+                status = getattr(getattr(error, "response", None), "status_code", None)
+                retryable = status == 429 or (is_read and status in {500, 503})
+                if not retryable or attempt == 3:
+                    raise
+                time.sleep(min(8.0, (2 ** attempt) + random.random()))
+        raise RuntimeError("unreachable")
+
+_clients_by_thread = {}
+_spreadsheet_cache = {}
 _worksheet_cache = {}
+_cache_lock = threading.RLock()
 
 
 def _get_client():
-    global _client
-    if _client is None:
-        creds = Credentials.from_service_account_file(
-            config.GOOGLE_CREDENTIALS_PATH, scopes=SCOPES
-        )
-        _client = gspread.authorize(creds)
-    return _client
+    thread_id = threading.get_ident()
+    with _cache_lock:
+        if thread_id not in _clients_by_thread:
+            creds = Credentials.from_service_account_file(
+                config.GOOGLE_CREDENTIALS_PATH, scopes=SCOPES
+            )
+            _clients_by_thread[thread_id] = gspread.authorize(
+                creds, http_client=RateLimitedHTTPClient
+            )
+        return _clients_by_thread[thread_id]
 
 
 def _get_spreadsheet():
-    global _spreadsheet
-    if _spreadsheet is None:
-        _spreadsheet = _get_client().open_by_key(config.GOOGLE_SHEET_ID)
-    return _spreadsheet
+    sheet_id = _active_sheet_id()
+    thread_id = threading.get_ident()
+    key = (thread_id, sheet_id)
+    with _cache_lock:
+        if key not in _spreadsheet_cache:
+            spreadsheet = _get_client().open_by_key(sheet_id)
+            if str(spreadsheet.id) != str(sheet_id):
+                raise RuntimeError("Opened spreadsheet does not match resolved tenant")
+            _spreadsheet_cache[key] = spreadsheet
+        return _spreadsheet_cache[key]
 
 
 def _worksheet(name: str):
-    if name not in _worksheet_cache:
-        _worksheet_cache[name] = _get_spreadsheet().worksheet(name)
-    return _worksheet_cache[name]
+    sheet_id = _active_sheet_id()
+    key = (threading.get_ident(), sheet_id, name)
+    with _cache_lock:
+        if key not in _worksheet_cache:
+            ws = _get_spreadsheet().worksheet(name)
+            _assert_current_worksheet(ws)
+            _worksheet_cache[key] = ws
+        return _worksheet_cache[key]
 
 
 def _append_unified_row(
@@ -766,6 +869,41 @@ def add_payment(data: dict) -> str:
         provider_id=str(data.get("Received_By", "")),
     )
     return receipt_no
+
+
+def record_payment_transaction(
+    patient_id: str,
+    amount: float,
+    sessions: int,
+    data: dict,
+    *,
+    idempotency_key: str,
+) -> tuple[dict | None, str]:
+    """Apply a payment flow under one caller-held tenant write lock.
+
+    The request marker prevents a Telegram update retry from appending a second
+    receipt. The async adapter serializes this whole function per clinic.
+    """
+    marker = f"REQ:{idempotency_key}"
+    ws = _worksheet(config.SHEET_PAYMENTS)
+    for row in safe_get_all_records(ws, _use_cache=False):
+        if marker in str(row.get("Remarks", "")):
+            return None, str(row.get("Receipt_No", "") or row.get("Receipt_ID", ""))
+
+    bill_status = None
+    if amount > 0:
+        bill_status = update_patient_payment(patient_id, amount, discount=0)
+
+    payload = dict(data)
+    remarks = str(payload.get("Remarks", "")).strip()
+    payload["Remarks"] = f"{remarks} | {marker}".strip(" |")
+    if bill_status:
+        payload["Due"] = bill_status["due_amount"]
+    receipt_no = add_payment(payload)
+
+    for _ in range(max(0, int(sessions or 0))):
+        increment_package_session(patient_id)
+    return bill_status, receipt_no
 
 
 def get_today_payments_by_staff(staff_name: str) -> list[dict]:

@@ -65,7 +65,8 @@ class AttendanceLocationTests(unittest.TestCase):
         self.assertIn("from attendance_location import validate_location", BOT_SOURCE)
 
     def test_verified_location_is_written_to_attendance_note(self):
-        self.assertIn('attendance_check_in(staff, location_note=audit_note)', BOT_SOURCE)
+        self.assertIn('sheets.attendance_check_in, staff, location_note=audit_note', BOT_SOURCE)
+        self.assertIn('await async_runtime.run_sheets_write(', BOT_SOURCE)
         self.assertIn('def attendance_check_in(staff: dict, location_note: str = "")', SHEETS_SOURCE)
         self.assertIn("        location_note,\n    ]", SHEETS_SOURCE)
 

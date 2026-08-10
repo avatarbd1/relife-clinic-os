@@ -41,6 +41,8 @@ from telegram.ext import (
     CallbackQueryHandler,
     ConversationHandler,
     ContextTypes,
+    TypeHandler,
+    ApplicationHandlerStop,
     filters,
 )
 
@@ -60,6 +62,7 @@ import ai_helper
 import assessment_defs
 import clinical_ai
 import async_runtime
+import tenant_runtime
 from learning import learning_engine
 
 logging.basicConfig(
@@ -67,6 +70,41 @@ logging.basicConfig(
     level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
+_tenant_resolver = None
+
+
+async def _bind_update_tenant(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Resolve and bind a clinic before any business handler can touch Sheets."""
+    if not config.MULTITENANT_ENABLED:
+        return
+    if update.effective_user is None:
+        raise ApplicationHandlerStop
+
+    try:
+        tenant = await async_runtime.run_role_lookup(
+            _tenant_resolver.resolve, update.effective_user.id
+        )
+    except Exception as error:
+        capture_exception(error)
+        if update.effective_message:
+            await update.effective_message.reply_text(
+                "⚠️ ক্লিনিক পরিচয় যাচাই করা যাচ্ছে না। একটু পরে আবার চেষ্টা করুন।"
+            )
+        raise ApplicationHandlerStop
+
+    if tenant is None:
+        if update.effective_message:
+            await update.effective_message.reply_text(
+                "❌ আপনার Telegram ID কোনো সক্রিয় ক্লিনিকের সঙ্গে যুক্ত নেই।"
+            )
+        raise ApplicationHandlerStop
+
+    previous = context.user_data.get("_clinic_id")
+    if previous and previous != tenant.clinic_id:
+        context.user_data.clear()
+    context.user_data["_clinic_id"] = tenant.clinic_id
+    context.user_data["_sheet_id"] = tenant.sheet_id
+    tenant_runtime.bind_tenant(tenant)
 
 (
     REG_NAME,
@@ -602,7 +640,9 @@ async def pt_dashboard_receive_callback(update: Update, context: ContextTypes.DE
     context.user_data["pt_patient_id"] = patient_id
     context.user_data["pt_appointment_id"] = appointment_id
     if appointment_id:
-        sheets.update_appointment_status(appointment_id, "In Treatment")
+        await async_runtime.run_sheets_write(
+            sheets.update_appointment_status, appointment_id, "In Treatment"
+        )
 
     await query.edit_message_text(
         _pt_workspace_text(patient, plan, notes, treatment),
@@ -659,11 +699,17 @@ async def pt_dashboard_done_callback(update: Update, context: ContextTypes.DEFAU
     treatment["Remarks"] = " | ".join(x for x in remarks if x)
 
     try:
-        treatment_id = sheets.add_treatment_note(treatment, created_by=staff.get("Full_Name", "Unknown"))
-        sheets.increment_plan_session(patient_id)
+        treatment_id = await async_runtime.run_sheets_write(
+            sheets.add_treatment_note,
+            treatment,
+            created_by=staff.get("Full_Name", "Unknown"),
+        )
+        await async_runtime.run_sheets_write(sheets.increment_plan_session, patient_id)
         appointment_id = context.user_data.get("pt_appointment_id", "")
         if appointment_id:
-            sheets.update_appointment_status(appointment_id, "Completed")
+            await async_runtime.run_sheets_write(
+                sheets.update_appointment_status, appointment_id, "Completed"
+            )
         await query.edit_message_text(
             f"✅ Session Completed\n\n"
             f"রোগী: {patient.get('Full_Name', treatment.get('Patient_Name', ''))} ({patient_id})\n"
@@ -1322,12 +1368,17 @@ async def reg_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip().lower()
     staff = context.user_data.get("staff", {})
     if text in ("হ্যাঁ", "yes", "y", "হা", "ha"):
-        patient_id = sheets.add_patient(
+        patient_id = await async_runtime.run_sheets_write(
+            sheets.add_patient,
             context.user_data["new_patient"],
             created_by=staff.get("Full_Name", "Unknown"),
         )
         try:
-            sheets.adjust_inventory_stock("Patient Card", -1, "Auto-Registration", staff.get("Full_Name", "Unknown"))
+            await async_runtime.run_sheets_write(
+                sheets.adjust_inventory_stock,
+                "Patient Card", -1, "Auto-Registration",
+                staff.get("Full_Name", "Unknown"),
+            )
         except Exception as e:
             logger.warning(f"inventory auto-deduct (Patient Card) ব্যর্থ হয়েছে: {e}")
         await update.message.reply_text(
@@ -1691,7 +1742,11 @@ async def apt_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 row["Time"] = t
                 row.pop("Dates", None)
                 row.pop("Times", None)
-                appointment_id = sheets.add_appointment(row, created_by=staff.get("Full_Name", "Unknown"))
+                appointment_id = await async_runtime.run_sheets_write(
+                    sheets.add_appointment,
+                    row,
+                    created_by=staff.get("Full_Name", "Unknown"),
+                )
                 ids.append(appointment_id)
         if len(ids) > 1:
             msg = f"✅ {len(ids)}টা অ্যাপয়েন্টমেন্ট বুক হয়েছে!\nAppointment IDs: {', '.join(ids)}"
@@ -1879,13 +1934,19 @@ async def attendance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             reply_markup=location_keyboard,
         )
     elif action == "att_breakout":
-        time_str = sheets.attendance_break_out(staff_id, date_str)
+        time_str = await async_runtime.run_sheets_write(
+            sheets.attendance_break_out, staff_id, date_str
+        )
         await query.edit_message_text(f"☕ Break শুরু: {time_str}" if time_str else "❌ আজকের রেকর্ড পাওয়া যায়নি।")
     elif action == "att_breakin":
-        time_str = sheets.attendance_break_in(staff_id, date_str)
+        time_str = await async_runtime.run_sheets_write(
+            sheets.attendance_break_in, staff_id, date_str
+        )
         await query.edit_message_text(f"🔙 Break শেষ: {time_str}" if time_str else "❌ আজকের রেকর্ড পাওয়া যায়নি।")
     elif action == "att_checkout":
-        result = sheets.attendance_check_out(staff_id, date_str)
+        result = await async_runtime.run_sheets_write(
+            sheets.attendance_check_out, staff_id, date_str
+        )
         if result:
             await query.edit_message_text(
                 f"🚪 Check Out হয়েছে: {result['time']}\n"
@@ -1909,14 +1970,18 @@ async def attendance_location_receive(update: Update, context: ContextTypes.DEFA
     if staff is None:
         return
     location = update.message.location
+    tenant = tenant_runtime.current_tenant() if config.MULTITENANT_ENABLED else None
     result = validate_location(
         location.latitude,
         location.longitude,
         location.horizontal_accuracy,
-        clinic_latitude=config.CLINIC_LATITUDE,
-        clinic_longitude=config.CLINIC_LONGITUDE,
-        radius_m=config.ATTENDANCE_RADIUS_METERS,
-        max_accuracy_m=config.ATTENDANCE_MAX_ACCURACY_METERS,
+        clinic_latitude=tenant.latitude if tenant else config.CLINIC_LATITUDE,
+        clinic_longitude=tenant.longitude if tenant else config.CLINIC_LONGITUDE,
+        radius_m=tenant.attendance_radius_m if tenant else config.ATTENDANCE_RADIUS_METERS,
+        max_accuracy_m=(
+            tenant.attendance_max_accuracy_m
+            if tenant else config.ATTENDANCE_MAX_ACCURACY_METERS
+        ),
     )
     if not result["allowed"]:
         messages = {
@@ -1940,7 +2005,9 @@ async def attendance_location_receive(update: Update, context: ContextTypes.DEFA
         f"lng={location.longitude:.6f} | distance_m={result['distance_m']:.1f} | "
         f"accuracy_m={accuracy if accuracy is not None else 'unknown'}"
     )
-    time_str = sheets.attendance_check_in(staff, location_note=audit_note)
+    time_str = await async_runtime.run_sheets_write(
+        sheets.attendance_check_in, staff, location_note=audit_note
+    )
     await update.message.reply_text(
         f"✅ Check In হয়েছে: {time_str}\n📍 লোকেশন যাচাই হয়েছে।",
         reply_markup=_menu_keyboard(staff.get("Role", "")),
@@ -1985,7 +2052,9 @@ async def apt_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     patient_id = parts[3] if len(parts) > 3 else ""
     status_map = {"Completed": "Completed", "NoShow": "No-show"}
     status = status_map.get(status_code, status_code)
-    ok = sheets.update_appointment_status(appointment_id, status)
+    ok = await async_runtime.run_sheets_write(
+        sheets.update_appointment_status, appointment_id, status
+    )
     if not ok:
         await query.edit_message_text("❌ আপডেট করা যায়নি।")
         return
@@ -2233,25 +2302,24 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sessions = p.get("Sessions", 0)
 
     try:
-        bill_status = None
-        if amount > 0:
-            bill_status = sheets.update_patient_payment(patient_id, amount, discount=0)
-
-        receipt_no = sheets.add_payment({
-            "Patient_ID": patient_id,
-            "Patient_Name": p.get("Patient_Name", ""),
-            "Department": p.get("Department", ""),
-            "Amount": amount,
-            "Discount": 0,
-            "Due": bill_status["due_amount"] if bill_status else "",
-            "Payment_Method": p.get("Payment_Method", "") if amount > 0 else "N/A",
-            "Received_By": staff.get("Full_Name", "Unknown"),
-            "Remarks": f"Sessions: {sessions}" if sessions is not None else "",
-        })
-
-        if sessions > 0:
-            for _ in range(sessions):
-                sheets.increment_package_session(patient_id)
+        bill_status, receipt_no = await async_runtime.run_sheets_write(
+            sheets.record_payment_transaction,
+            patient_id,
+            amount,
+            sessions,
+            {
+                "Patient_ID": patient_id,
+                "Patient_Name": p.get("Patient_Name", ""),
+                "Department": p.get("Department", ""),
+                "Amount": amount,
+                "Discount": 0,
+                "Due": "",
+                "Payment_Method": p.get("Payment_Method", "") if amount > 0 else "N/A",
+                "Received_By": staff.get("Full_Name", "Unknown"),
+                "Remarks": f"Sessions: {sessions}" if sessions is not None else "",
+            },
+            idempotency_key=str(update.update_id),
+        )
 
         if amount > 0:
             lines = [
@@ -2382,7 +2450,11 @@ async def paydel_confirm_callback(update: Update, context: ContextTypes.DEFAULT_
         return ConversationHandler.END
 
     try:
-        deleted = sheets.delete_payment(receipt_no, deleted_by=staff.get("Full_Name", "Unknown"))
+        deleted = await async_runtime.run_sheets_write(
+            sheets.delete_payment,
+            receipt_no,
+            deleted_by=staff.get("Full_Name", "Unknown"),
+        )
     except Exception as e:
         logger.exception("delete_payment ব্যর্থ হয়েছে")
         await query.edit_message_text(
@@ -2874,7 +2946,13 @@ async def inventory_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ সংখ্যাটা বুঝতে পারিনি।")
         return INV_UPDATE
     change = amount if sign == "+" else -amount
-    result = sheets.adjust_inventory_stock(item_name, change, reason="Manual", staff=staff.get("Full_Name", "Unknown"))
+    result = await async_runtime.run_sheets_write(
+        sheets.adjust_inventory_stock,
+        item_name,
+        change,
+        reason="Manual",
+        staff=staff.get("Full_Name", "Unknown"),
+    )
     if not result.get("ok"):
         await update.message.reply_text(f"❌ {result.get('error')}")
         return INV_UPDATE
@@ -2900,9 +2978,17 @@ async def _treat_do_save(result_reply, menu_reply, context: ContextTypes.DEFAULT
     t["Machines"] = ", ".join(MACHINE_LIST[i] for i in sorted(selected))
     patient_id = t.get("Patient_ID", "")
     try:
-        treatment_id = sheets.add_treatment_note(t, created_by=staff.get("Full_Name", "Unknown"))
-        sheets.increment_plan_session(patient_id)
-        _apply_inventory_auto_deduct(t["Machines"], staff.get("Full_Name", "Unknown"))
+        treatment_id = await async_runtime.run_sheets_write(
+            sheets.add_treatment_note,
+            t,
+            created_by=staff.get("Full_Name", "Unknown"),
+        )
+        await async_runtime.run_sheets_write(sheets.increment_plan_session, patient_id)
+        await async_runtime.run_sheets_write(
+            _apply_inventory_auto_deduct,
+            t["Machines"],
+            staff.get("Full_Name", "Unknown"),
+        )
         await result_reply(
             f"✅ ট্রিটমেন্ট নোট সেভ হয়েছে! Treatment ID: {treatment_id}\n"
             f"সেশন: {t.get('Session_No', '?')}\n"
@@ -2974,7 +3060,8 @@ async def _assessment_advance(update: Update, context: ContextTypes.DEFAULT_TYPE
         answers = context.user_data.get("assessment_answers", {})
         staff = context.user_data.get("staff", {})
         try:
-            sheets.add_assessment(
+            await async_runtime.run_sheets_write(
+                sheets.add_assessment,
                 t.get("Patient_ID", ""), category, answers,
                 created_by=staff.get("Full_Name", "Unknown"),
             )
@@ -3278,7 +3365,11 @@ async def tplan_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
 
     try:
-        plan_id = sheets.add_treatment_plan(t, created_by=staff.get("Full_Name", "Unknown"))
+        plan_id = await async_runtime.run_sheets_write(
+            sheets.add_treatment_plan,
+            t,
+            created_by=staff.get("Full_Name", "Unknown"),
+        )
         await update.message.reply_text(
             f"✅ ট্রিটমেন্ট প্ল্যান সেভ হয়েছে! Plan ID: {plan_id}\n"
             "এখন থেকে 📝 ট্রিটমেন্ট নোট-এ এই রোগীর দৈনিক এন্ট্রি এই প্ল্যান থেকে অটো-ফিল হবে।",
@@ -4231,7 +4322,7 @@ async def report_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.exception("Drive আপলোড ব্যর্থ হয়েছে, শুধু Telegram-এ সংরক্ষিত থাকবে")
 
     try:
-        report_id = sheets.add_report({
+        report_id = await async_runtime.run_sheets_write(sheets.add_report, {
             "Patient_ID": rp["Patient_ID"],
             "Patient_Name": rp["Patient_Name"],
             "File_Telegram_ID": file_obj.file_id,
@@ -4717,7 +4808,8 @@ async def casestudy_extra_receive(update, context):
     )
     staff = context.user_data.get("staff", {})
     try:
-        sheets.add_case_study_lesson(
+        await async_runtime.run_sheets_write(
+            sheets.add_case_study_lesson,
             context.user_data.get("cs_session_id", ""),
             context.user_data.get("cs_patient_id", ""),
             context.user_data.get("cs_patient_name", ""),
@@ -4750,7 +4842,8 @@ async def casestudy_lesson_callback(update, context):
     )
     context.user_data["cs_lesson"] = lesson
     try:
-        sheets.add_case_study_lesson(
+        await async_runtime.run_sheets_write(
+            sheets.add_case_study_lesson,
             context.user_data.get("cs_session_id", ""),
             context.user_data.get("cs_patient_id", ""),
             context.user_data.get("cs_patient_name", ""),
@@ -4913,7 +5006,8 @@ async def salary_confirm_receive(update: Update, context: ContextTypes.DEFAULT_T
     remaining_due = due - amount
 
     try:
-        payment_id = sheets.add_salary_payment(
+        payment_id = await async_runtime.run_sheets_write(
+            sheets.add_salary_payment,
             s["Staff_ID"], s["Month"], amount,
             paid_by=paid_by_name,
             note=s.get("Note", ""),
@@ -4983,8 +5077,27 @@ async def send_break_reminder(context: ContextTypes.DEFAULT_TYPE):
     """প্রতিদিন দুপুর ১টায় (Bangladesh time) চলে — যারা Check-In করেছে কিন্তু এখনো
     Break নেয়নি এবং Check-Out করেনি, তাদের বিরতি নেওয়ার reminder পাঠায়।"""
     date_str = bd_now().strftime("%Y-%m-%d")
+    if config.MULTITENANT_ENABLED:
+        try:
+            tenants = await async_runtime.run_role_lookup(
+                _tenant_resolver.list_active_tenants
+            )
+        except Exception as error:
+            capture_exception(error)
+            logger.exception("send_break_reminder: tenant list failed")
+            return
+        for tenant in tenants:
+            tenant_runtime.bind_tenant(tenant)
+            await _send_break_reminder_for_bound_tenant(context, date_str)
+        return
+    await _send_break_reminder_for_bound_tenant(context, date_str)
+
+
+async def _send_break_reminder_for_bound_tenant(context, date_str: str):
     try:
-        pending = sheets.get_staff_needing_break_reminder(date_str)
+        pending = await async_runtime.run_sheets_read(
+            sheets.get_staff_needing_break_reminder, date_str
+        )
     except Exception:
         logger.exception("send_break_reminder: pending স্টাফ লিস্ট আনতে ব্যর্থ হয়েছে")
         return
@@ -5155,7 +5268,8 @@ async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
     amount = c.get("Amount", 0)
 
     try:
-        expense_id = sheets.add_expense(
+        expense_id = await async_runtime.run_sheets_write(
+            sheets.add_expense,
             category, amount,
             added_by=added_by_name,
             note=c.get("Note", ""),
@@ -5234,8 +5348,17 @@ async def costtracker_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(lines))
 
 def main():
+    global _tenant_resolver
     init_sentry()
+    # Do not enable concurrent_updates: ConversationHandler needs ordered updates.
     app = Application.builder().token(config.BOT_TOKEN).build()
+    if config.MULTITENANT_ENABLED:
+        _tenant_resolver = tenant_runtime.MasterTenantResolver(
+            sheets._get_client(),
+            config.MASTER_SHEET_ID,
+            cache_ttl=float(os.getenv("TENANT_LOOKUP_CACHE_TTL", "30")),
+        )
+        app.add_handler(TypeHandler(Update, _bind_update_tenant), group=-100)
     app.job_queue.run_daily(
         send_break_reminder,
         time=dt_time(hour=13, minute=0, tzinfo=timezone(timedelta(hours=6))),
@@ -5327,8 +5450,15 @@ def main():
     )
     app.add_handler(CallbackQueryHandler(schedule_attendance_callback, pattern="^sched_att$"))
     app.add_handler(CallbackQueryHandler(schedule_appointments_callback, pattern="^sched_apt$"))
-    app.add_handler(CallbackQueryHandler(attendance_callback, pattern="^att_"))
-    app.add_handler(MessageHandler(filters.LOCATION, attendance_location_receive))
+    # Attendance is outside ConversationHandler. Running only these callbacks as
+    # non-blocking tasks lets different clinics check in concurrently while all
+    # stateful conversation updates remain sequential.
+    app.add_handler(
+        CallbackQueryHandler(attendance_callback, pattern="^att_", block=False)
+    )
+    app.add_handler(
+        MessageHandler(filters.LOCATION, attendance_location_receive, block=False)
+    )
     app.add_handler(
         MessageHandler(filters.Regex(f"^{roles.MENU_TODAY_APPOINTMENTS}$"), today_appointments)
     )
