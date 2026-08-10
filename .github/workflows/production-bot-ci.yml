@@ -35,4 +35,5 @@ jobs:
             07_Testing/test_user_facing_copy.py \
             07_Testing/test_attendance_integrity.py \
             07_Testing/test_attendance_location.py \
+            07_Testing/test_multitenant_isolation.py \
             07_Testing/test_sentry_policy.py
