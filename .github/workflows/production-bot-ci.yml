@@ -24,6 +24,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Install production bot dependencies
+        run: python -m pip install -r 03_Bot/requirements.txt
       - name: Compile production bot modules
         run: python -m compileall -q 03_Bot
       - name: Verify external-AI data minimization
@@ -32,4 +34,5 @@ jobs:
             07_Testing/test_staff_ai_data_minimization.py \
             07_Testing/test_user_facing_copy.py \
             07_Testing/test_attendance_integrity.py \
-            07_Testing/test_attendance_location.py
+            07_Testing/test_attendance_location.py \
+            07_Testing/test_sentry_policy.py
