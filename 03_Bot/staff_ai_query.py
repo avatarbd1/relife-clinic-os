@@ -81,6 +81,38 @@ ROLE_RESTRICTED_SHEETS = {
 }
 
 
+# External AI providers receive only the minimum operational fields needed for
+# aggregate answers. Direct identifiers (names, phone numbers, addresses,
+# patient/staff IDs, receipt numbers, and collector identity) are deliberately
+# excluded even when those columns exist in the source sheet.
+AI_SAFE_FIELDS = {
+    "06_Payments": (
+        "Date", "Department", "Amount", "Discount", "Due", "Time", "Session_Type",
+    ),
+    "03_Attendance": (
+        "Date", "Role", "Check_In", "Check_Out", "Working_Hours", "Late_Min",
+        "Overtime", "Status",
+    ),
+    "02_Patients": (
+        "Registration_Date", "Department", "Total_Bill", "Paid", "Due", "Status",
+    ),
+    "08_Staff": ("Role", "Salary", "Status", "Joining_Date"),
+    "07_Expenses": (
+        "Date", "Category", "Amount", "Department", "Payment_Method", "Status",
+    ),
+}
+
+
+def _filter_ai_safe_records(sheet_name: str, records: list) -> list:
+    """Return a field-whitelisted copy safe to send to an external AI API."""
+    allowed_fields = AI_SAFE_FIELDS.get(sheet_name, ())
+    return [
+        {field: record.get(field, "") for field in allowed_fields if field in record}
+        for record in records
+        if isinstance(record, dict)
+    ]
+
+
 def _pick_relevant_sheet(question: str, role: str = "") -> str:
     allowed_catalog = {
         name: desc for name, desc in SHEET_CATALOG.items()
@@ -102,7 +134,8 @@ def _pick_relevant_sheet(question: str, role: str = "") -> str:
 
 
 def _summarize_answer(question: str, sheet_name: str, records: list) -> str:
-    data_json = json.dumps(records, ensure_ascii=False)[:8000]
+    safe_records = _filter_ai_safe_records(sheet_name, records)
+    data_json = json.dumps(safe_records, ensure_ascii=False)[:8000]
     today_str = config.bd_now().strftime("%Y-%m-%d")
     prompt = f"""আপনি একজন ক্লিনিক assistant, স্টাফকে ডেটা বুঝিয়ে বলছেন।
 
