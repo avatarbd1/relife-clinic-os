@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PATH = ROOT / "03_Bot" / "attendance_location.py"
+PATH = ROOT / "03_Bot" / "attendance_location.py"\nBOT_SOURCE = (ROOT / "03_Bot" / "bot.py").read_text(encoding="utf-8")\nSHEETS_SOURCE = (ROOT / "03_Bot" / "sheets.py").read_text(encoding="utf-8")
 SPEC = importlib.util.spec_from_file_location("attendance_location", PATH)
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
@@ -54,6 +54,18 @@ class AttendanceLocationTests(unittest.TestCase):
         )
         self.assertFalse(result["allowed"])
         self.assertEqual(result["reason"], "not_configured")
+
+
+    def test_bot_wires_location_request_and_receiver(self):
+        self.assertIn("request_location=True", BOT_SOURCE)
+        self.assertIn("async def attendance_location_receive", BOT_SOURCE)
+        self.assertIn("filters.LOCATION, attendance_location_receive", BOT_SOURCE)
+        self.assertIn("from attendance_location import validate_location", BOT_SOURCE)
+
+    def test_verified_location_is_written_to_attendance_note(self):
+        self.assertIn('attendance_check_in(staff, location_note=audit_note)', BOT_SOURCE)
+        self.assertIn('def attendance_check_in(staff: dict, location_note: str = "")', SHEETS_SOURCE)
+        self.assertIn("        location_note,\n    ]", SHEETS_SOURCE)
 
 
 if __name__ == "__main__":
