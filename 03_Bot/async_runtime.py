@@ -104,4 +104,3 @@ async def run_ai_background(
         await on_error("error")
     else:
         await on_success(result)
-
