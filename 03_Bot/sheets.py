@@ -42,7 +42,10 @@ def _safe_bool(value, default: bool = False) -> bool:
 
 
 _records_cache = {}  # {(spreadsheet_id, worksheet_id): (timestamp, records)}
-_RECORDS_CACHE_TTL = 2.0  # সেকেন্ড — একই ড্যাশবোর্ড রেন্ডারের মধ্যে বারবার একই শীট না পড়ার জন্য
+_records_cache_lock = threading.RLock()
+_RECORDS_CACHE_TTL = max(
+    0.0, float(os.getenv("SHEETS_RECORDS_CACHE_TTL_SECONDS", "10"))
+)
 
 
 def _active_sheet_id() -> str:
@@ -80,10 +83,13 @@ def safe_get_all_records(ws, _retries: int = 2, _use_cache: bool = True):
     ভুল করে 'কিছুই নেই' না দেখায়। কয়েক সেকেন্ডের জন্য ফলাফল ক্যাশে রাখে যাতে একই Dashboard
     রেন্ডারের মধ্যে (যেখানে অনেক রোগীর জন্য বারবার একই শীট পড়া লাগে) API কল কম হয় এবং দ্রুত হয়।"""
     cache_key = _records_cache_key(ws)
-    if _use_cache and cache_key in _records_cache:
-        ts, cached = _records_cache[cache_key]
-        if time.time() - ts < _RECORDS_CACHE_TTL:
-            return cached
+    if _use_cache:
+        with _records_cache_lock:
+            entry = _records_cache.get(cache_key)
+        if entry is not None:
+            ts, cached = entry
+            if time.monotonic() - ts < _RECORDS_CACHE_TTL:
+                return cached
     try:
         if ws.row_count < 2:
             result = []
@@ -101,7 +107,8 @@ def safe_get_all_records(ws, _retries: int = 2, _use_cache: bool = True):
                 else:
                     _sheet_warnings.pop((cache_key[0], ws.title), None)
                 result = ws.get_all_records()
-        _records_cache[cache_key] = (time.time(), result)
+        with _records_cache_lock:
+            _records_cache[cache_key] = (time.monotonic(), result)
         return result
     except gspread.exceptions.APIError as e:
         status = getattr(getattr(e, "response", None), "status_code", None)
@@ -127,7 +134,8 @@ def get_sheet_warning(sheet_name: str) -> str:
 def _invalidate_cache(ws) -> None:
     """কোনো শীটে write (append/update) হওয়ার পর সেই শীটের cache মুছে দেয়, যাতে সাথে সাথে
     করা পরবর্তী read পুরনো (stale) ডেটা না দেখায়।"""
-    _records_cache.pop(_records_cache_key(ws), None)
+    with _records_cache_lock:
+        _records_cache.pop(_records_cache_key(ws), None)
 
 
 from google.oauth2.service_account import Credentials
