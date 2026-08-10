@@ -7,6 +7,8 @@ import os
 from functools import partial
 from typing import Any, Callable
 
+from observability import capture_exception
+
 
 class AsyncCallGate:
     """Run synchronous callables in worker threads with bounded concurrency."""
@@ -63,9 +65,11 @@ async def run_ai_background(
     """Run an AI call and deliver its result without holding an update handler."""
     try:
         result = await run_ai(function, *args, timeout=timeout, **kwargs)
-    except asyncio.TimeoutError:
+    except asyncio.TimeoutError as error:
+        capture_exception(error)
         await on_error("timeout")
-    except Exception:
+    except Exception as error:
+        capture_exception(error)
         await on_error("error")
     else:
         await on_success(result)
