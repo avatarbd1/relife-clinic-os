@@ -31,4 +31,5 @@ jobs:
           python -m unittest -v \
             07_Testing/test_staff_ai_data_minimization.py \
             07_Testing/test_user_facing_copy.py \
-            07_Testing/test_attendance_integrity.py
+            07_Testing/test_attendance_integrity.py \
+            07_Testing/test_attendance_location.py

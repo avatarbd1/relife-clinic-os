@@ -455,7 +455,7 @@ def _update_attendance_cell(row_number: int, col_index: int, value):
     ws.update_cell(row_number, col_index, value)
 
 
-def attendance_check_in(staff: dict) -> str:
+def attendance_check_in(staff: dict, location_note: str = "") -> str:
     now = bd_now()
     date_str = now.strftime("%Y-%m-%d")
     staff_id = staff.get("Staff_ID", "") or str(staff.get("Telegram_ID", ""))
@@ -484,7 +484,7 @@ def attendance_check_in(staff: dict) -> str:
         late_min,
         "",
         status,
-        "",
+        location_note,
     ]
     _append_unified_row(
         ws, row, "attendance", attendance_id,

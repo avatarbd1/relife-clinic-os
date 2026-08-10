@@ -58,3 +58,12 @@ SHEET_LEARNING_PROGRESS = "18_Learning_Progress"
 
 SHEET_CONSENT = "19_Consent"
 SHEET_DATA_AUDIT = "20_Data_Audit"
+
+
+# ---- Attendance location verification ----
+CLINIC_LATITUDE = float(os.getenv("CLINIC_LATITUDE", "0") or 0)
+CLINIC_LONGITUDE = float(os.getenv("CLINIC_LONGITUDE", "0") or 0)
+ATTENDANCE_RADIUS_METERS = float(os.getenv("ATTENDANCE_RADIUS_METERS", "200") or 200)
+ATTENDANCE_MAX_ACCURACY_METERS = float(
+    os.getenv("ATTENDANCE_MAX_ACCURACY_METERS", "100") or 100
+)
