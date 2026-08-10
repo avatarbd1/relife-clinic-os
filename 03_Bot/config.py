@@ -18,7 +18,13 @@ if not BOT_TOKEN:
 
 # ---- Google Sheets ----
 GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
-if not GOOGLE_SHEET_ID:
+MASTER_SHEET_ID = os.getenv("MASTER_SHEET_ID")
+MULTITENANT_ENABLED = os.getenv("MULTITENANT_ENABLED", "false").strip().lower() in {
+    "1", "true", "yes", "on"
+}
+if MULTITENANT_ENABLED and not MASTER_SHEET_ID:
+    raise RuntimeError("MULTITENANT_ENABLED=true but MASTER_SHEET_ID is missing.")
+if not GOOGLE_SHEET_ID and not MULTITENANT_ENABLED:
     raise RuntimeError("GOOGLE_SHEET_ID পাওয়া যায়নি।")
 
 # credentials.json ফাইলের পাথ (রুট ডিরেক্টরিতে)
@@ -67,3 +73,4 @@ ATTENDANCE_RADIUS_METERS = float(os.getenv("ATTENDANCE_RADIUS_METERS", "200") or
 ATTENDANCE_MAX_ACCURACY_METERS = float(
     os.getenv("ATTENDANCE_MAX_ACCURACY_METERS", "100") or 100
 )
+
