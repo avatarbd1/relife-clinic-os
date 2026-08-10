@@ -4,7 +4,9 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PATH = ROOT / "03_Bot" / "attendance_location.py"\nBOT_SOURCE = (ROOT / "03_Bot" / "bot.py").read_text(encoding="utf-8")\nSHEETS_SOURCE = (ROOT / "03_Bot" / "sheets.py").read_text(encoding="utf-8")
+PATH = ROOT / "03_Bot" / "attendance_location.py"
+BOT_SOURCE = (ROOT / "03_Bot" / "bot.py").read_text(encoding="utf-8")
+SHEETS_SOURCE = (ROOT / "03_Bot" / "sheets.py").read_text(encoding="utf-8")
 SPEC = importlib.util.spec_from_file_location("attendance_location", PATH)
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
