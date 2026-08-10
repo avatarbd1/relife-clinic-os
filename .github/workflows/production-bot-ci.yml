@@ -1,0 +1,30 @@
+name: Production Bot CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '03_Bot/**'
+      - '07_Testing/test_staff_ai_data_minimization.py'
+      - '.github/workflows/production-bot-ci.yml'
+  pull_request:
+    paths:
+      - '03_Bot/**'
+      - '07_Testing/test_staff_ai_data_minimization.py'
+      - '.github/workflows/production-bot-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  production-bot-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile production bot modules
+        run: python -m compileall -q 03_Bot
+      - name: Verify external-AI data minimization
+        run: python -m unittest -v 07_Testing/test_staff_ai_data_minimization.py
