@@ -5272,7 +5272,8 @@ def main():
     )
     app.add_handler(CallbackQueryHandler(schedule_attendance_callback, pattern="^sched_att$"))
     app.add_handler(CallbackQueryHandler(schedule_appointments_callback, pattern="^sched_apt$"))
-    app.add_handler(CallbackQueryHandler(attendance_callback, pattern="^att_"))\n    app.add_handler(MessageHandler(filters.LOCATION, attendance_location_receive))
+    app.add_handler(CallbackQueryHandler(attendance_callback, pattern="^att_"))
+    app.add_handler(MessageHandler(filters.LOCATION, attendance_location_receive))
     app.add_handler(
         MessageHandler(filters.Regex(f"^{roles.MENU_TODAY_APPOINTMENTS}$"), today_appointments)
     )
