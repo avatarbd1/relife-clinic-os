@@ -249,6 +249,88 @@ class TenantResolverTests(unittest.TestCase):
             reset_tenant(token)
             config.MULTITENANT_ENABLED = previous
 
+    def test_multi_cell_financial_update_uses_one_batch_and_invalidates_cache(self):
+        class WriteWorksheet:
+            title = "02_Patients"
+            id = 2
+            spreadsheet_id = "S01"
+
+            def __init__(self):
+                self.calls = []
+
+            def batch_update(self, data, value_input_option=None):
+                self.calls.append((data, value_input_option))
+
+        previous = config.MULTITENANT_ENABLED
+        config.MULTITENANT_ENABLED = True
+        token = bind_tenant(TenantIdentity("C01", "One", "S01"))
+        worksheet = WriteWorksheet()
+        key = ("S01", 2)
+        try:
+            sheets._records_cache.clear()
+            sheets._records_cache_generation.clear()
+            sheets._records_cache[key] = (time.monotonic(), [{"Due": 100}])
+
+            sheets._batch_update_cells(
+                worksheet,
+                4,
+                {20: "Paid", 22: 100, 23: 0, 29: "2026-08-11 10:00 AM"},
+            )
+
+            self.assertEqual(len(worksheet.calls), 1)
+            data, value_input_option = worksheet.calls[0]
+            self.assertEqual(value_input_option, "USER_ENTERED")
+            self.assertEqual(
+                [item["range"] for item in data],
+                ["T4", "V4", "W4", "AC4"],
+            )
+            self.assertNotIn(key, sheets._records_cache)
+            self.assertEqual(sheets._records_cache_generation[key], 1)
+        finally:
+            sheets._records_cache.clear()
+            sheets._records_cache_generation.clear()
+            reset_tenant(token)
+            config.MULTITENANT_ENABLED = previous
+
+    def test_multiple_sessions_update_package_in_one_request(self):
+        class PackageWorksheet:
+            title = "11_Packages"
+            id = 11
+            spreadsheet_id = "S01"
+
+            def __init__(self):
+                self.calls = []
+
+            def batch_update(self, data, value_input_option=None):
+                self.calls.append((data, value_input_option))
+
+        previous = config.MULTITENANT_ENABLED
+        config.MULTITENANT_ENABLED = True
+        token = bind_tenant(TenantIdentity("C01", "One", "S01"))
+        worksheet = PackageWorksheet()
+        package = {
+            "Sessions_Used": 2,
+            "Total_Sessions": 10,
+            "_row_number": 4,
+        }
+        try:
+            sheets._records_cache.clear()
+            sheets._records_cache_generation.clear()
+            with patch.object(
+                sheets, "get_active_package_for_patient", return_value=package
+            ), patch.object(sheets, "_worksheet", return_value=worksheet):
+                self.assertTrue(sheets.increment_package_session("P1", count=3))
+
+            self.assertEqual(len(worksheet.calls), 1)
+            data, _ = worksheet.calls[0]
+            self.assertEqual([item["range"] for item in data], ["E4", "F4"])
+            self.assertEqual([item["values"][0][0] for item in data], [5, 5])
+        finally:
+            sheets._records_cache.clear()
+            sheets._records_cache_generation.clear()
+            reset_tenant(token)
+            config.MULTITENANT_ENABLED = previous
+
 
 if __name__ == "__main__":
     unittest.main()
