@@ -3622,10 +3622,12 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     today_str = now.strftime("%Y-%m-%d")
     this_month_str, _ = _month_bounds(now)
 
-    patients, payments = await _asyncio_p314.gather(
-        async_runtime.run_sheets_read(sheets.get_all_patients),
-        async_runtime.run_sheets_read(sheets.get_all_payments),
+    report_data = await async_runtime.run_sheets_read(
+        sheets.batch_get_records,
+        [config.SHEET_PATIENTS, config.SHEET_PAYMENTS],
     )
+    patients = report_data[config.SHEET_PATIENTS]
+    payments = report_data[config.SHEET_PAYMENTS]
     today_new_patients = sum(
         1 for p in patients
         if str(p.get("Registration_Date", "")).strip() == today_str
@@ -3667,10 +3669,12 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def rpt_totals_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    patients, payments = await _asyncio_p314.gather(
-        async_runtime.run_sheets_read(sheets.get_all_patients),
-        async_runtime.run_sheets_read(sheets.get_all_payments),
+    report_data = await async_runtime.run_sheets_read(
+        sheets.batch_get_records,
+        [config.SHEET_PATIENTS, config.SHEET_PAYMENTS],
     )
+    patients = report_data[config.SHEET_PATIENTS]
+    payments = report_data[config.SHEET_PAYMENTS]
     total_patients = len(patients)
     total_collection = sum(float(p.get("Amount", 0) or 0) for p in payments)
     text = (
