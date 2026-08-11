@@ -7,12 +7,18 @@ on:
       - '03_Bot/**'
       - '07_Testing/test_staff_ai_data_minimization.py'
       - '07_Testing/test_finance_cash_custody.py'
+      - '07_Testing/test_department_access.py'
+      - '07_Testing/test_department_schema_audit.py'
+      - '05_GoogleSheets/audit_department_schema.py'
       - '.github/workflows/production-bot-ci.yml'
   pull_request:
     paths:
       - '03_Bot/**'
       - '07_Testing/test_staff_ai_data_minimization.py'
       - '07_Testing/test_finance_cash_custody.py'
+      - '07_Testing/test_department_access.py'
+      - '07_Testing/test_department_schema_audit.py'
+      - '05_GoogleSheets/audit_department_schema.py'
       - '.github/workflows/production-bot-ci.yml'
 
 permissions:
@@ -39,4 +45,6 @@ jobs:
             07_Testing/test_attendance_location.py \
             07_Testing/test_multitenant_isolation.py \
             07_Testing/test_finance_cash_custody.py \
+            07_Testing/test_department_access.py \
+            07_Testing/test_department_schema_audit.py \
             07_Testing/test_sentry_policy.py
