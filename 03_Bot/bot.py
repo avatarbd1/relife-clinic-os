@@ -195,6 +195,12 @@ _ALL_MENU_ITEMS = [
     roles.MENU_CASH_HANDOVER,
     roles.MENU_CASH_RECEIVE,
     roles.MENU_CASH_MOVEMENTS,
+    roles.MENU_SMALL_EXPENSE_REQUEST,
+    roles.MENU_EXPENSE_APPROVAL,
+    roles.MENU_APPROVED_EXPENSES,
+    roles.MENU_OWNER_CLINIC_EXPENSE,
+    roles.MENU_HOUSEHOLD_WITHDRAWAL,
+    roles.MENU_CUSTODY_BALANCE,
     roles.MENU_FINANCE,
 ]
 _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
@@ -5664,119 +5670,239 @@ async def cash_movements_start(update: Update, context: ContextTypes.DEFAULT_TYP
     await update.message.reply_text("\n".join(lines))
 
 
-async def cost_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def _expense_form_start(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    mode: str,
+    menu_item: str,
+):
     staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_ADD_EXPENSE):
+    if not roles.can_access(staff.get("Role", ""), menu_item):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
+    context.user_data["cost"] = {"Mode": mode}
     buttons = [
         [InlineKeyboardButton(cat, callback_data=f"costcat_{cat}")]
         for cat in sheets.EXPENSE_CATEGORIES
     ]
-    await update.message.reply_text("খরচের ক্যাটাগরি বেছে নাও:", reply_markup=InlineKeyboardMarkup(buttons))
+    await update.message.reply_text(
+        "খরচের ক্যাটাগরি বেছে নাও:",
+        reply_markup=InlineKeyboardMarkup(buttons),
+    )
     return COST_CATEGORY
+
+
+async def small_expense_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return await _expense_form_start(
+        update,
+        context,
+        mode="reception_request",
+        menu_item=roles.MENU_SMALL_EXPENSE_REQUEST,
+    )
+
+
+async def owner_clinic_expense_start(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    return await _expense_form_start(
+        update,
+        context,
+        mode="owner_clinic",
+        menu_item=roles.MENU_OWNER_CLINIC_EXPENSE,
+    )
+
+
+async def household_withdrawal_start(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    staff = await _require_staff(update, context)
+    if staff is None:
+        return ConversationHandler.END
+    if not roles.can_access(
+        staff.get("Role", ""), roles.MENU_HOUSEHOLD_WITHDRAWAL
+    ):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return ConversationHandler.END
+    context.user_data["cost"] = {
+        "Mode": "household",
+        "Category": "Household Withdrawal",
+    }
+    await update.message.reply_text(
+        "🏠 Home Treasury থেকে household-এর জন্য কত টাকা নিচ্ছেন?"
+    )
+    return COST_AMOUNT
 
 
 async def cost_category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     category = query.data.replace("costcat_", "", 1)
-    context.user_data["cost"] = {"Category": category}
-    await query.edit_message_text(f"ক্যাটাগরি: {category}\n\nকত টাকা খরচ হয়েছে লেখো:")
+    expense = context.user_data.get("cost", {})
+    expense["Category"] = category
+    context.user_data["cost"] = expense
+    await query.edit_message_text(
+        f"ক্যাটাগরি: {category}\n\nকত টাকা খরচ হবে লেখো:"
+    )
     return COST_AMOUNT
 
 
 async def cost_amount_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip()
-    c = context.user_data.get("cost", {})
+    expense = context.user_data.get("cost", {})
     try:
-        amount = float(text)
+        amount = float(update.message.text.strip())
     except ValueError:
         await update.message.reply_text("❌ শুধু সংখ্যা লেখো (যেমন: 500):")
         return COST_AMOUNT
     if amount <= 0:
         await update.message.reply_text("❌ Amount অবশ্যই ০-এর বেশি হতে হবে:")
         return COST_AMOUNT
-    c["Amount"] = amount
-    context.user_data["cost"] = c
+    expense["Amount"] = amount
+    context.user_data["cost"] = expense
     await update.message.reply_text("কোনো নোট থাকলে লেখো, না থাকলে '-' দাও:")
     return COST_NOTE
 
 
 async def cost_note_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip()
-    c = context.user_data.get("cost", {})
-    c["Note"] = "" if text == "-" else text
-    context.user_data["cost"] = c
-    category = c.get("Category", "")
-    amount = c.get("Amount", 0)
-    note = c.get("Note") or "-"
-    summary = (
-        f"💸 ক্যাটাগরি: {category}\n"
-        f"পরিমাণ: ৳{amount:.0f}\n"
-        f"নোট: {note}\n\n"
-        "নিশ্চিত করো:"
+    expense = context.user_data.get("cost", {})
+    note = update.message.text.strip()
+    expense["Note"] = "" if note == "-" else note
+    context.user_data["cost"] = expense
+    mode = expense.get("Mode", "")
+    action = (
+        "Owner-এর অনুমোদনের জন্য request পাঠাবে?"
+        if mode == "reception_request"
+        else "এই লেনদেন Paid হিসেবে save করবে?"
     )
-    confirm_keyboard = ReplyKeyboardMarkup([["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True)
-    await update.message.reply_text(summary, reply_markup=confirm_keyboard)
+    await update.message.reply_text(
+        f"ক্যাটাগরি: {expense.get('Category', '')}\n"
+        f"পরিমাণ: ৳{expense.get('Amount', 0):.0f}\n"
+        f"নোট: {expense.get('Note') or '-'}\n\n"
+        f"{action}",
+        reply_markup=ReplyKeyboardMarkup(
+            [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
+        ),
+    )
     return COST_CONFIRM
 
 
+async def _notify_expense_approvers(
+    context: ContextTypes.DEFAULT_TYPE,
+    expense_id: str,
+    expense: dict,
+    requested_by: str,
+):
+    recipients = await async_runtime.run_sheets_read(sheets.get_all_staff)
+    markup = InlineKeyboardMarkup([[
+        InlineKeyboardButton(
+            "✅ অনুমোদন", callback_data=f"expact_approve_{expense_id}"
+        ),
+        InlineKeyboardButton(
+            "❌ বাতিল", callback_data=f"expact_reject_{expense_id}"
+        ),
+    ]])
+    for recipient in recipients:
+        if str(recipient.get("Role", "")).strip() != "Owner":
+            continue
+        telegram_id = recipient.get("Telegram_ID")
+        if not telegram_id:
+            continue
+        try:
+            await context.bot.send_message(
+                chat_id=int(telegram_id),
+                text=(
+                    f"💸 ছোট খরচের request: {expense_id}\n"
+                    f"ক্যাটাগরি: {expense.get('Category', '')}\n"
+                    f"পরিমাণ: ৳{expense.get('Amount', 0):.0f}\n"
+                    f"Request করেছেন: {requested_by}\n"
+                    f"নোট: {expense.get('Note') or '-'}"
+                ),
+                reply_markup=markup,
+            )
+        except Exception:
+            logger.exception("expense approval notification failed")
+
+
 async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip().lower()
     staff = context.user_data.get("staff", {})
-    c = context.user_data.get("cost", {})
-
-    if text not in ("হ্যাঁ", "yes", "y", "হা", "ha"):
+    expense = context.user_data.get("cost", {})
+    answer = update.message.text.strip().lower()
+    if answer not in ("হ্যাঁ", "yes", "y", "হা", "ha"):
         context.user_data.pop("cost", None)
-        await update.message.reply_text("❌ বাতিল করা হয়েছে।", reply_markup=_menu_keyboard(staff.get("Role", "")))
-        return ConversationHandler.END
-
-    added_by_name = staff.get("Full_Name") or staff.get("Name") or str(staff.get("Staff_ID", ""))
-    category = c.get("Category", "")
-    amount = c.get("Amount", 0)
-
-    try:
-        expense_id = await async_runtime.run_sheets_write(
-            sheets.add_expense,
-            category, amount,
-            added_by=added_by_name,
-            note=c.get("Note", ""),
-        )
         await update.message.reply_text(
-            f"✅ খরচ সেভ হয়েছে! Expense ID: {expense_id}",
+            "❌ বাতিল করা হয়েছে।",
             reply_markup=_menu_keyboard(staff.get("Role", "")),
         )
-        try:
-            owner_rows = await async_runtime.run_sheets_read(sheets.get_all_staff)
-            for o in owner_rows:
-                if str(o.get("Role", "")).strip() != "Owner":
-                    continue
-                if str(o.get("Staff_ID", "")) == str(staff.get("Staff_ID", "")):
-                    continue
-                owner_telegram_id = o.get("Telegram_ID")
-                if not owner_telegram_id:
-                    continue
-                try:
-                    await context.bot.send_message(
-                        chat_id=int(owner_telegram_id),
-                        text=(
-                            f"💸 নতুন খরচ যোগ হয়েছে ({added_by_name})।\n"
-                            f"ক্যাটাগরি: {category}\n"
-                            f"পরিমাণ: ৳{amount:.0f}"
-                        ),
-                    )
-                except Exception:
-                    logger.exception(f"cost_confirm_receive: Owner {owner_telegram_id}-কে notify করতে ব্যর্থ")
-        except Exception:
-            logger.exception("cost_confirm_receive: Owner লিস্ট আনতে ব্যর্থ")
+        return ConversationHandler.END
 
-    except Exception as e:
-        logger.exception("cost_confirm_receive ব্যর্থ হয়েছে")
+    actor = (
+        staff.get("Full_Name")
+        or staff.get("Name")
+        or str(staff.get("Staff_ID", ""))
+    )
+    mode = expense.get("Mode", "")
+    try:
+        if mode == "reception_request":
+            if not roles.can_access(
+                staff.get("Role", ""), roles.MENU_SMALL_EXPENSE_REQUEST
+            ):
+                raise PermissionError("Reception expense permission denied")
+            expense_id = await async_runtime.run_sheets_write(
+                sheets.create_expense_request,
+                expense.get("Category", ""),
+                expense.get("Amount", 0),
+                actor,
+                expense.get("Note", ""),
+            )
+            await update.message.reply_text(
+                f"✅ খরচের request পাঠানো হয়েছে। ID: {expense_id}\n"
+                "Owner অনুমোদন করলে টাকা দেওয়ার button চালু হবে।",
+                reply_markup=_menu_keyboard(staff.get("Role", "")),
+            )
+            try:
+                await _notify_expense_approvers(
+                    context, expense_id, expense, actor
+                )
+            except Exception:
+                logger.exception("expense approver list failed")
+        else:
+            if mode == "owner_clinic":
+                menu_item = roles.MENU_OWNER_CLINIC_EXPENSE
+                expense_type = config.EXPENSE_TYPE_CLINIC
+            elif mode == "household":
+                menu_item = roles.MENU_HOUSEHOLD_WITHDRAWAL
+                expense_type = config.EXPENSE_TYPE_HOUSEHOLD
+            else:
+                raise ValueError("Unknown expense workflow mode")
+            if not roles.can_access(staff.get("Role", ""), menu_item):
+                raise PermissionError("Owner expense permission denied")
+            expense_id = await async_runtime.run_sheets_write(
+                sheets.add_expense,
+                expense.get("Category", ""),
+                expense.get("Amount", 0),
+                actor,
+                note=expense.get("Note", ""),
+                expense_type=expense_type,
+                paid_from=config.CASH_CUSTODIAN_HOME_TREASURY,
+                status="Paid",
+                approved_by=actor,
+                paid_by=actor,
+            )
+            label = (
+                "Household Withdrawal"
+                if expense_type == config.EXPENSE_TYPE_HOUSEHOLD
+                else "বড় clinic expense"
+            )
+            await update.message.reply_text(
+                f"✅ {label} Paid হিসেবে save হয়েছে। ID: {expense_id}",
+                reply_markup=_menu_keyboard(staff.get("Role", "")),
+            )
+    except Exception as error:
+        logger.exception("expense workflow save failed")
         await update.message.reply_text(
-            f"❌ সেভ করতে সমস্যা হয়েছে।\nError: {e}",
+            f"❌ Save করা যায়নি।\nError: {error}",
             reply_markup=_menu_keyboard(staff.get("Role", "")),
         )
     context.user_data.pop("cost", None)
@@ -5786,8 +5912,162 @@ async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
 async def cost_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff", {})
     context.user_data.pop("cost", None)
-    await update.message.reply_text("❌ বাতিল করা হলো।", reply_markup=_menu_keyboard(staff.get("Role", "")))
+    await update.effective_message.reply_text(
+        "❌ বাতিল করা হলো।",
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
     return ConversationHandler.END
+
+
+def _expense_approval_keyboard(rows: list[dict]) -> InlineKeyboardMarkup:
+    buttons = []
+    for row in rows[:20]:
+        expense_id = str(row.get("Expense_ID", "")).strip()
+        buttons.append([
+            InlineKeyboardButton(
+                f"✅ {expense_id} অনুমোদন",
+                callback_data=f"expact_approve_{expense_id}",
+            ),
+            InlineKeyboardButton(
+                "❌ বাতিল",
+                callback_data=f"expact_reject_{expense_id}",
+            ),
+        ])
+    return InlineKeyboardMarkup(buttons)
+
+
+async def expense_approval_start(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    staff = await _require_staff(update, context)
+    if staff is None:
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_EXPENSE_APPROVAL):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    rows = await async_runtime.run_sheets_read(
+        sheets.get_expense_requests, "Pending Approval"
+    )
+    if not rows:
+        await update.message.reply_text("✅ কোনো pending খরচের request নেই।")
+        return
+    lines = ["📋 Pending ছোট খরচের request:\n"]
+    for row in rows[:20]:
+        lines.append(
+            f"• {row.get('Expense_ID', '')} | {row.get('Category', '')} | "
+            f"৳{float(row.get('Amount', 0) or 0):.0f} | "
+            f"{row.get('Requested_By', '')}"
+        )
+    await update.message.reply_text(
+        "\n".join(lines), reply_markup=_expense_approval_keyboard(rows)
+    )
+
+
+async def expense_approval_callback(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    query = update.callback_query
+    await query.answer()
+    staff = await _require_staff(update, context)
+    if staff is None:
+        await query.edit_message_text("❌ স্টাফ তথ্য পাওয়া যায়নি।")
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_EXPENSE_APPROVAL):
+        await query.edit_message_text("⛔ এই কাজের অনুমতি তোমার নেই।")
+        return
+    payload = query.data.replace("expact_", "", 1)
+    action, expense_id = payload.split("_", 1)
+    decision = "Approved" if action == "approve" else "Rejected"
+    actor = (
+        staff.get("Full_Name")
+        or staff.get("Name")
+        or str(staff.get("Staff_ID", ""))
+    )
+    result = await async_runtime.run_sheets_write(
+        sheets.finalize_expense_request, expense_id, actor, decision
+    )
+    if result.get("ok"):
+        message = (
+            "✅ অনুমোদন হয়েছে। Receptionist এখন টাকা দিতে পারবে।"
+            if decision == "Approved"
+            else "❌ খরচের request বাতিল হয়েছে।"
+        )
+        await query.edit_message_text(f"{expense_id}: {message}")
+    elif result.get("reason") == "invalid_status":
+        await query.edit_message_text(
+            f"ℹ️ {expense_id} আগেই {result.get('status', 'finalized')} হয়েছে।"
+        )
+    else:
+        await query.edit_message_text(f"❌ {expense_id} পাওয়া যায়নি।")
+
+
+async def approved_expenses_start(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    staff = await _require_staff(update, context)
+    if staff is None:
+        return
+    if not roles.can_access(
+        staff.get("Role", ""), roles.MENU_APPROVED_EXPENSES
+    ):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    rows = await async_runtime.run_sheets_read(
+        sheets.get_expense_requests, "Approved"
+    )
+    if not rows:
+        await update.message.reply_text("✅ টাকা দেওয়ার মতো approved খরচ নেই।")
+        return
+    buttons = []
+    lines = ["✅ Approved—টাকা দেওয়ার অপেক্ষায়:\n"]
+    for row in rows[:20]:
+        expense_id = str(row.get("Expense_ID", "")).strip()
+        lines.append(
+            f"• {expense_id} | {row.get('Category', '')} | "
+            f"৳{float(row.get('Amount', 0) or 0):.0f}"
+        )
+        buttons.append([InlineKeyboardButton(
+            f"💵 {expense_id} টাকা দেওয়া হয়েছে",
+            callback_data=f"exppaid_{expense_id}",
+        )])
+    await update.message.reply_text(
+        "\n".join(lines), reply_markup=InlineKeyboardMarkup(buttons)
+    )
+
+
+async def expense_paid_callback(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    query = update.callback_query
+    await query.answer()
+    staff = await _require_staff(update, context)
+    if staff is None:
+        await query.edit_message_text("❌ স্টাফ তথ্য পাওয়া যায়নি।")
+        return
+    if not roles.can_access(
+        staff.get("Role", ""), roles.MENU_APPROVED_EXPENSES
+    ):
+        await query.edit_message_text("⛔ এই কাজের অনুমতি তোমার নেই।")
+        return
+    expense_id = query.data.replace("exppaid_", "", 1)
+    actor = (
+        staff.get("Full_Name")
+        or staff.get("Name")
+        or str(staff.get("Staff_ID", ""))
+    )
+    result = await async_runtime.run_sheets_write(
+        sheets.mark_expense_paid, expense_id, actor
+    )
+    if result.get("ok"):
+        await query.edit_message_text(
+            f"✅ {expense_id} Paid হয়েছে। Reception cash থেকে টাকা কমেছে।"
+        )
+    elif result.get("reason") == "invalid_status":
+        await query.edit_message_text(
+            f"ℹ️ {expense_id} এখন {result.get('status', 'finalized')} অবস্থায় আছে।"
+        )
+    else:
+        await query.edit_message_text(f"❌ {expense_id} পাওয়া যায়নি।")
 
 
 async def costtracker_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -5797,31 +6077,70 @@ async def costtracker_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not roles.can_access(staff.get("Role", ""), roles.MENU_EXPENSE_TRACKER):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
-    today_str = bd_now().strftime("%Y-%m-%d")
-    month_str = bd_now().strftime("%Y-%m")
-    today_rows, month_total = await _asyncio_p314.gather(
-        async_runtime.run_sheets_read(sheets.get_expenses_for_date, today_str),
-        async_runtime.run_sheets_read(
-            sheets.get_expense_total_for_month, month_str
-        ),
+    today = bd_now().strftime("%Y-%m-%d")
+    month = bd_now().strftime("%Y-%m")
+    rows, month_total = await _asyncio_p314.gather(
+        async_runtime.run_sheets_read(sheets.get_expenses_for_date, today),
+        async_runtime.run_sheets_read(sheets.get_expense_total_for_month, month),
     )
-    today_total = sum(float(r.get("Amount", 0) or 0) for r in today_rows)
-
-    lines = [f"💸 দৈনিক খরচ ট্র্যাকার — {today_str}\n"]
-    if not today_rows:
-        lines.append("আজ এখনো কোনো খরচ যোগ হয়নি।")
-    else:
-        for r in today_rows:
-            lines.append(
-                f"• {r.get('Category', '')} — ৳{r.get('Amount', 0)} "
-                f"({r.get('Added_By', '')}) {('| ' + r.get('Note', '')) if r.get('Note') else ''}"
-            )
-    lines.append(f"\nআজকের মোট: ৳{today_total:.0f}")
-    lines.append(f"এই মাসের ({month_str}) মোট: ৳{month_total:.0f}")
-    warning = sheets.get_sheet_warning(config.SHEET_EXPENSES)
-    if warning:
-        lines.append(f"\n⚠️ {warning}")
+    paid_clinic = sum(
+        float(row.get("Amount", 0) or 0)
+        for row in rows
+        if row.get("Type") == config.EXPENSE_TYPE_CLINIC
+        and row.get("Status") in ("Paid", "Legacy Paid")
+    )
+    household = sum(
+        float(row.get("Amount", 0) or 0)
+        for row in rows
+        if row.get("Type") == config.EXPENSE_TYPE_HOUSEHOLD
+        and row.get("Status") in ("Paid", "Legacy Paid")
+    )
+    lines = [f"💸 খরচ হিসাব — {today}\n"]
+    if not rows:
+        lines.append("আজ কোনো খরচের record নেই।")
+    for row in rows:
+        lines.append(
+            f"• {row.get('Expense_ID', '')} | {row.get('Category', '')} | "
+            f"৳{float(row.get('Amount', 0) or 0):.0f} | "
+            f"{row.get('Status', '')} | {row.get('Paid_From', '')}"
+        )
+    lines.extend([
+        f"\nআজ Paid clinic expense: ৳{paid_clinic:.0f}",
+        f"আজ Household Withdrawal: ৳{household:.0f}",
+        f"এই মাসের Paid clinic expense: ৳{month_total:.0f}",
+    ])
     await update.message.reply_text("\n".join(lines))
+
+
+async def custody_balance_start(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    staff = await _require_staff(update, context)
+    if staff is None:
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_CUSTODY_BALANCE):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    today = bd_now().strftime("%Y-%m-%d")
+    summary = await async_runtime.run_sheets_read(
+        sheets.get_cash_custody_summary, today
+    )
+    await update.message.reply_text(
+        f"⚖️ আজকের cash reconciliation — {today}\n\n"
+        f"Reception\n"
+        f"Cash collection: ৳{summary['Cash_Collected']:.0f}\n"
+        f"Paid ছোট খরচ: ৳{summary['Reception_Expense']:.0f}\n"
+        f"Accepted handover: ৳{summary['Reception_Handover']:.0f}\n"
+        f"আজকের net balance: ৳{summary['Reception_Balance']:.0f}\n\n"
+        f"Home Treasury\n"
+        f"Accepted receipt: ৳{summary['Home_Received']:.0f}\n"
+        f"বড় clinic expense: ৳{summary['Home_Clinic_Expense']:.0f}\n"
+        f"Household Withdrawal: ৳{summary['Household_Withdrawal']:.0f}\n"
+        f"Transfer out: ৳{summary['Home_Transfer_Out']:.0f}\n"
+        f"আজকের net balance: ৳{summary['Home_Balance']:.0f}\n\n"
+        "ℹ️ এটি আজকের movement balance; আগের দিনের opening cash এতে নেই।"
+    )
+
 
 def main():
     global _tenant_resolver
