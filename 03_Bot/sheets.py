@@ -2034,13 +2034,19 @@ def mark_expense_paid(expense_id: str, paid_by: str) -> dict:
     )
 
 
-def get_expenses_for_date(date_str: str) -> list[dict]:
-    """Return all expense workflow rows for YYYY-MM-DD, newest first."""
+def get_expenses_for_date(
+    date_str: str | None = None, end_date: str | None = None
+) -> list[dict]:
+    """Return expense rows in an inclusive range, defaulting to today."""
+    start_date = date_str or bd_now().strftime("%Y-%m-%d")
+    end_date = end_date or start_date
+    if end_date < start_date:
+        raise ValueError("end_date must be on or after start_date")
     ws = _worksheet(config.SHEET_EXPENSES)
     rows = [
         _normalized_expense(row)
         for row in safe_get_all_records(ws)
-        if str(row.get("Date", "")).strip() == date_str
+        if start_date <= str(row.get("Date", "")).strip() <= end_date
     ]
     rows.sort(key=lambda row: str(row.get("Timestamp", "")), reverse=True)
     return rows
@@ -2060,8 +2066,14 @@ def get_expense_total_for_month(month: str) -> float:
     return round(total, 2)
 
 
-def get_cash_custody_summary(date_str: str) -> dict:
-    """Daily cash reconciliation for Reception and Home Treasury."""
+def get_cash_custody_summary(
+    date_str: str | None = None, end_date: str | None = None
+) -> dict:
+    """Cash reconciliation over an inclusive range, defaulting to today."""
+    start_date = date_str or bd_now().strftime("%Y-%m-%d")
+    end_date = end_date or start_date
+    if end_date < start_date:
+        raise ValueError("end_date must be on or after start_date")
     payment_rows = safe_get_all_records(_worksheet(config.SHEET_PAYMENTS))
     expense_rows = safe_get_all_records(_worksheet(config.SHEET_EXPENSES))
     movement_rows = safe_get_all_records(_worksheet(config.SHEET_CASH_MOVEMENT))
@@ -2069,12 +2081,12 @@ def get_cash_custody_summary(date_str: str) -> dict:
     cash_collected = sum(
         float(row.get("Amount", 0) or 0)
         for row in payment_rows
-        if str(row.get("Date", "")).strip() == date_str
+        if start_date <= str(row.get("Date", "")).strip() <= end_date
         and str(row.get("Payment_Method", "")).strip().lower() == "cash"
     )
     paid_expenses = [
         row for row in expense_rows
-        if str(row.get("Date", "")).strip() == date_str
+        if start_date <= str(row.get("Date", "")).strip() <= end_date
         and _expense_is_paid(row)
     ]
     reception_expense = sum(
@@ -2096,7 +2108,7 @@ def get_cash_custody_summary(date_str: str) -> dict:
     )
     accepted = [
         row for row in movement_rows
-        if str(row.get("Date", "")).strip() == date_str
+        if start_date <= str(row.get("Date", "")).strip() <= end_date
         and str(row.get("Status", "")).strip() == "Accepted"
     ]
     reception_out = sum(
@@ -2115,7 +2127,9 @@ def get_cash_custody_summary(date_str: str) -> dict:
         if str(row.get("From_Custodian", "")).strip() == config.CASH_CUSTODIAN_HOME_TREASURY
     )
     return {
-        "Date": date_str,
+        "Date": start_date if start_date == end_date else f"{start_date} — {end_date}",
+        "Start_Date": start_date,
+        "End_Date": end_date,
         "Cash_Collected": round(cash_collected, 2),
         "Reception_Expense": round(reception_expense, 2),
         "Reception_Handover": round(reception_out, 2),
