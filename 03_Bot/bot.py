@@ -6125,56 +6125,109 @@ async def expense_paid_callback(
         await query.edit_message_text(f"❌ {expense_id} পাওয়া যায়নি।")
 
 
-async def costtracker_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+_FINANCIAL_REPORT_MENUS = {
+    "expense": roles.MENU_EXPENSE_TRACKER,
+    "cash": roles.MENU_CUSTODY_BALANCE,
+}
+
+
+def _financial_report_date_range(shortcut: str, today=None) -> tuple[str, str]:
+    today = today or bd_now().date()
+    if shortcut == "today":
+        start = today
+    elif shortcut == "yesterday":
+        start = today - timedelta(days=1)
+        today = start
+    elif shortcut == "week":
+        start = today - timedelta(days=(today.weekday() + 1) % 7)
+    elif shortcut == "month":
+        start = today.replace(day=1)
+    else:
+        raise ValueError("Unknown financial report shortcut")
+    return start.isoformat(), today.isoformat()
+
+
+def _financial_report_keyboard(report: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("আজ", callback_data=f"finrange_{report}_today"),
+            InlineKeyboardButton("গতকাল", callback_data=f"finrange_{report}_yesterday"),
+        ],
+        [
+            InlineKeyboardButton("এই সপ্তাহ", callback_data=f"finrange_{report}_week"),
+            InlineKeyboardButton("এই মাস", callback_data=f"finrange_{report}_month"),
+        ],
+        [InlineKeyboardButton("কাস্টম তারিখ", callback_data=f"finrange_{report}_custom")],
+    ])
+
+
+async def _authorized_financial_report_staff(update, context, report: str):
     staff = await _require_staff(update, context)
-    if staff is None:
+    menu_item = _FINANCIAL_REPORT_MENUS.get(report)
+    if staff is None or menu_item is None:
+        return None
+    if not roles.can_access(staff.get("Role", ""), menu_item):
+        await update.effective_message.reply_text("⛔ এই রিপোর্ট দেখার অনুমতি তোমার নেই।")
+        return None
+    return staff
+
+
+async def _financial_report_start(update, context, report: str):
+    if await _authorized_financial_report_staff(update, context, report) is None:
         return
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_EXPENSE_TRACKER):
-        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
-        return
-    today = bd_now().strftime("%Y-%m-%d")
-    month = bd_now().strftime("%Y-%m")
-    rows, month_total = await _asyncio_p314.gather(
-        async_runtime.run_sheets_read(sheets.get_expenses_for_date, today),
-        async_runtime.run_sheets_read(sheets.get_expense_total_for_month, month),
+    await update.effective_message.reply_text(
+        "📅 রিপোর্টের সময় বেছে নিন:",
+        reply_markup=_financial_report_keyboard(report),
     )
+
+
+def _expense_report_text(rows, start_date: str, end_date: str, role_str: str) -> str:
+    owner = role_str.strip() == roles.Role.OWNER.value
+    visible_rows = rows if owner else [
+        row for row in rows
+        if str(row.get("Paid_From", "")).strip()
+        != config.CASH_CUSTODIAN_HOME_TREASURY
+    ]
     paid_clinic = sum(
         float(row.get("Amount", 0) or 0)
-        for row in rows
+        for row in visible_rows
         if row.get("Type") == config.EXPENSE_TYPE_CLINIC
         and row.get("Status") in ("Paid", "Legacy Paid")
     )
     household = sum(
         float(row.get("Amount", 0) or 0)
-        for row in rows
+        for row in visible_rows
         if row.get("Type") == config.EXPENSE_TYPE_HOUSEHOLD
         and row.get("Status") in ("Paid", "Legacy Paid")
     )
-    lines = [f"💸 খরচ হিসাব — {today}\n"]
-    if not rows:
-        lines.append("আজ কোনো খরচের record নেই।")
-    for row in rows:
+    label = start_date if start_date == end_date else f"{start_date} — {end_date}"
+    lines = [f"💸 খরচ হিসাব — {label}\n"]
+    if not visible_rows:
+        lines.append("এই সময়ে কোনো খরচের record নেই।")
+    for row in visible_rows:
         lines.append(
             f"• {row.get('Expense_ID', '')} | {row.get('Category', '')} | "
             f"৳{float(row.get('Amount', 0) or 0):.0f} | "
             f"{row.get('Status', '')} | {row.get('Paid_From', '')}"
         )
-    lines.extend([
-        f"\nআজ Paid clinic expense: ৳{paid_clinic:.0f}",
-        f"আজ Household Withdrawal: ৳{household:.0f}",
-        f"এই মাসের Paid clinic expense: ৳{month_total:.0f}",
-    ])
-    await update.message.reply_text("\n".join(lines))
+    lines.append(f"\nPaid clinic expense: ৳{paid_clinic:.0f}")
+    if owner:
+        lines.append(f"Household Withdrawal: ৳{household:.0f}")
+    return "\n".join(lines)
+
+
+async def costtracker_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _financial_report_start(update, context, "expense")
 
 
 def _cash_custody_summary_text(summary: dict, role_str: str) -> str:
     text = (
-        f"⚖️ আজকের cash reconciliation — {summary['Date']}\n\n"
+        f"⚖️ Cash reconciliation — {summary['Date']}\n\n"
         f"Reception\n"
         f"Cash collection: ৳{summary['Cash_Collected']:.0f}\n"
         f"Paid ছোট খরচ: ৳{summary['Reception_Expense']:.0f}\n"
         f"Accepted handover: ৳{summary['Reception_Handover']:.0f}\n"
-        f"আজকের net balance: ৳{summary['Reception_Balance']:.0f}"
+        f"নির্বাচিত সময়ের net balance: ৳{summary['Reception_Balance']:.0f}"
     )
     if role_str.strip() == roles.Role.OWNER.value:
         text += (
@@ -6183,30 +6236,104 @@ def _cash_custody_summary_text(summary: dict, role_str: str) -> str:
             f"বড় clinic expense: ৳{summary['Home_Clinic_Expense']:.0f}\n"
             f"Household Withdrawal: ৳{summary['Household_Withdrawal']:.0f}\n"
             f"Transfer out: ৳{summary['Home_Transfer_Out']:.0f}\n"
-            f"আজকের net balance: ৳{summary['Home_Balance']:.0f}"
+            f"নির্বাচিত সময়ের net balance: ৳{summary['Home_Balance']:.0f}"
         )
     return (
         text
-        + "\n\nℹ️ এটি আজকের movement balance; আগের দিনের opening cash এতে নেই।"
+        + "\n\nℹ️ এটি নির্বাচিত সময়ের movement balance; আগের opening cash এতে নেই।"
     )
 
 
 async def custody_balance_start(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
-    staff = await _require_staff(update, context)
+    await _financial_report_start(update, context, "cash")
+
+
+async def _show_financial_report(update, context, report, start_date, end_date):
+    staff = await _authorized_financial_report_staff(update, context, report)
     if staff is None:
         return
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_CUSTODY_BALANCE):
-        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+    if report == "cash":
+        summary = await async_runtime.run_sheets_read(
+            sheets.get_cash_custody_summary, start_date, end_date
+        )
+        text = _cash_custody_summary_text(summary, staff.get("Role", ""))
+    else:
+        rows = await async_runtime.run_sheets_read(
+            sheets.get_expenses_for_date, start_date, end_date
+        )
+        text = _expense_report_text(
+            rows, start_date, end_date, staff.get("Role", "")
+        )
+    await update.effective_message.reply_text(text)
+
+
+async def financial_report_range_callback(update, context):
+    query = update.callback_query
+    await query.answer()
+    _, report, shortcut = query.data.split("_", 2)
+    if await _authorized_financial_report_staff(update, context, report) is None:
         return
-    today = bd_now().strftime("%Y-%m-%d")
-    summary = await async_runtime.run_sheets_read(
-        sheets.get_cash_custody_summary, today
+    if shortcut == "custom":
+        context.user_data["financial_report_range"] = {"report": report}
+        today = bd_now().date()
+        await query.message.reply_text(
+            "📅 শুরুর তারিখ বেছে নিন:",
+            reply_markup=calendar_helper.build_calendar(
+                today.year, today.month, "finstart"
+            ),
+        )
+        return
+    start_date, end_date = _financial_report_date_range(shortcut)
+    await _show_financial_report(update, context, report, start_date, end_date)
+
+
+async def financial_report_calendar_navigate(update, context):
+    query = update.callback_query
+    await query.answer()
+    prefix, value = query.data.split("nav_", 1)
+    year, month = map(int, value.split("-"))
+    await query.edit_message_reply_markup(
+        reply_markup=calendar_helper.build_calendar(year, month, prefix)
     )
-    await update.message.reply_text(
-        _cash_custody_summary_text(summary, staff.get("Role", ""))
+
+
+async def financial_report_start_day_callback(update, context):
+    query = update.callback_query
+    await query.answer()
+    state = context.user_data.get("financial_report_range", {})
+    report = state.get("report", "")
+    if await _authorized_financial_report_staff(update, context, report) is None:
+        return
+    start_date = query.data.split("_", 1)[1]
+    state["start_date"] = start_date
+    context.user_data["financial_report_range"] = state
+    selected = datetime.strptime(start_date, "%Y-%m-%d").date()
+    await query.message.reply_text(
+        "📅 শেষের তারিখ বেছে নিন:",
+        reply_markup=calendar_helper.build_calendar(
+            selected.year, selected.month, "finend"
+        ),
     )
+
+
+async def financial_report_end_day_callback(update, context):
+    query = update.callback_query
+    await query.answer()
+    state = context.user_data.get("financial_report_range", {})
+    report = state.get("report", "")
+    start_date = state.get("start_date", "")
+    if await _authorized_financial_report_staff(update, context, report) is None:
+        return
+    end_date = query.data.split("_", 1)[1]
+    if not start_date or end_date < start_date:
+        await query.message.reply_text(
+            "⚠️ শেষের তারিখ শুরুর তারিখের আগে হতে পারবে না।"
+        )
+        return
+    context.user_data.pop("financial_report_range", None)
+    await _show_financial_report(update, context, report, start_date, end_date)
 
 
 def _owner_finance_view_text(data: dict, view: str) -> str:
@@ -6460,6 +6587,18 @@ def main():
             custody_balance_start,
         )
     )
+    app.add_handler(CallbackQueryHandler(
+        financial_report_range_callback, pattern="^finrange_(expense|cash)_"
+    ))
+    app.add_handler(CallbackQueryHandler(
+        financial_report_calendar_navigate, pattern="^fin(start|end)nav_"
+    ))
+    app.add_handler(CallbackQueryHandler(
+        financial_report_start_day_callback, pattern="^finstartday_"
+    ))
+    app.add_handler(CallbackQueryHandler(
+        financial_report_end_day_callback, pattern="^finendday_"
+    ))
     app.add_handler(MessageHandler(
         filters.Regex(f"^{roles.MENU_PHYSIO_FINANCE_DASHBOARD}$"),
         physio_finance_dashboard_start,
