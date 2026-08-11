@@ -192,6 +192,9 @@ _ALL_MENU_ITEMS = [
     roles.MENU_MY_PAYMENTS,
     roles.MENU_ADD_EXPENSE,
     roles.MENU_EXPENSE_TRACKER,
+    roles.MENU_CASH_HANDOVER,
+    roles.MENU_CASH_RECEIVE,
+    roles.MENU_CASH_MOVEMENTS,
     roles.MENU_FINANCE,
 ]
 _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
@@ -220,6 +223,7 @@ _ATTENDANCE_MENU_REGEX = "^(?:" + "|".join(
 (CLINICALAI_QUESTION,) = range(44, 45)  # AI Clinical Assistant state (patch40)
 (SALARY_SELECT_STAFF, SALARY_ENTER_AMOUNT, SALARY_NOTE, SALARY_CONFIRM) = range(45, 49)  # Staff Salary System
 (COST_CATEGORY, COST_AMOUNT, COST_NOTE, COST_CONFIRM) = range(49, 53)  # Daily Cost Tracker
+(CASH_AMOUNT, CASH_NOTE, CASH_CONFIRM) = range(53, 56)  # Cash handover workflow
 (PAYDEL_LIST, PAYDEL_CONFIRM) = range(300, 302)  # আজকের এন্ট্রি মুছার ফ্লো
 (INV_UPDATE,) = range(310, 311)  # ইনভেন্টরি স্টক আপডেট ফ্লো
 
@@ -5419,6 +5423,247 @@ async def mypayments_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(lines))
 
 
+async def cash_handover_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = await _require_staff(update, context)
+    if staff is None:
+        return ConversationHandler.END
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_CASH_HANDOVER):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return ConversationHandler.END
+    await update.message.reply_text(
+        "💵 Reception থেকে Home Treasury-তে কত টাকা হ্যান্ডওভার করবে?\n"
+        "শুধু টাকার পরিমাণ লেখো (যেমন: 5000):"
+    )
+    return CASH_AMOUNT
+
+
+async def cash_amount_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        amount = float(update.message.text.strip())
+    except ValueError:
+        await update.message.reply_text("❌ শুধু সংখ্যা লেখো (যেমন: 5000):")
+        return CASH_AMOUNT
+    if amount <= 0:
+        await update.message.reply_text("❌ Amount অবশ্যই ০-এর বেশি হতে হবে:")
+        return CASH_AMOUNT
+    context.user_data["cash_handover"] = {"Amount": amount}
+    await update.message.reply_text("কোনো নোট থাকলে লেখো, না থাকলে '-' দাও:")
+    return CASH_NOTE
+
+
+async def cash_note_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    handover = context.user_data.get("cash_handover", {})
+    note = update.message.text.strip()
+    handover["Note"] = "" if note == "-" else note
+    context.user_data["cash_handover"] = handover
+    await update.message.reply_text(
+        "💵 ক্যাশ হ্যান্ডওভার\n"
+        "From: Reception\n"
+        "To: Home Treasury\n"
+        f"Amount: ৳{handover.get('Amount', 0):.0f}\n"
+        f"Note: {handover.get('Note') or '-'}\n\n"
+        "হ্যান্ডওভার request পাঠাবে?",
+        reply_markup=ReplyKeyboardMarkup(
+            [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
+        ),
+    )
+    return CASH_CONFIRM
+
+
+async def cash_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff", {})
+    handover = context.user_data.get("cash_handover", {})
+    text = update.message.text.strip().lower()
+    if text not in ("হ্যাঁ", "yes", "y", "হা", "ha"):
+        context.user_data.pop("cash_handover", None)
+        await update.message.reply_text(
+            "❌ হ্যান্ডওভার বাতিল করা হয়েছে।",
+            reply_markup=_menu_keyboard(staff.get("Role", "")),
+        )
+        return ConversationHandler.END
+
+    moved_by = (
+        staff.get("Full_Name")
+        or staff.get("Name")
+        or str(staff.get("Staff_ID", ""))
+    )
+    try:
+        movement_id = await async_runtime.run_sheets_write(
+            sheets.add_cash_movement,
+            config.CASH_CUSTODIAN_RECEPTION,
+            config.CASH_CUSTODIAN_HOME_TREASURY,
+            handover.get("Amount", 0),
+            moved_by,
+            handover.get("Note", ""),
+        )
+        await update.message.reply_text(
+            f"✅ হ্যান্ডওভার request পাঠানো হয়েছে। ID: {movement_id}\n"
+            "Owner/Manager গ্রহণ নিশ্চিত করলে এটি সম্পন্ন হবে।",
+            reply_markup=_menu_keyboard(staff.get("Role", "")),
+        )
+        try:
+            recipients = await async_runtime.run_sheets_read(sheets.get_all_staff)
+            markup = InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        "✅ গ্রহণ",
+                        callback_data=f"cashact_accept_{movement_id}",
+                    ),
+                    InlineKeyboardButton(
+                        "❌ প্রত্যাখ্যান",
+                        callback_data=f"cashact_reject_{movement_id}",
+                    ),
+                ]
+            ])
+            for recipient in recipients:
+                if str(recipient.get("Role", "")).strip() not in ("Owner", "Manager"):
+                    continue
+                telegram_id = recipient.get("Telegram_ID")
+                if not telegram_id:
+                    continue
+                try:
+                    await context.bot.send_message(
+                        chat_id=int(telegram_id),
+                        text=(
+                            f"💵 নতুন cash handover request: {movement_id}\n"
+                            f"Reception → Home Treasury\n"
+                            f"পরিমাণ: ৳{handover.get('Amount', 0):.0f}\n"
+                            f"দিয়েছেন: {moved_by}\n"
+                            f"নোট: {handover.get('Note') or '-'}"
+                        ),
+                        reply_markup=markup,
+                    )
+                except Exception:
+                    logger.exception(
+                        "cash_confirm_receive: receiver notification failed"
+                    )
+        except Exception:
+            logger.exception("cash_confirm_receive: receiver list failed")
+    except Exception as error:
+        logger.exception("cash_confirm_receive failed")
+        await update.message.reply_text(
+            f"❌ হ্যান্ডওভার save করা যায়নি।\nError: {error}",
+            reply_markup=_menu_keyboard(staff.get("Role", "")),
+        )
+    context.user_data.pop("cash_handover", None)
+    return ConversationHandler.END
+
+
+async def cash_handover_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = context.user_data.get("staff", {})
+    context.user_data.pop("cash_handover", None)
+    await update.effective_message.reply_text(
+        "❌ হ্যান্ডওভার বাতিল করা হলো।",
+        reply_markup=_menu_keyboard(staff.get("Role", "")),
+    )
+    return ConversationHandler.END
+
+
+def _cash_pending_keyboard(rows: list[dict]) -> InlineKeyboardMarkup:
+    buttons = []
+    for row in rows[:20]:
+        movement_id = str(row.get("Movement_ID", "")).strip()
+        buttons.append([
+            InlineKeyboardButton(
+                f"✅ {movement_id} গ্রহণ",
+                callback_data=f"cashact_accept_{movement_id}",
+            ),
+            InlineKeyboardButton(
+                "❌ প্রত্যাখ্যান",
+                callback_data=f"cashact_reject_{movement_id}",
+            ),
+        ])
+    return InlineKeyboardMarkup(buttons)
+
+
+async def cash_receive_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = await _require_staff(update, context)
+    if staff is None:
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_CASH_RECEIVE):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    rows = await async_runtime.run_sheets_read(sheets.get_pending_cash_movements)
+    if not rows:
+        await update.message.reply_text("✅ কোনো pending cash handover নেই।")
+        return
+    lines = ["💵 Pending cash handover:\n"]
+    for row in rows[:20]:
+        lines.append(
+            f"• {row.get('Movement_ID', '')} | ৳{float(row.get('Amount', 0) or 0):.0f} "
+            f"| {row.get('Moved_By', '')} | {row.get('Timestamp', '')}"
+        )
+    await update.message.reply_text(
+        "\n".join(lines),
+        reply_markup=_cash_pending_keyboard(rows),
+    )
+
+
+async def cash_finalize_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    staff = await _require_staff(update, context)
+    if staff is None:
+        await query.edit_message_text("❌ স্টাফ তথ্য পাওয়া যায়নি।")
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_CASH_RECEIVE):
+        await query.edit_message_text("⛔ এই কাজের অনুমতি তোমার নেই।")
+        return
+
+    payload = query.data.replace("cashact_", "", 1)
+    action, movement_id = payload.split("_", 1)
+    decision = "Accepted" if action == "accept" else "Rejected"
+    confirmed_by = (
+        staff.get("Full_Name")
+        or staff.get("Name")
+        or str(staff.get("Staff_ID", ""))
+    )
+    result = await async_runtime.run_sheets_write(
+        sheets.finalize_cash_movement,
+        movement_id,
+        confirmed_by,
+        decision,
+    )
+    if result.get("ok"):
+        label = "গ্রহণ করা হয়েছে" if decision == "Accepted" else "প্রত্যাখ্যান করা হয়েছে"
+        await query.edit_message_text(
+            f"{'✅' if decision == 'Accepted' else '❌'} {movement_id} {label}।\n"
+            f"নিশ্চিত করেছেন: {confirmed_by}"
+        )
+        return
+    if result.get("reason") == "already_finalized":
+        await query.edit_message_text(
+            f"ℹ️ {movement_id} আগেই {result.get('status', 'finalized')} হয়েছে।"
+        )
+        return
+    await query.edit_message_text(f"❌ {movement_id} পাওয়া যায়নি।")
+
+
+async def cash_movements_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = await _require_staff(update, context)
+    if staff is None:
+        return
+    if not roles.can_access(staff.get("Role", ""), roles.MENU_CASH_MOVEMENTS):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    today = bd_now().strftime("%Y-%m-%d")
+    rows = await async_runtime.run_sheets_read(
+        sheets.get_cash_movements_for_date, today
+    )
+    if not rows:
+        await update.message.reply_text("🔄 আজ কোনো cash movement নেই।")
+        return
+    lines = [f"🔄 আজকের cash movement — {today}\n"]
+    for row in rows[:30]:
+        lines.append(
+            f"• {row.get('Movement_ID', '')} | "
+            f"{row.get('From_Custodian', '')} → {row.get('To_Custodian', '')} | "
+            f"৳{float(row.get('Amount', 0) or 0):.0f} | "
+            f"{row.get('Status', 'Pending')}"
+        )
+    await update.message.reply_text("\n".join(lines))
+
+
 async def cost_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
@@ -5624,6 +5869,60 @@ def main():
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_SALARY_HISTORY}$"), salhist_start))
     app.add_handler(CallbackQueryHandler(salhist_select_callback, pattern="^salhist_"))
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_MY_PAYMENTS}$"), mypayments_start))
+
+    cash_handover_conv = ConversationHandler(
+        entry_points=[
+            MessageHandler(
+                filters.Regex(f"^{roles.MENU_CASH_HANDOVER}$"),
+                cash_handover_start,
+            )
+        ],
+        states={
+            CASH_AMOUNT: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX),
+                    cash_amount_receive,
+                )
+            ],
+            CASH_NOTE: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX),
+                    cash_note_receive,
+                )
+            ],
+            CASH_CONFIRM: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX),
+                    cash_confirm_receive,
+                )
+            ],
+        },
+        fallbacks=[
+            MessageHandler(
+                filters.Regex(f"^{roles.MENU_BACK_MAIN}$"),
+                _cancel_and_go_home,
+            ),
+            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
+            CommandHandler("cancel", cash_handover_cancel),
+            CommandHandler("start", _restart_via_start),
+        ],
+    )
+    app.add_handler(cash_handover_conv)
+    app.add_handler(
+        MessageHandler(
+            filters.Regex(f"^{roles.MENU_CASH_RECEIVE}$"),
+            cash_receive_start,
+        )
+    )
+    app.add_handler(
+        MessageHandler(
+            filters.Regex(f"^{roles.MENU_CASH_MOVEMENTS}$"),
+            cash_movements_start,
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(cash_finalize_callback, pattern="^cashact_")
+    )
 
     cost_conv = ConversationHandler(
         entry_points=[
