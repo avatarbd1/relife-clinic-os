@@ -2,6 +2,7 @@ import importlib.util
 import os
 import sys
 import unittest
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
@@ -280,6 +281,109 @@ class ExpenseApprovalWorkflowTests(unittest.TestCase):
             summary = sheets.get_cash_custody_summary("2026-08-11")
         self.assertEqual(summary["Reception_Balance"], 2500)
         self.assertEqual(summary["Home_Balance"], 4000)
+
+    def test_cash_custody_range_aggregates_all_inclusive_days(self):
+        payment_ws, expense_ws, movement_ws = object(), object(), object()
+        records = {
+            payment_ws: [
+                {"Date": "2026-08-10", "Amount": 1000, "Payment_Method": "Cash"},
+                {"Date": "2026-08-11", "Amount": 2000, "Payment_Method": "Cash"},
+                {"Date": "2026-08-12", "Amount": 9000, "Payment_Method": "Cash"},
+            ],
+            expense_ws: [
+                {"Date": "2026-08-10", "Amount": 100, "Type": "Clinic Expense", "Status": "Paid", "Paid_From": "Reception"},
+                {"Date": "2026-08-11", "Amount": 200, "Type": "Clinic Expense", "Status": "Paid", "Paid_From": "Reception"},
+            ],
+            movement_ws: [
+                {"Date": "2026-08-10", "Amount": 400, "From_Custodian": "Reception", "To_Custodian": "Home Treasury", "Status": "Accepted"},
+                {"Date": "2026-08-11", "Amount": 600, "From_Custodian": "Reception", "To_Custodian": "Home Treasury", "Status": "Accepted"},
+            ],
+        }
+        with patch.object(
+            sheets, "_worksheet", side_effect=[payment_ws, expense_ws, movement_ws]
+        ), patch.object(
+            sheets, "safe_get_all_records", side_effect=lambda ws: records[ws]
+        ):
+            summary = sheets.get_cash_custody_summary(
+                "2026-08-10", "2026-08-11"
+            )
+        self.assertEqual(summary["Cash_Collected"], 3000)
+        self.assertEqual(summary["Reception_Expense"], 300)
+        self.assertEqual(summary["Reception_Handover"], 1000)
+        self.assertEqual(summary["Reception_Balance"], 1700)
+        self.assertEqual(summary["Date"], "2026-08-10 — 2026-08-11")
+
+    def test_expense_range_and_default_today_are_backward_compatible(self):
+        records = [
+            {"Date": "2026-08-10", "Amount": 100},
+            {"Date": "2026-08-11", "Amount": 200},
+            {"Date": "2026-08-12", "Amount": 300},
+        ]
+        with patch.object(sheets, "_worksheet", return_value=object()), patch.object(
+            sheets, "safe_get_all_records", return_value=records
+        ):
+            ranged = sheets.get_expenses_for_date("2026-08-10", "2026-08-11")
+            with patch.object(sheets, "bd_now") as now:
+                now.return_value.strftime.return_value = "2026-08-12"
+                defaulted = sheets.get_expenses_for_date()
+        self.assertEqual(sum(row["Amount"] for row in ranged), 300)
+        self.assertEqual([row["Amount"] for row in defaulted], [300])
+
+    def test_financial_report_shortcut_boundaries_use_sunday_week_start(self):
+        today = date(2026, 8, 12)
+        self.assertEqual(
+            bot._financial_report_date_range("today", today),
+            ("2026-08-12", "2026-08-12"),
+        )
+        self.assertEqual(
+            bot._financial_report_date_range("yesterday", today),
+            ("2026-08-11", "2026-08-11"),
+        )
+        self.assertEqual(
+            bot._financial_report_date_range("week", today),
+            ("2026-08-09", "2026-08-12"),
+        )
+        self.assertEqual(
+            bot._financial_report_date_range("month", today),
+            ("2026-08-01", "2026-08-12"),
+        )
+
+    def test_custom_range_output_preserves_owner_only_treasury_visibility(self):
+        summary = {
+            "Date": "2026-08-01 — 2026-08-12",
+            "Cash_Collected": 10000,
+            "Reception_Expense": 500,
+            "Reception_Handover": 7000,
+            "Reception_Balance": 2500,
+            "Home_Received": 7000,
+            "Home_Clinic_Expense": 1000,
+            "Household_Withdrawal": 2000,
+            "Home_Transfer_Out": 0,
+            "Home_Balance": 4000,
+        }
+        self.assertIn(
+            "Home Treasury", bot._cash_custody_summary_text(summary, "Owner")
+        )
+        for role in ("Receptionist", "Manager", "Therapist"):
+            self.assertNotIn(
+                "Home Treasury", bot._cash_custody_summary_text(summary, role)
+            )
+
+    def test_expense_range_hides_home_treasury_rows_from_non_owner(self):
+        rows = [
+            {"Expense_ID": "EX1", "Category": "Small", "Amount": 100, "Type": "Clinic Expense", "Status": "Paid", "Paid_From": "Reception"},
+            {"Expense_ID": "EX2", "Category": "House", "Amount": 900, "Type": "Household Withdrawal", "Status": "Paid", "Paid_From": "Home Treasury"},
+        ]
+        owner = bot._expense_report_text(
+            rows, "2026-08-01", "2026-08-12", "Owner"
+        )
+        receptionist = bot._expense_report_text(
+            rows, "2026-08-01", "2026-08-12", "Receptionist"
+        )
+        self.assertIn("EX2", owner)
+        self.assertIn("Home Treasury", owner)
+        self.assertNotIn("EX2", receptionist)
+        self.assertNotIn("Home Treasury", receptionist)
 
     def test_custody_reconciliation_text_hides_home_treasury_from_non_owner(self):
         summary = {
