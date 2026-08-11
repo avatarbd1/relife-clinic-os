@@ -9,7 +9,9 @@ on:
       - '07_Testing/test_finance_cash_custody.py'
       - '07_Testing/test_department_access.py'
       - '07_Testing/test_department_schema_audit.py'
+      - '07_Testing/test_department_schema_migration.py'
       - '05_GoogleSheets/audit_department_schema.py'
+      - '05_GoogleSheets/migrate_department_schema.py'
       - '.github/workflows/production-bot-ci.yml'
   pull_request:
     paths:
@@ -18,7 +20,9 @@ on:
       - '07_Testing/test_finance_cash_custody.py'
       - '07_Testing/test_department_access.py'
       - '07_Testing/test_department_schema_audit.py'
+      - '07_Testing/test_department_schema_migration.py'
       - '05_GoogleSheets/audit_department_schema.py'
+      - '05_GoogleSheets/migrate_department_schema.py'
       - '.github/workflows/production-bot-ci.yml'
 
 permissions:
@@ -47,4 +51,5 @@ jobs:
             07_Testing/test_finance_cash_custody.py \
             07_Testing/test_department_access.py \
             07_Testing/test_department_schema_audit.py \
+            07_Testing/test_department_schema_migration.py \
             07_Testing/test_sentry_policy.py
