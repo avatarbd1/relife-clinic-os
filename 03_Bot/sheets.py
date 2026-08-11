@@ -2125,6 +2125,157 @@ def get_cash_custody_summary(date_str: str) -> dict:
     }
 
 
+_FINANCE_DEPARTMENTS = {config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL}
+
+
+def _finance_department(row: dict) -> str:
+    value = str(row.get("Department", "")).strip()
+    return value if value in _FINANCE_DEPARTMENTS else ""
+
+
+def _money(row: dict, key: str = "Amount") -> float:
+    try:
+        return float(row.get(key, 0) or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _movement_amount(row: dict) -> float:
+    received = str(row.get("Received_Amount", "")).strip()
+    return _money(row, "Received_Amount") if received else _money(row)
+
+
+def _custodian(row: dict, side: str) -> str:
+    raw_value = row.get("Paid_From", "") if side == "Paid" else (
+        row.get(f"{side}_Custodian_ID", "")
+        or row.get(f"{side}_Custodian", "")
+    )
+    value = str(raw_value).strip().casefold()
+    if value in {"reception", "physio reception cash", "dental reception cash"}:
+        return "Reception"
+    if value == "home treasury":
+        return "Home Treasury"
+    if value in {"bank", "digital/bank", "digital"}:
+        return "Digital/Bank"
+    return ""
+
+
+def _department_finance_summary(
+    department: str,
+    date_str: str,
+    payment_rows: list[dict],
+    expense_rows: list[dict],
+    movement_rows: list[dict],
+) -> dict:
+    """Department-preserving owner totals; missing Department is excluded."""
+    month = date_str[:7]
+    payments = [row for row in payment_rows if _finance_department(row) == department]
+    expenses = [row for row in expense_rows if _finance_department(row) == department]
+    movements = [row for row in movement_rows if _finance_department(row) == department]
+
+    today_collection = sum(
+        _money(row) for row in payments
+        if str(row.get("Date", "")).strip() == date_str
+    )
+    month_collection = sum(
+        _money(row) for row in payments
+        if str(row.get("Date", "")).strip().startswith(month)
+    )
+    month_clinic_expense = sum(
+        _money(row) for row in expenses
+        if str(row.get("Date", "")).strip().startswith(month)
+        and str(row.get("Type", "")).strip() == config.EXPENSE_TYPE_CLINIC
+        and _expense_is_paid(row)
+    )
+    month_household = sum(
+        _money(row) for row in expenses
+        if str(row.get("Date", "")).strip().startswith(month)
+        and str(row.get("Type", "")).strip() == config.EXPENSE_TYPE_HOUSEHOLD
+        and _expense_is_paid(row)
+    )
+
+    def balances(before: bool) -> dict[str, float]:
+        result = {"Reception": 0.0, "Home Treasury": 0.0, "Digital/Bank": 0.0}
+
+        def included(row: dict) -> bool:
+            row_date = str(row.get("Date", "")).strip()
+            return bool(row_date) and (row_date < date_str if before else row_date <= date_str)
+
+        for row in payments:
+            if not included(row):
+                continue
+            method = str(row.get("Payment_Method", "")).strip().casefold()
+            target = "Reception" if method == "cash" else "Digital/Bank"
+            result[target] += _money(row)
+        for row in expenses:
+            if not included(row) or not _expense_is_paid(row):
+                continue
+            source = _custodian(row, "Paid")
+            if source:
+                result[source] -= _money(row)
+        for row in movements:
+            if not included(row) or str(row.get("Status", "")).strip() != "Accepted":
+                continue
+            source = _custodian(row, "From")
+            target = _custodian(row, "To")
+            amount = _movement_amount(row)
+            if source:
+                result[source] -= amount
+            if target:
+                result[target] += amount
+        return {key: round(value, 2) for key, value in result.items()}
+
+    return {
+        "Department": department,
+        "Today_Collection": round(today_collection, 2),
+        "Month_Collection": round(month_collection, 2),
+        "Month_Clinic_Expense": round(month_clinic_expense, 2),
+        "Month_Household_Withdrawal": round(month_household, 2),
+        "Month_Net_Before_Salary": round(month_collection - month_clinic_expense, 2),
+        "Opening": balances(True),
+        "Closing": balances(False),
+    }
+
+
+def get_owner_financial_dashboard(date_str: str) -> dict:
+    """Return Physio, Dental and combined business-only finance views."""
+    payment_rows = safe_get_all_records(_worksheet(config.SHEET_PAYMENTS))
+    expense_rows = safe_get_all_records(_worksheet(config.SHEET_EXPENSES))
+    movement_rows = safe_get_all_records(_worksheet(config.SHEET_CASH_MOVEMENT))
+    summaries = {
+        department: _department_finance_summary(
+            department, date_str, payment_rows, expense_rows, movement_rows
+        )
+        for department in sorted(_FINANCE_DEPARTMENTS)
+    }
+    combined = {
+        key: round(sum(summary[key] for summary in summaries.values()), 2)
+        for key in (
+            "Today_Collection", "Month_Collection", "Month_Clinic_Expense",
+            "Month_Household_Withdrawal", "Month_Net_Before_Salary",
+        )
+    }
+    combined["Opening"] = {
+        custodian: round(sum(s["Opening"][custodian] for s in summaries.values()), 2)
+        for custodian in ("Reception", "Home Treasury", "Digital/Bank")
+    }
+    combined["Closing"] = {
+        custodian: round(sum(s["Closing"][custodian] for s in summaries.values()), 2)
+        for custodian in ("Reception", "Home Treasury", "Digital/Bank")
+    }
+    combined["Unclassified_Rows"] = {
+        "Payments": sum(not _finance_department(row) for row in payment_rows),
+        "Expenses": sum(not _finance_department(row) for row in expense_rows),
+        "Cash_Movements": sum(not _finance_department(row) for row in movement_rows),
+    }
+    return {
+        "Date": date_str,
+        config.DEPARTMENT_PHYSIO: summaries[config.DEPARTMENT_PHYSIO],
+        config.DEPARTMENT_DENTAL: summaries[config.DEPARTMENT_DENTAL],
+        "Combined": combined,
+    }
+
+
 def _next_cash_movement_id(ws) -> str:
     ids = ws.col_values(1)[1:]
     numbers = []
