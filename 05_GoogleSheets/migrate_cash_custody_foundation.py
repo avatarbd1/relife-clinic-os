@@ -20,6 +20,10 @@ load_dotenv(ROOT / ".env")
 from data_contract import UNIFIED_HEADERS  # noqa: E402
 
 EXPENSE_SHEET = "07_Expenses"
+EXPENSE_WORKFLOW_HEADERS = [
+    "Paid_From", "Status", "Requested_By", "Approved_By",
+    "Approved_At", "Paid_By", "Paid_At",
+]
 CASH_MOVEMENT_SHEET = "21_Cash_Movement"
 CASH_MOVEMENT_HEADERS = [
     "Movement_ID", "Date", "From_Custodian", "To_Custodian", "Amount",
@@ -36,6 +40,19 @@ def plan_migration(book) -> list[str]:
     actions = []
     if "Type" not in expense_headers:
         actions.append("add_expense_type")
+        actions.append("add_expense_workflow_columns")
+    else:
+        workflow_start = expense_headers.index("Type") + 1
+        actual_workflow = expense_headers[
+            workflow_start:workflow_start + len(EXPENSE_WORKFLOW_HEADERS)
+        ]
+        if not actual_workflow:
+            actions.append("add_expense_workflow_columns")
+        elif actual_workflow != EXPENSE_WORKFLOW_HEADERS:
+            raise RuntimeError(
+                f"{EXPENSE_SHEET} workflow headers do not match exactly: "
+                f"{actual_workflow}"
+            )
 
     if CASH_MOVEMENT_SHEET not in titles:
         actions.append("create_cash_movement")
@@ -70,6 +87,15 @@ def migrate(book, apply: bool = False) -> list[str]:
             ws.add_cols(1)
         # Appending only the header preserves every historical row as blank.
         ws.update_cell(1, len(headers) + 1, "Type")
+
+    if "add_expense_workflow_columns" in actions:
+        ws = book.worksheet(EXPENSE_SHEET)
+        headers = ws.row_values(1)
+        target_count = len(headers) + len(EXPENSE_WORKFLOW_HEADERS)
+        if ws.col_count < target_count:
+            ws.add_cols(target_count - ws.col_count)
+        for offset, header in enumerate(EXPENSE_WORKFLOW_HEADERS, start=1):
+            ws.update_cell(1, len(headers) + offset, header)
 
     if "create_cash_movement" in actions:
         ws = book.add_worksheet(
