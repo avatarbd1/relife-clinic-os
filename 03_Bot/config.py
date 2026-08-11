@@ -64,6 +64,22 @@ SHEET_LEARNING_PROGRESS = "18_Learning_Progress"
 
 SHEET_CONSENT = "19_Consent"
 SHEET_DATA_AUDIT = "20_Data_Audit"
+SHEET_CASH_MOVEMENT = "21_Cash_Movement"
+
+# ---- Finance classifications ----
+EXPENSE_TYPE_CLINIC = "Clinic Expense"
+EXPENSE_TYPE_HOUSEHOLD = "Household Withdrawal"
+EXPENSE_TYPE_UNCLASSIFIED = "Unclassified"
+EXPENSE_TYPES = [EXPENSE_TYPE_CLINIC, EXPENSE_TYPE_HOUSEHOLD]
+
+CASH_CUSTODIAN_RECEPTION = "Reception"
+CASH_CUSTODIAN_HOME_TREASURY = "Home Treasury"
+CASH_CUSTODIAN_BANK = "Bank"
+CASH_CUSTODIANS = [
+    CASH_CUSTODIAN_RECEPTION,
+    CASH_CUSTODIAN_HOME_TREASURY,
+    CASH_CUSTODIAN_BANK,
+]
 
 
 # ---- Attendance location verification ----
