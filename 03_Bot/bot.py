@@ -1,7 +1,3 @@
-Exit code: 0
-Wall time: 1.4 seconds
-Total output lines: 6953
-Output:
 import os
 import base64
 import time
@@ -24,7 +20,7 @@ def _patched_gel():
 _asyncio_p314.get_event_loop = _patched_gel
 
 """
-bot.py Ã¢â‚¬â€ Relife Clinic OS Telegram Bot (Ã Â¦ÂªÃ Â§ÂÃ Â¦Â°Ã Â¦Â¥Ã Â¦Â® Ã Â¦Â­Ã Â¦Â¾Ã Â¦Â°Ã Â§ÂÃ Â¦Â¸Ã Â¦Â¨)
+bot.py â€” Relife Clinic OS Telegram Bot (à¦ªà§à¦°à¦¥à¦® à¦­à¦¾à¦°à§à¦¸à¦¨)
 """
 
 import logging
@@ -92,14 +88,14 @@ async def _bind_update_tenant(update: Update, context: ContextTypes.DEFAULT_TYPE
         capture_exception(error)
         if update.effective_message:
             await update.effective_message.reply_text(
-                "Ã¢Å¡Â Ã¯Â¸Â Ã Â¦â€¢Ã Â§ÂÃ Â¦Â²Ã Â¦Â¿Ã Â¦Â¨Ã Â¦Â¿Ã Â¦â€¢ Ã Â¦ÂªÃ Â¦Â°Ã Â¦Â¿Ã Â¦Å¡Ã Â§Å¸ Ã Â¦Â¯Ã Â¦Â¾Ã Â¦Å¡Ã Â¦Â¾Ã Â¦â€¡ Ã Â¦â€¢Ã Â¦Â°Ã Â¦Â¾ Ã Â¦Â¯Ã Â¦Â¾Ã Â¦Å¡Ã Â§ÂÃ Â¦â€ºÃ Â§â€¡ Ã Â¦Â¨Ã Â¦Â¾Ã Â¥Â¤ Ã Â¦ÂÃ Â¦â€¢Ã Â¦Å¸Ã Â§Â Ã Â¦ÂªÃ Â¦Â°Ã Â§â€¡ Ã Â¦â€ Ã Â¦Â¬Ã Â¦Â¾Ã Â¦Â° Ã Â¦Å¡Ã Â§â€¡Ã Â¦Â·Ã Â§ÂÃ Â¦Å¸Ã Â¦Â¾ Ã Â¦â€¢Ã Â¦Â°Ã Â§ÂÃ Â¦Â¨Ã Â¥Â¤"
+                "âš ï¸ à¦•à§à¦²à¦¿à¦¨à¦¿à¦• à¦ªà¦°à¦¿à¦šà§Ÿ à¦¯à¦¾à¦šà¦¾à¦‡ à¦•à¦°à¦¾ à¦¯à¦¾à¦šà§à¦›à§‡ à¦¨à¦¾à¥¤ à¦à¦•à¦Ÿà§ à¦ªà¦°à§‡ à¦†à¦¬à¦¾à¦° à¦šà§‡à¦·à§à¦Ÿà¦¾ à¦•à¦°à§à¦¨à¥¤"
             )
         raise ApplicationHandlerStop
 
     if tenant is None:
         if update.effective_message:
             await update.effective_message.reply_text(
-                "Ã¢ÂÅ’ Ã Â¦â€ Ã Â¦ÂªÃ Â¦Â¨Ã Â¦Â¾Ã Â¦Â° Telegram ID Ã Â¦â€¢Ã Â§â€¹Ã Â¦Â¨Ã Â§â€¹ Ã Â¦Â¸Ã Â¦â€¢Ã Â§ÂÃ Â¦Â°Ã Â¦Â¿Ã Â§Å¸ Ã Â¦â€¢Ã Â§ÂÃ Â¦Â²Ã Â¦Â¿Ã Â¦Â¨Ã Â¦Â¿Ã Â¦â€¢Ã Â§â€¡Ã Â¦Â° Ã Â¦Â¸Ã Â¦â„¢Ã Â§ÂÃ Â¦â€”Ã Â§â€¡ Ã Â¦Â¯Ã Â§ÂÃ Â¦â€¢Ã Â§ÂÃ Â¦Â¤ Ã Â¦Â¨Ã Â§â€¡Ã Â¦â€¡Ã Â¥Â¤"
+                "âŒ à¦†à¦ªà¦¨à¦¾à¦° Telegram ID à¦•à§‹à¦¨à§‹ à¦¸à¦•à§à¦°à¦¿à§Ÿ à¦•à§à¦²à¦¿à¦¨à¦¿à¦•à§‡à¦° à¦¸à¦™à§à¦—à§‡ à¦¯à§à¦•à§à¦¤ à¦¨à§‡à¦‡à¥¤"
             )
         raise ApplicationHandlerStop
 
@@ -153,17 +149,17 @@ REG_PHOTO_CHOICE, REG_PHOTO_WAIT, REG_PHOTO_CONFIRM = range(90, 93)
 PAY_METHODS = ["Cash", "bKash", "Nagad", "Card"]
 THERAPIST_NAMES_FALLBACK = ["Nipa", "Saiful"]
 
-BN_WEEKDAYS = ["Ã Â¦Â¸Ã Â§â€¹Ã Â¦Â®", "Ã Â¦Â®Ã Â¦â„¢Ã Â§ÂÃ Â¦â€”Ã Â¦Â²", "Ã Â¦Â¬Ã Â§ÂÃ Â¦Â§", "Ã Â¦Â¬Ã Â§Æ’Ã Â¦Â¹Ã Â¦Æ’", "Ã Â¦Â¶Ã Â§ÂÃ Â¦â€¢Ã Â§ÂÃ Â¦Â°", "Ã Â¦Â¶Ã Â¦Â¨Ã Â¦Â¿", "Ã Â¦Â°Ã Â¦Â¬Ã Â¦Â¿"]
+BN_WEEKDAYS = ["à¦¸à§‹à¦®", "à¦®à¦™à§à¦—à¦²", "à¦¬à§à¦§", "à¦¬à§ƒà¦¹à¦ƒ", "à¦¶à§à¦•à§à¦°", "à¦¶à¦¨à¦¿", "à¦°à¦¬à¦¿"]
 
 PATIENT_LOOKUP_PROMPT = (
-    "Ã°Å¸â€Å½ Ã Â¦Â°Ã Â§â€¹Ã Â¦â€”Ã Â§â‚¬ Ã Â¦Â¶Ã Â¦Â¨Ã Â¦Â¾Ã Â¦â€¢Ã Â§ÂÃ Â¦Â¤ Ã Â¦â€¢Ã Â¦Â°Ã Â¦Â¤Ã Â§â€¡ Ã Â¦Â¨Ã Â¦Â¾Ã Â¦Â®, Ã Â¦Â«Ã Â§â€¹Ã Â¦Â¨ Ã Â¦Â¨Ã Â¦Â®Ã Â§ÂÃ Â¦Â¬Ã Â¦Â° Ã Â¦â€¦Ã Â¦Â¥Ã Â¦Â¬Ã Â¦Â¾ Patient ID Ã Â¦Â²Ã Â¦Â¿Ã Â¦â€“Ã Â§ÂÃ Â¦Â¨:"
+    "ğŸ” à¦°à§‹à¦—à§€ à¦¶à¦¨à¦¾à¦•à§à¦¤ à¦•à¦°à¦¤à§‡ à¦¨à¦¾à¦®, à¦«à§‹à¦¨ à¦¨à¦®à§à¦¬à¦° à¦…à¦¥à¦¬à¦¾ Patient ID à¦²à¦¿à¦–à§à¦¨:"
 )
-STATUS_DOCUMENT_ANALYSIS = "Ã°Å¸â€“Â¼Ã¯Â¸Â Ã Â¦â€ºÃ Â¦Â¬Ã Â¦Â¿/Ã Â¦Â°Ã Â¦Â¿Ã Â¦ÂªÃ Â§â€¹Ã Â¦Â°Ã Â§ÂÃ Â¦Å¸Ã Â§â€¡Ã Â¦Â° Ã Â¦Â¤Ã Â¦Â¥Ã Â§ÂÃ Â¦Â¯ Ã Â¦Â¬Ã Â¦Â¿Ã Â¦Â¶Ã Â§ÂÃ Â¦Â²Ã Â§â€¡Ã Â¦Â·Ã Â¦Â£ Ã Â¦â€¢Ã Â¦Â°Ã Â¦â€ºÃ Â¦Â¿Ã¢â‚¬Â¦"
+STATUS_DOCUMENT_ANALYSIS = "ğŸ–¼ï¸ à¦›à¦¬à¦¿/à¦°à¦¿à¦ªà§‹à¦°à§à¦Ÿà§‡à¦° à¦¤à¦¥à§à¦¯ à¦¬à¦¿à¦¶à§à¦²à§‡à¦·à¦£ à¦•à¦°à¦›à¦¿â€¦"
 STATUS_CLINICAL_ANALYSIS = (
-    "Ã°Å¸Â§Â  Ã Â¦â€¢Ã Â§ÂÃ Â¦Â²Ã Â¦Â¿Ã Â¦Â¨Ã Â¦Â¿Ã Â¦â€¢Ã Â§ÂÃ Â¦Â¯Ã Â¦Â¾Ã Â¦Â² Ã Â¦Â¤Ã Â¦Â¥Ã Â§ÂÃ Â¦Â¯ Ã Â¦â€œ Ã Â¦ÂªÃ Â§ÂÃ Â¦Â°Ã Â¦Â¾Ã Â¦Â¸Ã Â¦â„¢Ã Â§ÂÃ Â¦â€”Ã Â¦Â¿Ã Â¦â€¢ Ã Â¦Â®Ã Â§ÂÃ Â¦Â¯Ã Â¦Â¾Ã Â¦Â¨Ã Â§ÂÃ Â¦Â¯Ã Â¦Â¼Ã Â¦Â¾Ã Â¦Â² Ã Â¦Â¬Ã Â¦Â¿Ã Â¦Â¶Ã Â§ÂÃ Â¦Â²Ã Â§â€¡Ã Â¦Â·Ã Â¦Â£ Ã Â¦â€¢Ã Â¦Â°Ã Â¦â€ºÃ Â¦Â¿Ã¢â‚¬Â¦"
+    "ğŸ§  à¦•à§à¦²à¦¿à¦¨à¦¿à¦•à§à¦¯à¦¾à¦² à¦¤à¦¥à§à¦¯ à¦“ à¦ªà§à¦°à¦¾à¦¸à¦™à§à¦—à¦¿à¦• à¦®à§à¦¯à¦¾à¦¨à§à¦¯à¦¼à¦¾à¦² à¦¬à¦¿à¦¶à§à¦²à§‡à¦·à¦£ à¦•à¦°à¦›à¦¿â€¦"
 )
 STATUS_BUSINESS_ANALYSIS = (
-    "Ã°Å¸â€œÅ  Ã Â¦â€¢Ã Â§ÂÃ Â¦Â²Ã Â¦Â¿Ã Â¦Â¨Ã Â¦Â¿Ã Â¦â€¢Ã Â§â€¡Ã Â¦Â° Ã Â¦Â¤Ã Â¦Â¥Ã Â§ÂÃ Â¦Â¯ Ã Â¦Â¬Ã Â¦Â¿Ã Â¦Â¶Ã Â§ÂÃ Â¦Â²Ã Â§â€¡Ã Â¦Â·Ã Â¦Â£ Ã Â¦â€¢Ã Â¦Â°Ã Â§â€¡ Ã Â¦â€°Ã Â¦Â¤Ã Â§ÂÃ Â¦Â¤Ã Â¦Â° Ã Â¦ÂªÃ Â§ÂÃ Â¦Â°Ã Â¦Â¸Ã Â§ÂÃ Â¦Â¤Ã Â§ÂÃ Â¦Â¤ Ã Â¦â€¢Ã Â¦Â°Ã Â¦â€ºÃ Â¦Â¿Ã¢â‚¬Â¦"
+    "ğŸ“Š à¦•à§à¦²à¦¿à¦¨à¦¿à¦•à§‡à¦° à¦¤à¦¥à§à¦¯ à¦¬à¦¿à¦¶à§à¦²à§‡à¦·à¦£ à¦•à¦°à§‡ à¦‰à¦¤à§à¦¤à¦° à¦ªà§à¦°à¦¸à§à¦¤à§à¦¤ à¦•à¦°à¦›à¦¿â€¦"
 )
 
 _ALL_MENU_ITEMS = [
@@ -177,7 +173,7 @@ _ALL_MENU_ITEMS = [
     roles.MENU_REPORTS,
     roles.MENU_SETTINGS,
     roles.MENU_ATTENDANCE,
-    "Ã°Å¸ÂÂ  Ã Â¦Â¹Ã Â¦Â¾Ã Â¦Å“Ã Â¦Â¿Ã Â¦Â°Ã Â¦Â¾",
+    "ğŸ  à¦¹à¦¾à¦œà¦¿à¦°à¦¾",
     roles.MENU_TODAY_APPOINTMENTS,
     roles.MENU_PATIENT_HISTORY,
     roles.MENU_TREATMENT_HISTORY,
@@ -211,7 +207,7 @@ _ALL_MENU_ITEMS = [
     roles.MENU_FINANCE,
 ]
 _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
-_ATTENDANCE_MENU_LABELS = (roles.MENU_ATTENDANCE, "Ã°Å¸ÂÂ  Ã Â¦Â¹Ã Â¦Â¾Ã Â¦Å“Ã Â¦Â¿Ã Â¦Â°Ã Â¦Â¾")
+_ATTENDANCE_MENU_LABELS = (roles.MENU_ATTENDANCE, "ğŸ  à¦¹à¦¾à¦œà¦¿à¦°à¦¾")
 _ATTENDANCE_MENU_REGEX = "^(?:" + "|".join(
     re.escape(label) for label in _ATTENDANCE_MENU_LABELS
 ) + ")$"
@@ -231,15 +227,15 @@ _ATTENDANCE_MENU_REGEX = "^(?:" + "|".join(
 (CASESTUDY_INPUT,) = range(38, 39)
 (CASESTUDY_LESSON,) = range(39, 40)
 (CASESTUDY_SEARCH, CASESTUDY_EXTRA) = range(40, 42)
-(CASESTUDY_QUESTION,) = range(42, 43)  # Ã Â¦â€ Ã Â¦Â° Ã Â¦Â¬Ã Â§ÂÃ Â¦Â¯Ã Â¦Â¬Ã Â¦Â¹Ã Â¦Â¾Ã Â¦Â° Ã Â¦Â¹Ã Â¦Â¯Ã Â¦Â¼ Ã Â¦Â¨Ã Â¦Â¾ (patch22 revert) Ã¢â‚¬â€ future reuse-Ã Â¦ÂÃ Â¦Â° Ã Â¦Å“Ã Â¦Â¨Ã Â§ÂÃ Â¦Â¯ number Ã Â¦Â¸Ã Â¦â€šÃ Â¦Â°Ã Â¦â€¢Ã Â§ÂÃ Â¦Â·Ã Â¦Â¿Ã Â¦Â¤
-(REG_FIELDS,) = range(43, 44)  # Ã Â¦Â°Ã Â§â€¡Ã Â¦Å“Ã Â¦Â¿Ã Â¦Â¸Ã Â§ÂÃ Â¦Å¸Ã Â§ÂÃ Â¦Â°Ã Â§â€¡Ã Â¦Â¶Ã Â¦Â¨Ã Â§â€¡ missing fields Ã Â¦ÂÃ Â¦â€¢Ã Â¦Â¸Ã Â¦Â¾Ã Â¦Â¥Ã Â§â€¡ Ã Â¦Å“Ã Â¦Â¿Ã Â¦Å“Ã Â§ÂÃ Â¦Å¾Ã Â¦Â¾Ã Â¦Â¸Ã Â¦Â¾Ã Â¦Â° state (patch38)
+(CASESTUDY_QUESTION,) = range(42, 43)  # à¦†à¦° à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦° à¦¹à¦¯à¦¼ à¦¨à¦¾ (patch22 revert) â€” future reuse-à¦à¦° à¦œà¦¨à§à¦¯ number à¦¸à¦‚à¦°à¦•à§à¦·à¦¿à¦¤
+(REG_FIELDS,) = range(43, 44)  # à¦°à§‡à¦œà¦¿à¦¸à§à¦Ÿà§à¦°à§‡à¦¶à¦¨à§‡ missing fields à¦à¦•à¦¸à¦¾à¦¥à§‡ à¦œà¦¿à¦œà§à¦à¦¾à¦¸à¦¾à¦° state (patch38)
 (CLINICALAI_QUESTION,) = range(44, 45)  # AI Clinical Assistant state (patch40)
 (SALARY_SELECT_STAFF, SALARY_ENTER_AMOUNT, SALARY_NOTE, SALARY_CONFIRM) = range(45, 49)  # Staff Salary System
 (COST_CATEGORY, COST_AMOUNT, COST_NOTE, COST_CONFIRM) = range(49, 53)  # Daily Cost Tracker
 (CASH_AMOUNT, CASH_NOTE, CASH_CONFIRM) = range(53, 56)  # Cash handover workflow
 (COST_DEPARTMENT, CASH_DEPARTMENT) = range(56, 58)
-(PAYDEL_LIST, PAYDEL_CONFIRM) = range(300, 302)  # Ã Â¦â€ Ã Â¦Å“Ã Â¦â€¢Ã Â§â€¡Ã Â¦Â° Ã Â¦ÂÃ Â¦Â¨Ã Â§ÂÃ Â¦Å¸Ã Â§ÂÃ Â¦Â°Ã Â¦Â¿ Ã Â¦Â®Ã Â§ÂÃ Â¦â€ºÃ Â¦Â¾Ã Â¦Â° Ã Â¦Â«Ã Â§ÂÃ Â¦Â²Ã Â§â€¹
-(INV_UPDATE,) = range(310, 311)  # Ã Â¦â€¡Ã Â¦Â¨Ã Â¦Â­Ã Â§â€¡Ã Â¦Â¨Ã Â§ÂÃ Â¦Å¸Ã Â¦Â°Ã Â¦Â¿ Ã Â¦Â¸Ã Â§ÂÃ Â¦Å¸Ã Â¦â€¢ Ã Â¦â€ Ã Â¦ÂªÃ Â¦Â¡Ã Â§â€¡Ã Â¦Å¸ Ã Â¦Â«Ã Â§ÂÃ Â¦Â²Ã Â§â€¹
+(PAYDEL_LIST, PAYDEL_CONFIRM) = range(300, 302)  # à¦†à¦œà¦•à§‡à¦° à¦à¦¨à§à¦Ÿà§à¦°à¦¿ à¦®à§à¦›à¦¾à¦° à¦«à§à¦²à§‹
+(INV_UPDATE,) = range(310, 311)  # à¦‡à¦¨à¦­à§‡à¦¨à§à¦Ÿà¦°à¦¿ à¦¸à§à¦Ÿà¦• à¦†à¦ªà¦¡à§‡à¦Ÿ à¦«à§à¦²à§‹
 
 TPLAN_CATEGORY, TPLAN_TESTS = range(200, 202)
 
@@ -257,9 +253,9 @@ MACHINE_LIST = [
 
 def _treat_confirm_keyboard(patient_id: str) -> InlineKeyboardMarkup:
     buttons = [
-        [InlineKeyboardButton("Ã¢Å“â€¦ Ã Â¦â€”Ã Â¦Â¤Ã Â¦â€¢Ã Â¦Â¾Ã Â¦Â²Ã Â§â€¡Ã Â¦Â° Ã Â¦Â®Ã Â¦Â¤Ã Â§â€¹Ã Â¦â€¡", callback_data=f"trsame_{patient_id}")],
-        [InlineKeyboardButton("Ã¢Å“ÂÃ¯Â¸Â Ã Â¦ÂÃ Â¦Â¡Ã Â¦Â¿Ã Â¦Å¸ Ã Â¦â€¢Ã Â¦Â°Ã Â¦Â¬Ã Â§â€¹", callback_data=f"tredit_{patient_id}")],
-        [InlineKeyboardButton("Ã¢Â¬â€¦Ã¯Â¸Â Ã Â¦â€ Ã Â¦â€”Ã Â§â€¡Ã Â¦Â° Ã Â¦Â§Ã Â¦Â¾Ã Â¦Âª", callback_data="trback_search")],
+        [InlineKeyboardButton("âœ… à¦—à¦¤à¦•à¦¾à¦²à§‡à¦° à¦®à¦¤à§‹à¦‡", callback_data=f"trsame_{patient_id}")],
+        [InlineKeyboardButton("âœï¸ à¦à¦¡à¦¿à¦Ÿ à¦•à¦°à¦¬à§‹", callback_data=f"tredit_{patient_id}")],
+        [InlineKeyboardButton("â¬…ï¸ à¦†à¦—à§‡à¦° à¦§à¦¾à¦ª", callback_data="trback_search")],
     ]
     return InlineKeyboardMarkup(buttons)
 
@@ -270,28 +266,28 @@ def _machine_keyboard(selected: set) -> InlineKeyboardMarkup:
         row = []
         for j in (i, i + 1):
             if j < len(MACHINE_LIST):
-                prefix = "Ã¢Å“â€¦ " if j in selected else "Ã¢Â¬Å“ "
+                prefix = "âœ… " if j in selected else "â¬œ "
                 row.append(InlineKeyboardButton(prefix + MACHINE_LIST[j], callback_data=f"trm_{j}"))
         buttons.append(row)
-    buttons.append([InlineKeyboardButton("Ã¢Å“â€¦ Ã Â¦Â¸Ã Â¦Â®Ã Â§ÂÃ Â¦ÂªÃ Â¦Â¨Ã Â§ÂÃ Â¦Â¨ Ã¢â‚¬â€ Ã Â¦Â¸Ã Â§â€¡Ã Â¦Â­ Ã Â¦â€¢Ã Â¦Â°Ã Â§â€¹", callback_data="trdone_save")])
-    buttons.append([InlineKeyboardButton("Ã¢Â¬â€¦Ã¯Â¸Â Ã Â¦â€ Ã Â¦â€”Ã Â§â€¡Ã Â¦Â° Ã Â¦Â§Ã Â¦Â¾Ã Â¦Âª", callback_data="trback_confirm")])
-    buttons.append([InlineKeyboardButton("Ã¢ÂÅ’ Ã Â¦Â¬Ã Â¦Â¾Ã Â¦Â¤Ã Â¦Â¿Ã Â¦Â²", callback_data="trcancel_")])
+    buttons.append([InlineKeyboardButton("âœ… à¦¸à¦®à§à¦ªà¦¨à§à¦¨ â€” à¦¸à§‡à¦­ à¦•à¦°à§‹", callback_data="trdone_save")])
+    buttons.append([InlineKeyboardButton("â¬…ï¸ à¦†à¦—à§‡à¦° à¦§à¦¾à¦ª", callback_data="trback_confirm")])
+    buttons.append([InlineKeyboardButton("âŒ à¦¬à¦¾à¦¤à¦¿à¦²", callback_data="trcancel_")])
     return InlineKeyboardMarkup(buttons)
 
 
 
 async def _cancel_on_menu_press(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Ã Â¦â€¢Ã Â¦Â¨Ã Â¦Â­Ã Â¦Â¾Ã Â¦Â°Ã Â¦Â¸Ã Â§â€¡Ã Â¦Â¶Ã Â¦Â¨Ã Â§â€¡Ã Â¦Â° Ã Â¦Â®Ã Â¦Â¾Ã Â¦ÂÃ Â¦â€“Ã Â¦Â¾Ã Â¦Â¨Ã Â§â€¡ Ã Â¦â€¦Ã Â¦Â¨Ã Â§ÂÃ Â¦Â¯ Ã Â¦Â®Ã Â§â€¡Ã Â¦Â¨Ã Â§Â Ã Â¦Â¬Ã Â¦Â¾Ã Â¦Å¸Ã Â¦Â¨ Ã Â¦Å¡Ã Â¦Â¾Ã Â¦ÂªÃ Â¦Â²Ã Â§â€¡ Ã Â¦Å¡Ã Â¦Â²Ã Â¦Â®Ã Â¦Â¾Ã Â¦Â¨ Ã Â¦â€¢Ã Â¦Â¾Ã Â¦Å“ Ã Â¦Â¬Ã Â¦Â¾Ã Â¦Â¤Ã Â¦Â¿Ã Â¦Â² Ã Â¦â€¢Ã Â¦Â°Ã Â§â€¡ Ã Â¦Â¦Ã Â§â€¡Ã Â¦Â¯Ã Â¦Â¼,
-    Ã Â¦Â¯Ã Â¦Â¾Ã Â¦Â¤Ã Â§â€¡ Ã Â¦Â¸Ã Â§â€¡Ã Â¦â€¡ Ã Â¦Â¬Ã Â¦Â¾Ã Â¦Å¸Ã Â¦Â¨Ã Â§â€¡Ã Â¦Â° Ã Â¦Â²Ã Â§â€¡Ã Â¦â€“Ã Â¦Â¾Ã Â¦Å¸Ã Â¦Â¾ Ã Â¦Â­Ã Â§ÂÃ Â¦Â² Ã Â¦â€¢Ã Â¦Â°Ã Â§â€¡ Ã Â¦Â«Ã Â§â€¹Ã Â¦Â¨ Ã Â¦Â¨Ã Â¦Â®Ã Â§ÂÃ Â¦Â¬Ã Â¦Â°/Ã Â¦Â¨Ã Â¦Â¾Ã Â¦Â® Ã Â¦Â¹Ã Â¦Â¿Ã Â¦Â¸Ã Â§â€¡Ã Â¦Â¬Ã Â§â€¡ Ã Â¦Â¸Ã Â§â€¡Ã Â¦Â­ Ã Â¦Â¨Ã Â¦Â¾ Ã Â¦Â¹Ã Â¦Â¯Ã Â¦Â¼Ã Â§â€¡ Ã Â¦Â¯Ã Â¦Â¾Ã Â¦Â¯Ã Â¦Â¼Ã Â¥Â¤"""
+    """à¦•à¦¨à¦­à¦¾à¦°à¦¸à§‡à¦¶à¦¨à§‡à¦° à¦®à¦¾à¦à¦–à¦¾à¦¨à§‡ à¦…à¦¨à§à¦¯ à¦®à§‡à¦¨à§ à¦¬à¦¾à¦Ÿà¦¨ à¦šà¦¾à¦ªà¦²à§‡ à¦šà¦²à¦®à¦¾à¦¨ à¦•à¦¾à¦œ à¦¬à¦¾à¦¤à¦¿à¦² à¦•à¦°à§‡ à¦¦à§‡à¦¯à¦¼,
+    à¦¯à¦¾à¦¤à§‡ à¦¸à§‡à¦‡ à¦¬à¦¾à¦Ÿà¦¨à§‡à¦° à¦²à§‡à¦–à¦¾à¦Ÿà¦¾ à¦­à§à¦² à¦•à¦°à§‡ à¦«à§‹à¦¨ à¦¨à¦®à§à¦¬à¦°/à¦¨à¦¾à¦® à¦¹à¦¿à¦¸à§‡à¦¬à§‡ à¦¸à§‡à¦­ à¦¨à¦¾ à¦¹à¦¯à¦¼à§‡ à¦¯à¦¾à¦¯à¦¼à¥¤"""
     context.user_data.clear()
     await update.message.reply_text(
-        "Ã¢ÂÅ’ Ã Â¦â€ Ã Â¦â€”Ã Â§â€¡Ã Â¦Â° Ã Â¦â€¢Ã Â¦Â¾Ã Â¦Å“Ã Â¦Å¸Ã Â¦Â¿ Ã Â¦Â¬Ã Â¦Â¾Ã Â¦Â¤Ã Â¦Â¿Ã Â¦Â² Ã Â¦â€¢Ã Â¦Â°Ã Â¦Â¾ Ã Â¦Â¹Ã Â¦Â²Ã Â§â€¹Ã Â¥Â¤ Ã Â¦ÂÃ Â¦â€“Ã Â¦Â¨ Ã Â¦â€ Ã Â¦Â¬Ã Â¦Â¾Ã Â¦Â° Ã Â¦Â¸Ã Â§â€¡Ã Â¦â€¡ Ã Â¦Â¬Ã Â¦Â¾Ã Â¦Å¸Ã Â¦Â¨Ã Â§â€¡ Ã Â¦Å¡Ã Â¦Â¾Ã Â¦Âª Ã Â¦Â¦Ã Â¦Â¾Ã Â¦â€œÃ Â¥Â¤"
+        "âŒ à¦†à¦—à§‡à¦° à¦•à¦¾à¦œà¦Ÿà¦¿ à¦¬à¦¾à¦¤à¦¿à¦² à¦•à¦°à¦¾ à¦¹à¦²à§‹à¥¤ à¦à¦–à¦¨ à¦†à¦¬à¦¾à¦° à¦¸à§‡à¦‡ à¦¬à¦¾à¦Ÿà¦¨à§‡ à¦šà¦¾à¦ª à¦¦à¦¾à¦“à¥¤"
     )
     return ConversationHandler.END
 
 
 async def _cancel_and_go_home(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Ã Â¦â€¢Ã Â¦Â¨Ã Â¦Â­Ã Â¦Â¾Ã Â¦Â°Ã Â¦Â¸Ã Â§â€¡Ã Â¦Â¶Ã Â¦Â¨Ã Â§â€¡Ã Â¦Â° Ã Â¦Â®Ã Â¦Â¾Ã Â¦ÂÃ Â¦â€“Ã Â¦Â¾Ã Â¦Â¨Ã Â§â€¡ Ã°Å¸â€â„¢ Ã Â¦Â®Ã Â§â€šÃ Â¦Â² Ã Â¦Â®Ã Â§â€¡Ã Â¦Â¨Ã Â§Â Ã Â¦Å¡Ã Â¦Â¾Ã Â¦ÂªÃ Â¦Â²Ã Â§â€¡ Ã Â¦Å¡Ã Â¦Â²Ã Â¦Â®Ã Â¦Â¾Ã Â¦Â¨ Ã Â¦â€¢Ã Â¦Â¾Ã Â¦Å“ Ã Â¦Â¬Ã Â¦Â¾Ã Â¦Â¤Ã Â¦Â¿Ã Â¦Â² Ã Â¦â€¢Ã Â¦Â°Ã Â§â€¡ Ã Â¦Â¸Ã Â¦Â°Ã Â¦Â¾Ã Â¦Â¸Ã Â¦Â°Ã Â¦Â¿ Ã Â¦Â®Ã Â§â€šÃ Â¦Â² Ã Â¦Â®Ã Â§â€¡Ã Â¦Â¨Ã Â§Â Ã Â¦Â¦Ã Â§â€¡Ã Â¦â€“Ã Â¦Â¾Ã Â¦Â¯Ã Â¦Â¼Ã Â¥Â¤"""
+    """à¦•à¦¨à¦­à¦¾à¦°à¦¸à§‡à¦¶à¦¨à§‡à¦° à¦®à¦¾à¦à¦–à¦¾à¦¨à§‡ ğŸ”™ à¦®à§‚à¦² à¦®à§‡à¦¨à§ à¦šà¦¾à¦ªà¦²à§‡ à¦šà¦²à¦®à¦¾à¦¨ à¦•à¦¾à¦œ à¦¬à¦¾à¦¤à¦¿à¦² à¦•à¦°à§‡ à¦¸à¦°à¦¾à¦¸à¦°à¦¿ à¦®à§‚à¦² à¦®à§‡à¦¨à§ à¦¦à§‡à¦–à¦¾à¦¯à¦¼à¥¤"""
     context.user_data.clear()
     await back_to_main_menu(update, context)
     return ConversationHandler.END
@@ -379,7 +375,7 @@ def _ai_summary_for_patient(plan: dict | None, notes: list[dict]) -> tuple[str, 
     reassess = _reassessment_due(plan, notes)
     if reassess:
         return (
-            "Ã¢Å¡Â Ã¯Â¸Â Reassessment required Ã¢â‚¬â€ 7 visits/14 days threshold reached.",
+            "âš ï¸ Reassessment required â€” 7 visits/14 days threshold reached.",
             "High",
         )
 
@@ -392,13 +388,13 @@ def _ai_summary_for_patient(plan: dict | None, notes: list[dict]) -> tuple[str, 
         ]
         if len(pain_values) >= 2:
             if pain_values[-1] < pain_values[0]:
-                return ("Pain improving Ã¢â‚¬â€ continue current protocol.", "High")
+                return ("Pain improving â€” continue current protocol.", "High")
             if pain_values[-1] >= pain_values[0]:
-                return ("Possible plateau Ã¢â‚¬â€ review exercise progression.", "Medium")
+                return ("Possible plateau â€” review exercise progression.", "Medium")
 
     if notes:
-        return ("Follow-up stable Ã¢â‚¬â€ continue protocol if no change reported.", "Medium")
-    return ("New treatment cycle Ã¢â‚¬â€ monitor pain, ROM and function from visit 1.", "Medium")
+        return ("Follow-up stable â€” continue protocol if no change reported.", "Medium")
+    return ("New treatment cycle â€” monitor pain, ROM and function from visit 1.", "Medium")
 
 
 def _patient_last_visit(notes: list[dict], patient: dict) -> str:
@@ -416,414 +412,223 @@ def _therapist_today_queue(staff: dict) -> list[dict]:
         appt_therapist = str(appt.get("Therapist", "")).strip()
         patient_id = str(appt.get("Patient_ID", "")).strip()
         patient = sheets.get_patient_by_id(patient_id) or {"Patient_ID": patient_id, "Full_Name": appt.get("Patient_Name", "")}
-        patient_therapist = str(patient.get("Therapist", "")).strip()
-        notes = sheets.get_treatment_notes_for_patient(patient_id)
-        plan = sheets.get_active_plan_for_patient(patient_id) or sheets.get_last_plan_for_patient(patient_id)
-        last_note = notes[-1] if notes else {}
-        status = _normalize_appt_status(appt.get("Status", "Scheduled"))
-        items.append({
-            "appointment_id": str(appt.get("Appointment_ID", "")).strip(),
-            "patient_id": patient_id,
-            "name": patient.get("Full_Name", appt.get("Patient_Name", "Unknown")),
-            "age": patient.get("Age", "-"),
-            "diagnosis": patient.get("Diagnosis") or (plan or {}).get("Diagnosis", "-"),
-            "visit_no": len(notes) + (0 if status == "Completed" else 1),
-            "last_visit": _patient_last_visit(notes, patient),
-            "pain": _extract_metric(last_note, "Pain") or "-",
-            "progress": _build_progress_percent(plan, notes),
-            "status": status,
-            "time": str(appt.get("Time", "")).strip(),
-            "reassessment_due": _reassessment_due(plan, notes),
-        })
-    return items
-
-
-def _pt_dashboard_text(staff: dict) -> str:
-    queue = _therapist_today_queue(staff)
-    waiting = sum(1 for item in queue if item["status"] == "Waiting")
-    in_treatment = sum(1 for item in queue if item["status"] == "In Treatment")
-    completed = sum(1 for item in queue if item["status"] == "Completed")
-    missed = sum(1 for item in queue if item["status"] == "Missed Appointment")
-    reassessment = sum(1 for item in queue if item["reassessment_due"])
-
-    lines = [
-        f"Ã°Å¸Â§â€˜Ã¢â‚¬ÂÃ¢Å¡â€¢Ã¯Â¸Â {staff.get('Full_Name', '')} Ã¢â‚¬â€ Physiotherapist Dashboard",
-        "",
-        f"Ã Â¦â€ Ã Â¦Å“Ã Â¦â€¢Ã Â§â€¡Ã Â¦Â° Ã Â¦Â°Ã Â§â€¹Ã Â¦â€”Ã Â§â‚¬: {len(queue)}",
-        f"Waiting: {waiting}",
-        f"In Treatment: {in_treatment}",
-        f"Completed: {completed}",
-        f"Reassessment Due: {reassessment}",
-        f"Missed Appointment: {missed}",
-        "",
-        "Patient Queue",
-        "--------------------",
-    ]
-
-    if not queue:
-        lines.append("Ã Â¦â€ Ã Â¦Å“ Ã Â¦Â¤Ã Â§â€¹Ã Â¦Â®Ã Â¦Â¾Ã Â¦Â° Ã Â¦â€¢Ã Â§â€¹Ã Â¦Â¨Ã Â§â€¹ queue Ã Â¦Â¨Ã Â§â€¡Ã Â¦â€¡Ã Â¥Â¤ Ã Â¦Â¨Ã Â¦Â¤Ã Â§ÂÃ Â¦Â¨ appointment Ã Â¦ÂÃ Â¦Â²Ã Â§â€¡ Ã Â¦ÂÃ Â¦â€“Ã Â¦Â¾Ã Â¦Â¨Ã Â§â€¡Ã Â¦â€¡ Ã Â¦Â¦Ã Â§â€¡Ã Â¦â€“Ã Â¦Â¾Ã Â¦Â¬Ã Â§â€¡Ã Â¥Â¤")
-        return "\n".join(lines)
-
-    for idx, item in enumerate(queue[:12], start=1):
-        due = " | Reassessment Due" if item["reassessment_due"] else ""
-        lines.extend([
-            f"{idx}. {item['name']}",
-            f"{item['diagnosis']}",
-            f"Visit {item['visit_no']} | Pain {item['pain']} | Progress {item['proâ€¦89045 tokens truncatedâ€¦,
-        fallbacks=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
-            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),CommandHandler("cancel", reg_cancel),
-            CommandHandler("start", _restart_via_start),],
-    )
-    app.add_handler(reg_conv)
-
-    apt_conv = ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_APPOINTMENT}$"), apt_start),
-            CallbackQueryHandler(plist_action_apt, pattern="^plistact_apt_"),
-        ],
-        states={
-            APT_SEARCH: [
-                CallbackQueryHandler(apt_select_callback, pattern="^aptsel_"),
-                CallbackQueryHandler(_apt_search_cancel, pattern="^aptsearchback$"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_search),
-            ],
-            APT_SELECT: [
-                CallbackQueryHandler(apt_select_callback, pattern="^aptsel_"),
-                CallbackQueryHandler(_apt_search_cancel, pattern="^aptsearchback$"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_select),
-            ],
-            APT_DATE: [
-                CallbackQueryHandler(apt_date_toggle_callback, pattern="^aptdatetoggle_"),
-                CallbackQueryHandler(apt_date_done_callback, pattern="^aptdatedone$"),
-                CallbackQueryHandler(apt_back_to_search_callback, pattern="^aptback_search$"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_date),
-            ],
-            APT_TIME: [
-                CallbackQueryHandler(apt_time_toggle_callback, pattern="^apttimetoggle_"),
-                CallbackQueryHandler(apt_time_done_callback, pattern="^apttimedone$"),
-                CallbackQueryHandler(apt_back_to_date_callback, pattern="^aptback_date$"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_time),
-            ],
-            APT_THERAPIST: [
-                CallbackQueryHandler(apt_therapist_callback, pattern="^aptther_"),
-                CallbackQueryHandler(apt_back_to_time_callback, pattern="^aptback_time$"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_therapist),
-            ],
-            APT_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_confirm)],
-        },
-        fallbacks=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
-            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),CommandHandler("cancel", apt_cancel),
-            CommandHandler("start", _restart_via_start),],
-    )
-    app.add_handler(apt_conv)
-
-    pay_conv = ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_PAYMENT}$"), pay_start),
-            CallbackQueryHandler(plist_action_pay, pattern="^plistact_pay_"),
-            CallbackQueryHandler(reg_new_start, pattern="^regnew$"),
-        ],
-        states={
-            PAY_SEARCH: [
-                CallbackQueryHandler(pay_select_callback, pattern="^paysel_"),
-                CallbackQueryHandler(_pay_search_cancel, pattern="^paysearchback$"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_search),
-            ],
-            PAY_SELECT: [
-                CallbackQueryHandler(pay_select_callback, pattern="^paysel_"),
-                CallbackQueryHandler(_pay_search_cancel, pattern="^paysearchback$"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_select),
-            ],
-            PAY_SESSION: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_session)],
-            PAY_AMOUNT: [
-                CallbackQueryHandler(reg_amount_callback, pattern="^regamt_"),
-                CallbackQueryHandler(reg_session_toggle, pattern="^regsesstoggle$"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_amount),
-            ],
-            PAY_METHOD: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_method)],
-            PAY_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), pay_confirm)],
-        },
-        fallbacks=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
-            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),CommandHandler("cancel", pay_cancel),
-            CommandHandler("start", _restart_via_start),],
-    )
-    app.add_handler(pay_conv)
-
-    paydel_conv = ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_DELETE_ENTRY}$"), paydel_start),
-        ],
-        states={
-            PAYDEL_LIST: [
-                CallbackQueryHandler(paydel_select_callback, pattern="^paydelsel_"),
-                CallbackQueryHandler(paydel_cancel_callback, pattern="^paydelcancel$"),
-            ],
-            PAYDEL_CONFIRM: [
-                CallbackQueryHandler(paydel_confirm_callback, pattern="^paydelconfirm_yes$"),
-                CallbackQueryHandler(paydel_cancel_callback, pattern="^paydelcancel$"),
-            ],
-        },
-        fallbacks=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
-            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
-            CommandHandler("cancel", pay_cancel),
-            CommandHandler("start", _restart_via_start),
-        ],
-    )
-    app.add_handler(paydel_conv)
-
-    inv_conv = ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_INVENTORY}$"), inventory_menu),
-        ],
-        states={
-            INV_UPDATE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), inventory_update)],
-        },
-        fallbacks=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
-            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
-            CommandHandler("cancel", inventory_cancel),
-            CommandHandler("start", _restart_via_start),
-        ],
-    )
-    app.add_handler(inv_conv)
-
-    treat_conv = ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_TREATMENT_NOTE}$"), treat_start),
-            CallbackQueryHandler(plist_action_treat, pattern="^plistact_treat_"),
-        ],
-        states={
-            TREAT_SEARCH: [
-                CallbackQueryHandler(treat_select_callback, pattern="^treatsel_"),
-                CallbackQueryHandler(_treat_search_cancel, pattern="^treatsearchback$"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), treat_search),
-            ],
-            TREAT_SELECT: [
-                CallbackQueryHandler(treat_select_callback, pattern="^treatsel_"),
-                CallbackQueryHandler(_treat_search_cancel, pattern="^treatsearchback$"),
-            ],
-            TREAT_CONFIRM_PLAN: [
-                CallbackQueryHandler(treat_confirm_same_callback, pattern="^trsame_"),
-                CallbackQueryHandler(treat_confirm_edit_callback, pattern="^tredit_"),
-                CallbackQueryHandler(treat_back_to_search_callback, pattern="^trback_search$"),
-            ],
-            TREAT_EDIT_EXERCISE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), treat_edit_exercise),
-            ],
-            TREAT_EDIT_ELECTRO: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), treat_edit_electro),
-            ],
-            TREAT_EDIT_MANUAL: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), treat_edit_manual),
-            ],
-            TREAT_MACHINES: [
-                CallbackQueryHandler(treat_machine_toggle, pattern="^trm_"),
-                CallbackQueryHandler(treat_machine_done, pattern="^trdone_"),
-                CallbackQueryHandler(treat_back_to_confirm_callback, pattern="^trback_confirm$"),
-                CallbackQueryHandler(treat_machine_cancel_callback, pattern="^trcancel_"),
-            ],
-            TREAT_PATIENT_COMMENT: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), treat_patient_comment_receive),
-            ],
-            TREAT_PROGRESS_SCORE: [
-                CallbackQueryHandler(treat_progress_score_callback, pattern="^trpain_"),
-                CallbackQueryHandler(treat_progress_score_callback, pattern="^trpainskip$"),
-            ],
-            TREAT_AI_QUESTION: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), treat_ai_question_receive),
-            ],
-        },
-        fallbacks=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
-            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
-            CommandHandler("cancel", treat_cancel),
-            CommandHandler("start", _restart_via_start),],
-    )
-    app.add_handler(treat_conv)
-
-    tplan_conv = ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_TREATMENT_PLAN}$"), tplan_start),
-        ],
-        states={
-            TPLAN_SEARCH: [
-                CallbackQueryHandler(tplan_select_callback, pattern="^tplansel_"),
-                CallbackQueryHandler(_tplan_search_cancel, pattern="^tplansearchback$"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_search),
-            ],
-            TPLAN_SELECT: [
-                CallbackQueryHandler(tplan_select_callback, pattern="^tplansel_"),
-                CallbackQueryHandler(_tplan_search_cancel, pattern="^tplansearchback$"),
-            ],
-            TPLAN_CATEGORY: [
-                CallbackQueryHandler(tplan_category_callback, pattern="^tpcat_"),
-            ],
-            TPLAN_TESTS: [
-                CallbackQueryHandler(atest_callback, pattern="^atest_"),
-                CallbackQueryHandler(atest_info_callback, pattern="^ainfo_"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), atest_text_receive),
-            ],
-            TPLAN_DIAGNOSIS: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_diagnosis)],
-            TPLAN_TOTAL: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_total)],
-            TPLAN_EXERCISE: [
-                CallbackQueryHandler(tplan_ai_suggest_callback, pattern="^tplan_ai_suggest$"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_exercise),
-            ],
-            TPLAN_ELECTRO: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_electro)],
-            TPLAN_MANUAL: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_manual)],
-            TPLAN_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_confirm)],
-        },
-        fallbacks=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
-            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
-            CommandHandler("cancel", tplan_cancel),
-            CommandHandler("start", _restart_via_start),
-        ],
-    )
-    app.add_handler(tplan_conv)
-
-    app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_REPORTS}$"), reports_menu))
-    app.add_handler(CallbackQueryHandler(rpt_totals_callback, pattern="^rpt_totals$"))
-    app.add_handler(CallbackQueryHandler(rpt_lastmonth_callback, pattern="^rpt_lastmonth$"))
-    app.add_handler(CallbackQueryHandler(rpt_todayregister_callback, pattern="^rpt_todayregister$"))
-    app.add_handler(CallbackQueryHandler(rpt_daterep_callback, pattern="^rpt_daterep$"))
-    app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_DATE_REPORT}$"), date_report_menu))
-    app.add_handler(CallbackQueryHandler(date_report_calendar_navigate, pattern="^calnav_"))
-    app.add_handler(CallbackQueryHandler(date_report_day_selected, pattern="^calday_"))
-    hist_conv = ConversationHandler(
-        entry_points=[MessageHandler(filters.Regex(f"^{roles.MENU_PATIENT_HISTORY}$"), hist_start)],
-        states={
-            "HIST_SEARCH": [
-                CallbackQueryHandler(hist_select_callback, pattern="^histsel_"),
-                CallbackQueryHandler(_hist_search_cancel, pattern="^histsearchback$"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), hist_search),
-            ],
-        },
-        fallbacks=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
-            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),CommandHandler("cancel", hist_cancel),
-            CommandHandler("start", _restart_via_start),],
-    )
-    app.add_handler(hist_conv)
-
-    thist_conv = ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_TREATMENT_HISTORY}$"), thist_start),
-        ],
-        states={
-            "THIST_SEARCH": [
-                CallbackQueryHandler(thist_patient_callback, pattern="^thpsel_"),
-                CallbackQueryHandler(_thist_search_cancel, pattern="^thistsearchback$"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, thist_search),
-            ],
-            "THIST_DATE": [
-                CallbackQueryHandler(thist_date_callback, pattern="^thdate_"),
-            ],
-        },
-        fallbacks=[CommandHandler("cancel", thist_cancel)],
-    )
-    app.add_handler(thist_conv)
-    # thist_date_callback Ã Â¦â€ Ã Â¦â€”Ã Â§â€¡ Ã Â¦Â¶Ã Â§ÂÃ Â¦Â§Ã Â§Â thist_conv-Ã Â¦ÂÃ Â¦Â° THIST_DATE state-Ã Â¦ÂÃ Â¦Â° Ã Â¦Â­Ã Â¦Â¿Ã Â¦Â¤Ã Â¦Â°Ã Â§â€¡Ã Â¦â€¡ Ã Â¦Â§Ã Â¦Â°Ã Â¦Â¾ Ã Â¦Â¯Ã Â§â€¡Ã Â¦Â¤Ã Â¥Â¤
-    # Ã Â¦Â¤Ã Â¦Â¾Ã Â¦Â°Ã Â¦Â¿Ã Â¦â€“ Ã Â¦Â¸Ã Â¦Â¿Ã Â¦Â²Ã Â§â€¡Ã Â¦â€¢Ã Â§ÂÃ Â¦Å¸ Ã Â¦â€¢Ã Â¦Â°Ã Â¦Â¾Ã Â¦Â° Ã Â¦ÂªÃ Â¦Â° conversation END Ã Â¦Â¹Ã Â¦Â¯Ã Â¦Â¼Ã Â§â€¡ Ã Â¦Â¯Ã Â¦Â¾Ã Â¦Â¯Ã Â¦Â¼, Ã Â¦Â«Ã Â¦Â²Ã Â§â€¡ "Ã°Å¸â€â„¢ Ã Â¦Â«Ã Â¦Â¿Ã Â¦Â°Ã Â§ÂÃ Â¦Â¨" Ã Â¦Â¦Ã Â¦Â¿Ã Â¦Â¯Ã Â¦Â¼Ã Â§â€¡ Ã Â¦Â«Ã Â¦Â¿Ã Â¦Â°Ã Â§â€¡ Ã Â¦ÂÃ Â¦Â¸Ã Â§â€¡
-    # Ã Â¦â€ Ã Â¦Â°Ã Â§â€¡Ã Â¦â€¢Ã Â¦Å¸Ã Â¦Â¾ Ã Â¦Â¤Ã Â¦Â¾Ã Â¦Â°Ã Â¦Â¿Ã Â¦â€“ Ã Â¦Å¡Ã Â¦Â¾Ã Â¦ÂªÃ Â¦Â²Ã Â§â€¡ Ã Â¦â€¢Ã Â§â€¹Ã Â¦Â¨Ã Â§â€¹ handler Ã Â¦Â¸Ã Â§â€¡Ã Â¦Å¸Ã Â¦Â¾ Ã Â¦Â§Ã Â¦Â°Ã Â¦Â¤ Ã Â¦Â¨Ã Â¦Â¾Ã Â¥Â¤ Ã Â¦â€”Ã Â§ÂÃ Â¦Â²Ã Â§â€¹Ã Â¦Â¬Ã Â¦Â¾Ã Â¦Â²Ã Â¦Â¿ Ã Â¦Â°Ã Â§â€¡Ã Â¦Å“Ã Â¦Â¿Ã Â¦Â¸Ã Â§ÂÃ Â¦Å¸Ã Â¦Â¾Ã Â¦Â° Ã Â¦â€¢Ã Â¦Â°Ã Â§â€¡ Ã Â¦Â«Ã Â¦Â¿Ã Â¦â€¢Ã Â§ÂÃ Â¦Â¸ (patch30)Ã Â¥Â¤
-    app.add_handler(CallbackQueryHandler(thist_date_callback, pattern="^thdate_"))
-    app.add_handler(CallbackQueryHandler(thist_nav_callback, pattern="^thnav_"))
-    app.add_handler(CallbackQueryHandler(thist_back_to_dates_callback, pattern="^thistback_"))
-    app.add_handler(CallbackQueryHandler(thist_progress_callback, pattern="^thistprog_"))
-
-    staffai_conv = ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_STAFF_AI_QUERY}$"), staffai_start)
-        ],
-        states={
-            STAFFAI_QUESTION: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), staffai_receive)
-            ],
-        },
-        fallbacks=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
-            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
-            CommandHandler("cancel", staffai_cancel),
-            CommandHandler("start", _restart_via_start),
-        ],
-    )
-    app.add_handler(staffai_conv)
-
-    clinicalai_conv = ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_CLINICAL_AI}$"), clinicalai_start)
-        ],
-        states={
-            CLINICALAI_QUESTION: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), clinicalai_receive)
-            ],
-        },
-        fallbacks=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
-            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
-            CommandHandler("cancel", clinicalai_cancel),
-            CommandHandler("start", _restart_via_start),
-        ],
-    )
-    app.add_handler(clinicalai_conv)
-
-    casestudy_conv = ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_CASE_STUDY}$"), casestudy_start)
-        ],
-        states={
-            CASESTUDY_SEARCH: [
-                CallbackQueryHandler(casestudy_select_callback, pattern="^cssel_"),
-                CallbackQueryHandler(casestudy_search_cancel_callback, pattern="^cssearchback$"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), casestudy_search_receive),
-            ],
-            CASESTUDY_EXTRA: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), casestudy_extra_receive)
-            ],
-            CASESTUDY_LESSON: [
-                CallbackQueryHandler(casestudy_lesson_callback, pattern="^cslesson_next$")
-            ],
-        },
-        fallbacks=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
-            MessageHandler(filters.Regex(_ALL_MENU_REGEX), _cancel_on_menu_press),
-            CommandHandler("cancel", casestudy_cancel),
-            CommandHandler("start", _restart_via_start),
-        ],
-    )
-    app.add_handler(casestudy_conv)
-
-    app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_HOME}$"), go_home))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), unknown_menu))
-
-    async def _global_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-        logger.exception("Unhandled error", exc_info=context.error)
-        capture_exception(context.error)
-        try:
-            if isinstance(update, Update) and update.effective_message:
-                await update.effective_message.reply_text(
-                    "Ã¢Å¡Â Ã¯Â¸Â Ã Â¦Â¸Ã Â¦Â¾Ã Â¦Â®Ã Â¦Â¯Ã Â¦Â¼Ã Â¦Â¿Ã Â¦â€¢ Ã Â¦Â¸Ã Â¦Â®Ã Â¦Â¸Ã Â§ÂÃ Â¦Â¯Ã Â¦Â¾ Ã Â¦Â¹Ã Â¦Â¯Ã Â¦Â¼Ã Â§â€¡Ã Â¦â€ºÃ Â§â€¡ (Ã Â¦Â¸Ã Â¦Â®Ã Â§ÂÃ Â¦Â­Ã Â¦Â¬Ã Â¦Â¤ Google Sheets Ã Â¦Â¸Ã Â¦Â¾Ã Â¦Â®Ã Â¦Â¯Ã Â¦Â¼Ã Â¦Â¿Ã Â¦â€¢ Ã Â¦Â¬Ã Â§ÂÃ Â¦Â¯Ã Â¦Â¸Ã Â§ÂÃ Â¦Â¤)Ã Â¥Â¤ "
-                    "Ã Â¦â€¢Ã Â¦Â¯Ã Â¦Â¼Ã Â§â€¡Ã Â¦â€¢ Ã Â¦Â¸Ã Â§â€¡Ã Â¦â€¢Ã Â§â€¡Ã Â¦Â¨Ã Â§ÂÃ Â¦Â¡ Ã Â¦ÂªÃ Â¦Â° Ã Â¦â€ Ã Â¦Â¬Ã Â¦Â¾Ã Â¦Â° Ã Â¦Å¡Ã Â§â€¡Ã Â¦Â·Ã Â§ÂÃ Â¦Å¸Ã Â¦Â¾ Ã Â¦â€¢Ã Â¦Â°Ã Â§â€¹Ã Â¥Â¤"
-                )
-        except Exception:
-            logger.exception("error handler Ã Â¦Â¨Ã Â¦Â¿Ã Â¦Å“Ã Â§â€¡Ã Â¦â€¡ Ã Â¦Â¬Ã Â§ÂÃ Â¦Â¯Ã Â¦Â°Ã Â§ÂÃ Â¦Â¥ Ã Â¦Â¹Ã Â¦Â¯Ã Â¦Â¼Ã Â§â€¡Ã Â¦â€ºÃ Â§â€¡")
-
-    app.add_error_handler(_global_error_handler)
-
-    logger.info("Relife Clinic OS Bot Ã Â¦Å¡Ã Â¦Â¾Ã Â¦Â²Ã Â§Â Ã Â¦Â¹Ã Â¦Å¡Ã Â§ÂÃ Â¦â€ºÃ Â§â€¡...")
-    try:
-        _start_health_server()
-    except Exception as error:
-        capture_exception(error)
-        raise
-
-    app.run_polling()
-
-
-if __name__ == "__main__":
-    main()
-
+        patient_therapist = str(patient.get("Therapist", "")).st÷ŞxæÚ$z{-®éÜj×öÖ÷VçB’ÀĞ¢ÒÀĞ¢•ôÔUD„ôC¢´ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’Â•öÖWF†öB•ÒÀĞ¢•ô4ôäd•$Ó¢´ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’Â•ö6öæf—&Ò•ÒÀĞ¢ÒÀĞ¢fÆÆ&6·3Õ°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUô$4µôÔ”çÒB"’Âö6æ6VÅöæEövõö†öÖR’ÀĞ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’Âö6æ6VÅööåöÖVçU÷&W72’Ä6öÖÖæD†æFÆW"‚&6æ6VÂ"Â•ö6æ6VÂ’ÀĞ¢6öÖÖæD†æFÆW"‚'7F'B"Â÷&W7F'E÷f–÷7F'B’ÅÒÀĞ¢Ğ¢æFEö†æFÆW"‡•ö6öçbĞ Ğ¢–FVÅö6öçbÒ6öçfW'6F–öä†æFÆW"€Ğ¢VçG'•÷ö–çG3Õ°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUôDTÄUDUôTåE%—ÒB"’Â–FVÅ÷7F'B’ÀĞ¢ÒÀĞ¢7FFW3×°Ğ¢”DTÅôÄ•5C¢°Ğ¢6ÆÆ&6µVW'”†æFÆW"‡–FVÅ÷6VÆV7Eö6ÆÆ&6²ÂGFW&ãÒ%ç–FVÇ6VÅò"’ÀĞ¢6ÆÆ&6µVW'”†æFÆW"‡–FVÅö6æ6VÅö6ÆÆ&6²ÂGFW&ãÒ%ç–FVÆ6æ6VÂB"’ÀĞ¢ÒÀĞ¢”DTÅô4ôäd•$Ó¢°Ğ¢6ÆÆ&6µVW'”†æFÆW"‡–FVÅö6öæf—&Õö6ÆÆ&6²ÂGFW&ãÒ%ç–FVÆ6öæf—&Õ÷–W2B"’ÀĞ¢6ÆÆ&6µVW'”†æFÆW"‡–FVÅö6æ6VÅö6ÆÆ&6²ÂGFW&ãÒ%ç–FVÆ6æ6VÂB"’ÀĞ¢ÒÀĞ¢ÒÀĞ¢fÆÆ&6·3Õ°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUô$4µôÔ”çÒB"’Âö6æ6VÅöæEövõö†öÖR’ÀĞ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’Âö6æ6VÅööåöÖVçU÷&W72’ÀĞ¢6öÖÖæD†æFÆW"‚&6æ6VÂ"Â•ö6æ6VÂ’ÀĞ¢6öÖÖæD†æFÆW"‚'7F'B"Â÷&W7F'E÷f–÷7F'B’ÀĞ¢ÒÀĞ¢Ğ¢æFEö†æFÆW"‡–FVÅö6öçbĞ Ğ¢–çeö6öçbÒ6öçfW'6F–öä†æFÆW"€Ğ¢VçG'•÷ö–çG3Õ°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUô”ådTåDõ%—ÒB"’Â–çfVçF÷'•öÖVçR’ÀĞ¢ÒÀĞ¢7FFW3×°Ğ¢”åeõUDDS¢´ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’Â–çfVçF÷'•÷WFFR•ÒÀĞ¢ÒÀĞ¢fÆÆ&6·3Õ°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUô$4µôÔ”çÒB"’Âö6æ6VÅöæEövõö†öÖR’ÀĞ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’Âö6æ6VÅööåöÖVçU÷&W72’ÀĞ¢6öÖÖæD†æFÆW"‚&6æ6VÂ"Â–çfVçF÷'•ö6æ6VÂ’ÀĞ¢6öÖÖæD†æFÆW"‚'7F'B"Â÷&W7F'E÷f–÷7F'B’ÀĞ¢ÒÀĞ¢Ğ¢æFEö†æFÆW"†–çeö6öçbĞ Ğ¢G&VEö6öçbÒ6öçfW'6F–öä†æFÆW"€Ğ¢VçG'•÷ö–çG3Õ°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUõE$TDÔTåEôäõDWÒB"’ÂG&VE÷7F'B’ÀĞ¢6ÆÆ&6µVW'”†æFÆW"‡Æ—7Eö7F–öå÷G&VBÂGFW&ãÒ%çÆ—7F7E÷G&VEò"’ÀĞ¢ÒÀĞ¢7FFW3×°Ğ¢E$TEõ4T$4ƒ¢°Ğ¢6ÆÆ&6µVW'”†æFÆW"‡G&VE÷6VÆV7Eö6ÆÆ&6²ÂGFW&ãÒ%çG&VG6VÅò"’ÀĞ¢6ÆÆ&6µVW'”†æFÆW"…÷G&VE÷6V&6…ö6æ6VÂÂGFW&ãÒ%çG&VG6V&6†&6²B"’ÀĞ¢ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’ÂG&VE÷6V&6‚’ÀĞ¢ÒÀĞ¢E$TEõ4TÄT5C¢°Ğ¢6ÆÆ&6µVW'”†æFÆW"‡G&VE÷6VÆV7Eö6ÆÆ&6²ÂGFW&ãÒ%çG&VG6VÅò"’ÀĞ¢6ÆÆ&6µVW'”†æFÆW"…÷G&VE÷6V&6…ö6æ6VÂÂGFW&ãÒ%çG&VG6V&6†&6²B"’ÀĞ¢ÒÀĞ¢E$TEô4ôäd•$ÕõÄã¢°Ğ¢6ÆÆ&6µVW'”†æFÆW"‡G&VEö6öæf—&Õ÷6ÖUö6ÆÆ&6²ÂGFW&ãÒ%çG'6ÖUò"’ÀĞ¢6ÆÆ&6µVW'”†æFÆW"‡G&VEö6öæf—&ÕöVF—Eö6ÆÆ&6²ÂGFW&ãÒ%çG&VF—Eò"’ÀĞ¢6ÆÆ&6µVW'”†æFÆW"‡G&VEö&6µ÷Fõ÷6V&6…ö6ÆÆ&6²ÂGFW&ãÒ%çG&&6µ÷6V&6‚B"’ÀĞ¢ÒÀĞ¢E$TEôTD•EôU„U$4•4S¢°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’ÂG&VEöVF—EöW†W&6—6R’ÀĞ¢ÒÀĞ¢E$TEôTD•EôTÄT5E$ó¢°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’ÂG&VEöVF—EöVÆV7G&ò’ÀĞ¢ÒÀĞ¢E$TEôTD•EôÔåTÃ¢°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’ÂG&VEöVF—EöÖçVÂ’ÀĞ¢ÒÀĞ¢E$TEôÔ4„”äU3¢°Ğ¢6ÆÆ&6µVW'”†æFÆW"‡G&VEöÖ6†–æU÷FövvÆRÂGFW&ãÒ%çG&Õò"’ÀĞ¢6ÆÆ&6µVW'”†æFÆW"‡G&VEöÖ6†–æUöFöæRÂGFW&ãÒ%çG&FöæUò"’ÀĞ¢6ÆÆ&6µVW'”†æFÆW"‡G&VEö&6µ÷Fõö6öæf—&Õö6ÆÆ&6²ÂGFW&ãÒ%çG&&6µö6öæf—&ÒB"’ÀĞ¢6ÆÆ&6µVW'”†æFÆW"‡G&VEöÖ6†–æUö6æ6VÅö6ÆÆ&6²ÂGFW&ãÒ%çG&6æ6VÅò"’ÀĞ¢ÒÀĞ¢E$TEõD”TåEô4ôÔÔTåC¢°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’ÂG&VE÷F–VçEö6öÖÖVçE÷&V6V—fR’ÀĞ¢ÒÀĞ¢E$TEõ$ôu$U55õ44õ$S¢°Ğ¢6ÆÆ&6µVW'”†æFÆW"‡G&VE÷&öw&W75÷66÷&Uö6ÆÆ&6²ÂGFW&ãÒ%çG'–åò"’ÀĞ¢6ÆÆ&6µVW'”†æFÆW"‡G&VE÷&öw&W75÷66÷&Uö6ÆÆ&6²ÂGFW&ãÒ%çG'–ç6¶—B"’ÀĞ¢ÒÀĞ¢E$TEô•õTU5D”ôã¢°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’ÂG&VEö•÷VW7F–öå÷&V6V—fR’ÀĞ¢ÒÀĞ¢ÒÀĞ¢fÆÆ&6·3Õ°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUô$4µôÔ”çÒB"’Âö6æ6VÅöæEövõö†öÖR’ÀĞ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’Âö6æ6VÅööåöÖVçU÷&W72’ÀĞ¢6öÖÖæD†æFÆW"‚&6æ6VÂ"ÂG&VEö6æ6VÂ’ÀĞ¢6öÖÖæD†æFÆW"‚'7F'B"Â÷&W7F'E÷f–÷7F'B’ÅÒÀĞ¢Ğ¢æFEö†æFÆW"‡G&VEö6öçbĞ Ğ¢GÆåö6öçbÒ6öçfW'6F–öä†æFÆW"€Ğ¢VçG'•÷ö–çG3Õ°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUõE$TDÔTåEõÄçÒB"’ÂGÆå÷7F'B’ÀĞ¢ÒÀĞ¢7FFW3×°Ğ¢EÄåõ4T$4ƒ¢°Ğ¢6ÆÆ&6µVW'”†æFÆW"‡GÆå÷6VÆV7Eö6ÆÆ&6²ÂGFW&ãÒ%çGÆç6VÅò"’ÀĞ¢6ÆÆ&6µVW'”†æFÆW"…÷GÆå÷6V&6…ö6æ6VÂÂGFW&ãÒ%çGÆç6V&6†&6²B"’ÀĞ¢ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’ÂGÆå÷6V&6‚’ÀĞ¢ÒÀĞ¢EÄåõ4TÄT5C¢°Ğ¢6ÆÆ&6µVW'”†æFÆW"‡GÆå÷6VÆV7Eö6ÆÆ&6²ÂGFW&ãÒ%çGÆç6VÅò"’ÀĞ¢6ÆÆ&6µVW'”†æFÆW"…÷GÆå÷6V&6…ö6æ6VÂÂGFW&ãÒ%çGÆç6V&6†&6²B"’ÀĞ¢ÒÀĞ¢EÄåô4DTtõ%“¢°Ğ¢6ÆÆ&6µVW'”†æFÆW"‡GÆåö6FVv÷'•ö6ÆÆ&6²ÂGFW&ãÒ%çG6Eò"’ÀĞ¢ÒÀĞ¢EÄåõDU5E3¢°Ğ¢6ÆÆ&6µVW'”†æFÆW"†FW7Eö6ÆÆ&6²ÂGFW&ãÒ%æFW7Eò"’ÀĞ¢6ÆÆ&6µVW'”†æFÆW"†FW7Eö–æfõö6ÆÆ&6²ÂGFW&ãÒ%æ–æfõò"’ÀĞ¢ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’ÂFW7E÷FW‡E÷&V6V—fR’ÀĞ¢ÒÀĞ¢EÄåôD”täõ4•3¢´ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’ÂGÆåöF–væ÷6—2•ÒÀĞ¢EÄåõDõDÃ¢´ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’ÂGÆå÷F÷FÂ•ÒÀĞ¢EÄåôU„U$4•4S¢°Ğ¢6ÆÆ&6µVW'”†æFÆW"‡GÆåö•÷7VvvW7Eö6ÆÆ&6²ÂGFW&ãÒ%çGÆåö•÷7VvvW7BB"’ÀĞ¢ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’ÂGÆåöW†W&6—6R’ÀĞ¢ÒÀĞ¢EÄåôTÄT5E$ó¢´ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’ÂGÆåöVÆV7G&ò•ÒÀĞ¢EÄåôÔåTÃ¢´ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’ÂGÆåöÖçVÂ•ÒÀĞ¢EÄåô4ôäd•$Ó¢´ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’ÂGÆåö6öæf—&Ò•ÒÀĞ¢ÒÀĞ¢fÆÆ&6·3Õ°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUô$4µôÔ”çÒB"’Âö6æ6VÅöæEövõö†öÖR’ÀĞ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’Âö6æ6VÅööåöÖVçU÷&W72’ÀĞ¢6öÖÖæD†æFÆW"‚&6æ6VÂ"ÂGÆåö6æ6VÂ’ÀĞ¢6öÖÖæD†æFÆW"‚'7F'B"Â÷&W7F'E÷f–÷7F'B’ÀĞ¢ÒÀĞ¢Ğ¢æFEö†æFÆW"‡GÆåö6öçbĞ Ğ¢æFEö†æFÆW"„ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUõ$Uõ%E7ÒB"’Â&W÷'G5öÖVçR’Ğ¢æFEö†æFÆW"„6ÆÆ&6µVW'”†æFÆW"‡'E÷F÷FÇ5ö6ÆÆ&6²ÂGFW&ãÒ%ç'E÷F÷FÇ2B"’Ğ¢æFEö†æFÆW"„6ÆÆ&6µVW'”†æFÆW"‡'EöÆ7FÖöçF…ö6ÆÆ&6²ÂGFW&ãÒ%ç'EöÆ7FÖöçF‚B"’Ğ¢æFEö†æFÆW"„6ÆÆ&6µVW'”†æFÆW"‡'E÷FöF—&Vv—7FW%ö6ÆÆ&6²ÂGFW&ãÒ%ç'E÷FöF—&Vv—7FW"B"’Ğ¢æFEö†æFÆW"„6ÆÆ&6µVW'”†æFÆW"‡'EöFFW&Wö6ÆÆ&6²ÂGFW&ãÒ%ç'EöFFW&WB"’Ğ¢æFEö†æFÆW"„ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUôDDUõ$Uõ%GÒB"’ÂFFU÷&W÷'EöÖVçR’Ğ¢æFEö†æFÆW"„6ÆÆ&6µVW'”†æFÆW"†FFU÷&W÷'Eö6ÆVæF%öæf–vFRÂGFW&ãÒ%æ6Ææeò"’Ğ¢æFEö†æFÆW"„6ÆÆ&6µVW'”†æFÆW"†FFU÷&W÷'EöF•÷6VÆV7FVBÂGFW&ãÒ%æ6ÆF•ò"’Ğ¢†—7Eö6öçbÒ6öçfW'6F–öä†æFÆW"€Ğ¢VçG'•÷ö–çG3Õ´ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUõD”TåEô„•5Dõ%—ÒB"’Â†—7E÷7F'B•ÒÀĞ¢7FFW3×°Ğ¢$„•5Eõ4T$4‚#¢°Ğ¢6ÆÆ&6µVW'”†æFÆW"††—7E÷6VÆV7Eö6ÆÆ&6²ÂGFW&ãÒ%æ†—7G6VÅò"’ÀĞ¢6ÆÆ&6µVW'”†æFÆW"…ö†—7E÷6V&6…ö6æ6VÂÂGFW&ãÒ%æ†—7G6V&6†&6²B"’ÀĞ¢ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’Â†—7E÷6V&6‚’ÀĞ¢ÒÀĞ¢ÒÀĞ¢fÆÆ&6·3Õ°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUô$4µôÔ”çÒB"’Âö6æ6VÅöæEövõö†öÖR’ÀĞ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’Âö6æ6VÅööåöÖVçU÷&W72’Ä6öÖÖæD†æFÆW"‚&6æ6VÂ"Â†—7Eö6æ6VÂ’ÀĞ¢6öÖÖæD†æFÆW"‚'7F'B"Â÷&W7F'E÷f–÷7F'B’ÅÒÀĞ¢Ğ¢æFEö†æFÆW"††—7Eö6öçbĞ Ğ¢F†—7Eö6öçbÒ6öçfW'6F–öä†æFÆW"€Ğ¢VçG'•÷ö–çG3Õ°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUõE$TDÔTåEô„•5Dõ%—ÒB"’ÂF†—7E÷7F'B’ÀĞ¢ÒÀĞ¢7FFW3×°Ğ¢%D„•5Eõ4T$4‚#¢°Ğ¢6ÆÆ&6µVW'”†æFÆW"‡F†—7E÷F–VçEö6ÆÆ&6²ÂGFW&ãÒ%çF‡6VÅò"’ÀĞ¢6ÆÆ&6µVW'”†æFÆW"…÷F†—7E÷6V&6…ö6æ6VÂÂGFW&ãÒ%çF†—7G6V&6†&6²B"’ÀĞ¢ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBÂF†—7E÷6V&6‚’ÀĞ¢ÒÀĞ¢%D„•5EôDDR#¢°Ğ¢6ÆÆ&6µVW'”†æFÆW"‡F†—7EöFFUö6ÆÆ&6²ÂGFW&ãÒ%çF†FFUò"’ÀĞ¢ÒÀĞ¢ÒÀĞ¢fÆÆ&6·3Õ´6öÖÖæD†æFÆW"‚&6æ6VÂ"ÂF†—7Eö6æ6VÂ•ÒÀĞ¢Ğ¢æFEö†æFÆW"‡F†—7Eö6öçbĞ¢2F†—7EöFFUö6ÆÆ&6²
+hn
+i~
+xr
+kn
+x
+j~
+xF†—7Eö6öçbŞ
+hş
+kD„•5EôDDR7FFRŞ
+hş
+k
+jŞ
+kş
+jN
+k
+x~
+hr
+j~
+k
+kâ
+jş
+x~
+jN
+Z@Ğ¢2
+jN
+kî
+k
+kş
+ib
+k
+kş
+k.
+x~
+i^
+xŞ
+iò
+i^
+k
+kî
+k
+j®
+k6öçfW'6F–öâTäB
+k
+jş
+kÎ
+xr
+jş
+kî
+jş
+kÂÂ
+j¾
+k.
+xr/	ùI’
+j¾
+kş
+k
+x
+j‚"
+jn
+kş
+jş
+kÎ
+xr
+j¾
+kş
+k
+xr
+hş
+k
+xpĞ¢2
+hn
+k
+x~
+i^
+iş
+kâ
+jN
+kî
+k
+kş
+ib
+i®
+kî
+j®
+k.
+xr
+i^
+x¾
+j
+x²†æFÆW"
+k
+x~
+iş
+kâ
+j~
+k
+jB
+j
+kî
+ZB
+i~
+xŞ
+k.
+x¾
+jÎ
+kî
+k.
+kò
+k
+x~
+iÎ
+kş
+k
+xŞ
+iş
+kî
+k
+i^
+k
+xr
+j¾
+kş
+i^
+xŞ
+k‚‡F6ƒ3
+Z@Ğ¢æFEö†æFÆW"„6ÆÆ&6µVW'”†æFÆW"‡F†—7EöFFUö6ÆÆ&6²ÂGFW&ãÒ%çF†FFUò"’Ğ¢æFEö†æFÆW"„6ÆÆ&6µVW'”†æFÆW"‡F†—7Eöæeö6ÆÆ&6²ÂGFW&ãÒ%çF†æeò"’Ğ¢æFEö†æFÆW"„6ÆÆ&6µVW'”†æFÆW"‡F†—7Eö&6µ÷FõöFFW5ö6ÆÆ&6²ÂGFW&ãÒ%çF†—7F&6µò"’Ğ¢æFEö†æFÆW"„6ÆÆ&6µVW'”†æFÆW"‡F†—7E÷&öw&W75ö6ÆÆ&6²ÂGFW&ãÒ%çF†—7G&öuò"’Ğ Ğ¢7Fff•ö6öçbÒ6öçfW'6F–öä†æFÆW"€Ğ¢VçG'•÷ö–çG3Õ°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUõ5Ddeô•õTU%—ÒB"’Â7Fff•÷7F'BĞ¢ÒÀĞ¢7FFW3×°Ğ¢5Ddd•õTU5D”ôã¢°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’Â7Fff•÷&V6V—fRĞ¢ÒÀĞ¢ÒÀĞ¢fÆÆ&6·3Õ°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUô$4µôÔ”çÒB"’Âö6æ6VÅöæEövõö†öÖR’ÀĞ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’Âö6æ6VÅööåöÖVçU÷&W72’ÀĞ¢6öÖÖæD†æFÆW"‚&6æ6VÂ"Â7Fff•ö6æ6VÂ’ÀĞ¢6öÖÖæD†æFÆW"‚'7F'B"Â÷&W7F'E÷f–÷7F'B’ÀĞ¢ÒÀĞ¢Ğ¢æFEö†æFÆW"‡7Fff•ö6öçbĞ Ğ¢6Æ–æ–6Æ•ö6öçbÒ6öçfW'6F–öä†æFÆW"€Ğ¢VçG'•÷ö–çG3Õ°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUô4Ä”ä”4Åô—ÒB"’Â6Æ–æ–6Æ•÷7F'BĞ¢ÒÀĞ¢7FFW3×°Ğ¢4Ä”ä”4Ä•õTU5D”ôã¢°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’Â6Æ–æ–6Æ•÷&V6V—fRĞ¢ÒÀĞ¢ÒÀĞ¢fÆÆ&6·3Õ°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUô$4µôÔ”çÒB"’Âö6æ6VÅöæEövõö†öÖR’ÀĞ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’Âö6æ6VÅööåöÖVçU÷&W72’ÀĞ¢6öÖÖæD†æFÆW"‚&6æ6VÂ"Â6Æ–æ–6Æ•ö6æ6VÂ’ÀĞ¢6öÖÖæD†æFÆW"‚'7F'B"Â÷&W7F'E÷f–÷7F'B’ÀĞ¢ÒÀĞ¢Ğ¢æFEö†æFÆW"†6Æ–æ–6Æ•ö6öçbĞ Ğ¢66W7GVG•ö6öçbÒ6öçfW'6F–öä†æFÆW"€Ğ¢VçG'•÷ö–çG3Õ°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUô44Uõ5ETE—ÒB"’Â66W7GVG•÷7F'BĞ¢ÒÀĞ¢7FFW3×°Ğ¢44U5ETE•õ4T$4ƒ¢°Ğ¢6ÆÆ&6µVW'”†æFÆW"†66W7GVG•÷6VÆV7Eö6ÆÆ&6²ÂGFW&ãÒ%æ776VÅò"’ÀĞ¢6ÆÆ&6µVW'”†æFÆW"†66W7GVG•÷6V&6…ö6æ6VÅö6ÆÆ&6²ÂGFW&ãÒ%æ776V&6†&6²B"’ÀĞ¢ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’Â66W7GVG•÷6V&6…÷&V6V—fR’ÀĞ¢ÒÀĞ¢44U5ETE•ôU…E$¢°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’Â66W7GVG•öW‡G&÷&V6V—fRĞ¢ÒÀĞ¢44U5ETE•ôÄU54ôã¢°Ğ¢6ÆÆ&6µVW'”†æFÆW"†66W7GVG•öÆW76öåö6ÆÆ&6²ÂGFW&ãÒ%æ76ÆW76öåöæW‡BB"Ğ¢ÒÀĞ¢ÒÀĞ¢fÆÆ&6·3Õ°Ğ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUô$4µôÔ”çÒB"’Âö6æ6VÅöæEövõö†öÖR’ÀĞ¢ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’Âö6æ6VÅööåöÖVçU÷&W72’ÀĞ¢6öÖÖæD†æFÆW"‚&6æ6VÂ"Â66W7GVG•ö6æ6VÂ’ÀĞ¢6öÖÖæD†æFÆW"‚'7F'B"Â÷&W7F'E÷f–÷7F'B’ÀĞ¢ÒÀĞ¢Ğ¢æFEö†æFÆW"†66W7GVG•ö6öçbĞ Ğ¢æFEö†æFÆW"„ÖW76vT†æFÆW"†f–ÇFW'2å&VvW‚†b%ç·&öÆW2äÔTåUô„ôÔWÒB"’Âvõö†öÖR’Ğ¢æFEö†æFÆW"„ÖW76vT†æFÆW"†f–ÇFW'2åDU…Bbæf–ÇFW'2ä4ôÔÔäBbæf–ÇFW'2å&VvW‚…ôÄÅôÔTåUõ$TtU‚’ÂVæ¶æ÷våöÖVçR’Ğ Ğ¢7–æ2FVbövÆö&ÅöW'&÷%ö†æFÆW"‡WFFS¢ö&¦V7BÂ6öçFW‡C¢6öçFW‡EG—W2äDTdTÅEõE•R“ Ğ¢ÆövvW"æW†6WF–öâ‚%Væ†æFÆVBW'&÷""ÂW†5ö–æfóÖ6öçFW‡BæW'&÷"Ğ¢6GW&UöW†6WF–öâ†6öçFW‡BæW'&÷"Ğ¢G'“ Ğ¢–b—6–ç7Fæ6R‡WFFRÂWFFR’æBWFFRæVffV7F—fUöÖW76vS Ğ¢v—BWFFRæVffV7F—fUöÖW76vRç&WÇ•÷FW‡B€Ğ¢.)ªûˆò
+k
+kî
+jî
+jş
+kÎ
+kş
+iR
+k
+jî
+k
+xŞ
+jş
+kâ
+k
+jş
+kÎ
+x~
+i¾
+xr
+k
+jî
+xŞ
+jŞ
+jÎ
+jBvöövÆR6†VWG2
+k
+kî
+jî
+jş
+kÎ
+kş
+iR
+jÎ
+xŞ
+jş
+k
+xŞ
+jB
+ZB Ğ¢.
+i^
+jş
+kÎ
+x~
+iR
+k
+x~
+i^
+x~
+j
+xŞ
+j
+j®
+k
+hn
+jÎ
+kî
+k
+i®
+x~
+k~
+xŞ
+iş
+kâ
+i^
+k
+x¾
+ZB Ğ¢Ğ¢W†6WBW†6WF–öã Ğ¢ÆövvW"æW†6WF–öâ‚&W'&÷"†æFÆW"
+j
+kş
+iÎ
+x~
+hr
+jÎ
+xŞ
+jş
+k
+xŞ
+jR
+k
+jş
+kÎ
+x~
+i¾
+xr"Ğ Ğ¢æFEöW'&÷%ö†æFÆW"…övÆö&ÅöW'&÷%ö†æFÆW"Ğ Ğ¢ÆövvW"æ–æfò‚%&VÆ–fR6Æ–æ–2õ2&÷B
+i®
+kî
+k.
+x
+k
+i®
+xŞ
+i¾
+xrâââ"Ğ¢G'“ Ğ¢÷7F'Eö†VÇF…÷6W'fW"‚Ğ¢W†6WBW†6WF–öâ2W'&÷# Ğ¢6GW&UöW†6WF–öâ†W'&÷"Ğ¢&—6PĞ Ğ¢ç'Vå÷öÆÆ–ær‚Ğ Ğ Ğ¦–bõöæÖUõòÓÒ%õöÖ–åõò# Ğ¢Ö–â‚Ğ

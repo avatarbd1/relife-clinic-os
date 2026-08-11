@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 1.3 seconds
-Output:
 import importlib.util
 import os
 import sys
@@ -58,25 +55,25 @@ class FinanceLedgerTests(unittest.TestCase):
     def test_default_new_expense_is_clinic_expense(self):
         ws = WriteWorksheet(self.expense_headers)
         with patch.object(sheets, "_worksheet", return_value=ws):
-            self.assertEqual(sheets.add_expense("à¦­à¦¾à¦¡à¦¼à¦¾", 100, "S1"), "EX0001")
+            self.assertEqual(sheets.add_expense("ভাড়া", 100, "S1"), "EX0001")
         self.assertEqual(ws.appended[0][7], config.EXPENSE_TYPE_CLINIC)
 
     def test_new_expense_persists_explicit_department(self):
         headers = self.expense_headers + ["Department"]
         ws = WriteWorksheet(headers)
         with patch.object(sheets, "_worksheet", return_value=ws):
-            sheets.add_expense("à¦­à¦¾à¦¡à¦¼à¦¾", 100, "S1", department="Dental")
+            sheets.add_expense("ভাড়া", 100, "S1", department="Dental")
         self.assertEqual(ws.appended[0][headers.index("Department")], "Dental")
 
     def test_invalid_finance_department_is_rejected(self):
         with self.assertRaises(ValueError):
-            sheets.add_expense("à¦­à¦¾à¦¡à¦¼à¦¾", 100, "S1", department="All")
+            sheets.add_expense("ভাড়া", 100, "S1", department="All")
 
     def test_household_withdrawal_is_accepted(self):
         ws = WriteWorksheet(self.expense_headers)
         with patch.object(sheets, "_worksheet", return_value=ws):
             sheets.add_expense(
-                "à¦…à¦¨à§à¦¯à¦¾à¦¨à§à¦¯", 50, "S1",
+                "অন্যান্য", 50, "S1",
                 expense_type=config.EXPENSE_TYPE_HOUSEHOLD,
                 paid_from=config.CASH_CUSTODIAN_HOME_TREASURY,
             )
@@ -91,7 +88,7 @@ class FinanceLedgerTests(unittest.TestCase):
 
     def test_invalid_expense_type_is_rejected_before_write(self):
         with self.assertRaises(ValueError):
-            sheets.add_expense("à¦­à¦¾à¦¡à¦¼à¦¾", 100, "S1", expense_type="Transfer")
+            sheets.add_expense("ভাড়া", 100, "S1", expense_type="Transfer")
 
     def test_legacy_blank_is_unclassified_and_not_monthly_clinic_expense(self):
         records = [
@@ -190,7 +187,7 @@ class ExpenseApprovalWorkflowTests(unittest.TestCase):
         ws = WriteWorksheet(FinanceLedgerTests.expense_headers)
         with patch.object(sheets, "_worksheet", return_value=ws):
             expense_id = sheets.create_expense_request(
-                "à¦…à¦¨à§à¦¯à¦¾à¦¨à§à¦¯", 300, "Reception One", "courier"
+                "অন্যান্য", 300, "Reception One", "courier"
             )
         row = ws.appended[0]
         self.assertEqual(expense_id, "EX0001")
@@ -300,7 +297,7 @@ class ExpenseApprovalWorkflowTests(unittest.TestCase):
 
         owner_text = bot._cash_custody_summary_text(summary, "Owner")
         self.assertIn("Home Treasury", owner_text)
-        self.assertIn("Accepted receipt: à§³7000", owner_text)
+        self.assertIn("Accepted receipt: ৳7000", owner_text)
 
         for role in ("Receptionist", "Manager", "Therapist"):
             with self.subTest(role=role):
@@ -309,7 +306,7 @@ class ExpenseApprovalWorkflowTests(unittest.TestCase):
                 self.assertNotIn("Home Treasury", text)
                 self.assertNotIn("Accepted receipt", text)
                 self.assertNotIn("Household Withdrawal", text)
-                self.assertNotIn("à§³4000", text)
+                self.assertNotIn("৳4000", text)
 
 
 class FinalizeWorksheet(WriteWorksheet):
@@ -546,7 +543,7 @@ class FakeBook:
             "07_Expenses": FakeMigrationWorksheet(
                 "07_Expenses",
                 ["Expense_ID", "Date", "Category", "Amount", "Added_By", "Timestamp", "Note"],
-                rows=[["EX0001", "2026-01-01", "à¦­à¦¾à¦¡à¦¼à¦¾", 100]],
+                rows=[["EX0001", "2026-01-01", "ভাড়া", 100]],
             )
         }
 
@@ -609,4 +606,3 @@ class MigrationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
