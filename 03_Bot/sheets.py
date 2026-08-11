@@ -1835,66 +1835,294 @@ def _with_expense_type(record: dict) -> dict:
     return normalized
 
 
+EXPENSE_WORKFLOW_COLUMNS = [
+    "Paid_From", "Status", "Requested_By", "Approved_By",
+    "Approved_At", "Paid_By", "Paid_At",
+]
+EXPENSE_STATUSES = {"Pending Approval", "Approved", "Rejected", "Paid"}
+
+
+def _require_expense_workflow_headers(headers: list[str]) -> None:
+    required = {"Type", *EXPENSE_WORKFLOW_COLUMNS}
+    missing = sorted(required.difference(headers))
+    if missing:
+        raise RuntimeError(
+            "07_Expenses is missing required expense workflow columns: "
+            + ", ".join(missing)
+        )
+
+
+def _normalized_expense(record: dict) -> dict:
+    normalized = _with_expense_type(record)
+    status = str(record.get("Status", "")).strip()
+    normalized["Status"] = status or "Legacy Paid"
+    normalized["Paid_From"] = str(record.get("Paid_From", "")).strip() or "Unclassified"
+    return normalized
+
+
+def _expense_is_paid(record: dict) -> bool:
+    return str(record.get("Status", "")).strip() in ("", "Paid")
+
+
 def add_expense(
     category: str,
     amount: float,
     added_by: str,
     note: str = "",
     expense_type: str = config.EXPENSE_TYPE_CLINIC,
+    paid_from: str = config.CASH_CUSTODIAN_RECEPTION,
+    status: str = "Paid",
+    approved_by: str = "",
+    paid_by: str = "",
 ) -> str:
-    """07_Expenses শীটে একটা খরচের এন্ট্রি সেভ করে।"""
+    """Create a direct paid expense/withdrawal with explicit custody source."""
     if expense_type not in config.EXPENSE_TYPES:
         raise ValueError(f"Invalid expense type: {expense_type}")
+    if paid_from not in config.CASH_CUSTODIANS:
+        raise ValueError(f"Invalid cash custodian: {paid_from}")
+    if status not in EXPENSE_STATUSES:
+        raise ValueError(f"Invalid expense status: {status}")
     amount = _positive_amount(amount)
     ws = _worksheet(config.SHEET_EXPENSES)
+    headers = ws.row_values(1)
+    _require_expense_workflow_headers(headers)
+
     expense_id = _next_expense_id(ws)
     now = bd_now()
+    timestamp = now.strftime("%Y-%m-%d %I:%M %p")
     row = [
         expense_id,
         now.strftime("%Y-%m-%d"),
         category,
         amount,
         added_by,
-        now.strftime("%Y-%m-%d %I:%M %p"),
+        timestamp,
         note,
     ]
-    headers = ws.row_values(1)
-    if "Type" not in headers:
-        raise RuntimeError("07_Expenses is missing required Type column; run migration")
     if len(row) < len(headers):
         row.extend([""] * (len(headers) - len(row)))
-    row[headers.index("Type")] = expense_type
+    values = {
+        "Type": expense_type,
+        "Paid_From": paid_from,
+        "Status": status,
+        "Requested_By": added_by,
+        "Approved_By": approved_by or (added_by if status == "Paid" else ""),
+        "Approved_At": timestamp if status == "Paid" else "",
+        "Paid_By": paid_by or (added_by if status == "Paid" else ""),
+        "Paid_At": timestamp if status == "Paid" else "",
+    }
+    for header, value in values.items():
+        row[headers.index(header)] = value
     _append_unified_row(
-        ws, row, "expense", expense_id,
+        ws,
+        row,
+        "expense",
+        expense_id,
         provider_id=added_by,
+        human_verified=status == "Paid",
     )
     return expense_id
 
 
-def get_expenses_for_date(date_str: str) -> list[dict]:
-    """নির্দিষ্ট তারিখের সব খরচের এন্ট্রি রিটার্ন করে (নতুন থেকে পুরনো)। date_str ফরম্যাট: 'YYYY-MM-DD'"""
+def create_expense_request(
+    category: str,
+    amount: float,
+    requested_by: str,
+    note: str = "",
+) -> str:
+    """Reception requests a small clinic expense before paying it."""
+    return add_expense(
+        category,
+        amount,
+        requested_by,
+        note=note,
+        expense_type=config.EXPENSE_TYPE_CLINIC,
+        paid_from=config.CASH_CUSTODIAN_RECEPTION,
+        status="Pending Approval",
+    )
+
+
+def get_expense_requests(status: str) -> list[dict]:
+    if status not in EXPENSE_STATUSES:
+        raise ValueError(f"Invalid expense status: {status}")
     ws = _worksheet(config.SHEET_EXPENSES)
-    records = safe_get_all_records(ws)
     rows = [
-        _with_expense_type(r)
-        for r in records
-        if str(r.get("Date", "")).strip() == date_str
+        _normalized_expense(row)
+        for row in safe_get_all_records(ws)
+        if str(row.get("Status", "")).strip() == status
     ]
-    rows.sort(key=lambda r: str(r.get("Timestamp", "")), reverse=True)
+    rows.sort(key=lambda row: str(row.get("Timestamp", "")), reverse=True)
+    return rows
+
+
+def _finalize_expense_status(
+    expense_id: str,
+    expected_status: str,
+    updates: dict[str, str],
+) -> dict:
+    ws = _worksheet(config.SHEET_EXPENSES)
+    values = ws.get_all_values()
+    if not values:
+        return {"ok": False, "reason": "not_found"}
+    headers = values[0]
+    _require_expense_workflow_headers(headers)
+    id_index = headers.index("Expense_ID")
+    status_index = headers.index("Status")
+
+    for row_number, row in enumerate(values[1:], start=2):
+        current_id = row[id_index].strip() if len(row) > id_index else ""
+        if current_id != expense_id.strip():
+            continue
+        current_status = row[status_index].strip() if len(row) > status_index else ""
+        if current_status != expected_status:
+            return {
+                "ok": False,
+                "reason": "invalid_status",
+                "status": current_status,
+            }
+        cell_updates = {
+            headers.index(header) + 1: value
+            for header, value in updates.items()
+        }
+        _batch_update_cells(ws, row_number, cell_updates)
+        return {
+            "ok": True,
+            "expense_id": expense_id,
+            "status": updates.get("Status", current_status),
+        }
+    return {"ok": False, "reason": "not_found"}
+
+
+def finalize_expense_request(
+    expense_id: str,
+    approved_by: str,
+    decision: str,
+) -> dict:
+    """Owner approves or rejects a pending expense exactly once."""
+    if decision not in {"Approved", "Rejected"}:
+        raise ValueError(f"Invalid expense decision: {decision}")
+    now = bd_now().strftime("%Y-%m-%d %I:%M %p")
+    return _finalize_expense_status(
+        expense_id,
+        "Pending Approval",
+        {
+            "Status": decision,
+            "Approved_By": approved_by,
+            "Approved_At": now,
+        },
+    )
+
+
+def mark_expense_paid(expense_id: str, paid_by: str) -> dict:
+    """Reception confirms actual payment after owner approval."""
+    now = bd_now().strftime("%Y-%m-%d %I:%M %p")
+    return _finalize_expense_status(
+        expense_id,
+        "Approved",
+        {
+            "Status": "Paid",
+            "Paid_By": paid_by,
+            "Paid_At": now,
+        },
+    )
+
+
+def get_expenses_for_date(date_str: str) -> list[dict]:
+    """Return all expense workflow rows for YYYY-MM-DD, newest first."""
+    ws = _worksheet(config.SHEET_EXPENSES)
+    rows = [
+        _normalized_expense(row)
+        for row in safe_get_all_records(ws)
+        if str(row.get("Date", "")).strip() == date_str
+    ]
+    rows.sort(key=lambda row: str(row.get("Timestamp", "")), reverse=True)
     return rows
 
 
 def get_expense_total_for_month(month: str) -> float:
-    """নির্দিষ্ট মাসের মোট খরচ রিটার্ন করে। month ফরম্যাট: 'YYYY-MM'"""
+    """Paid clinic expenses only; household withdrawals are excluded."""
     ws = _worksheet(config.SHEET_EXPENSES)
     records = safe_get_all_records(ws)
     total = sum(
-        float(r.get("Amount", 0) or 0)
-        for r in records
-        if str(r.get("Date", "")).strip().startswith(month)
-        and str(r.get("Type", "")).strip() == config.EXPENSE_TYPE_CLINIC
+        float(row.get("Amount", 0) or 0)
+        for row in records
+        if str(row.get("Date", "")).strip().startswith(month)
+        and str(row.get("Type", "")).strip() == config.EXPENSE_TYPE_CLINIC
+        and _expense_is_paid(row)
     )
     return round(total, 2)
+
+
+def get_cash_custody_summary(date_str: str) -> dict:
+    """Daily cash reconciliation for Reception and Home Treasury."""
+    payment_rows = safe_get_all_records(_worksheet(config.SHEET_PAYMENTS))
+    expense_rows = safe_get_all_records(_worksheet(config.SHEET_EXPENSES))
+    movement_rows = safe_get_all_records(_worksheet(config.SHEET_CASH_MOVEMENT))
+
+    cash_collected = sum(
+        float(row.get("Amount", 0) or 0)
+        for row in payment_rows
+        if str(row.get("Date", "")).strip() == date_str
+        and str(row.get("Payment_Method", "")).strip().lower() == "cash"
+    )
+    paid_expenses = [
+        row for row in expense_rows
+        if str(row.get("Date", "")).strip() == date_str
+        and _expense_is_paid(row)
+    ]
+    reception_expense = sum(
+        float(row.get("Amount", 0) or 0)
+        for row in paid_expenses
+        if str(row.get("Paid_From", "")).strip() == config.CASH_CUSTODIAN_RECEPTION
+    )
+    home_clinic_expense = sum(
+        float(row.get("Amount", 0) or 0)
+        for row in paid_expenses
+        if str(row.get("Paid_From", "")).strip() == config.CASH_CUSTODIAN_HOME_TREASURY
+        and str(row.get("Type", "")).strip() == config.EXPENSE_TYPE_CLINIC
+    )
+    household_withdrawal = sum(
+        float(row.get("Amount", 0) or 0)
+        for row in paid_expenses
+        if str(row.get("Paid_From", "")).strip() == config.CASH_CUSTODIAN_HOME_TREASURY
+        and str(row.get("Type", "")).strip() == config.EXPENSE_TYPE_HOUSEHOLD
+    )
+    accepted = [
+        row for row in movement_rows
+        if str(row.get("Date", "")).strip() == date_str
+        and str(row.get("Status", "")).strip() == "Accepted"
+    ]
+    reception_out = sum(
+        float(row.get("Amount", 0) or 0)
+        for row in accepted
+        if str(row.get("From_Custodian", "")).strip() == config.CASH_CUSTODIAN_RECEPTION
+    )
+    home_in = sum(
+        float(row.get("Amount", 0) or 0)
+        for row in accepted
+        if str(row.get("To_Custodian", "")).strip() == config.CASH_CUSTODIAN_HOME_TREASURY
+    )
+    home_out = sum(
+        float(row.get("Amount", 0) or 0)
+        for row in accepted
+        if str(row.get("From_Custodian", "")).strip() == config.CASH_CUSTODIAN_HOME_TREASURY
+    )
+    return {
+        "Date": date_str,
+        "Cash_Collected": round(cash_collected, 2),
+        "Reception_Expense": round(reception_expense, 2),
+        "Reception_Handover": round(reception_out, 2),
+        "Reception_Balance": round(
+            cash_collected - reception_expense - reception_out, 2
+        ),
+        "Home_Received": round(home_in, 2),
+        "Home_Clinic_Expense": round(home_clinic_expense, 2),
+        "Household_Withdrawal": round(household_withdrawal, 2),
+        "Home_Transfer_Out": round(home_out, 2),
+        "Home_Balance": round(
+            home_in - home_clinic_expense - household_withdrawal - home_out, 2
+        ),
+    }
 
 
 def _next_cash_movement_id(ws) -> str:
