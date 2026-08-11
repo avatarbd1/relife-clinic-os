@@ -1916,7 +1916,7 @@ def add_cash_movement(
     moved_by: str,
     note: str = "",
 ) -> str:
-    """Record a custody transfer. This is never an expense entry."""
+    """Create a pending custody handover. This is never an expense entry."""
     if from_custodian not in config.CASH_CUSTODIANS:
         raise ValueError(f"Invalid cash custodian: {from_custodian}")
     if to_custodian not in config.CASH_CUSTODIANS:
@@ -1926,6 +1926,15 @@ def add_cash_movement(
     amount = _positive_amount(amount)
 
     ws = _worksheet(config.SHEET_CASH_MOVEMENT)
+    headers = ws.row_values(1)
+    required = {"Status", "Confirmed_By", "Confirmed_At"}
+    missing = sorted(required.difference(headers))
+    if missing:
+        raise RuntimeError(
+            "21_Cash_Movement is missing required handover columns: "
+            + ", ".join(missing)
+        )
+
     movement_id = _next_cash_movement_id(ws)
     now = bd_now()
     row = [
@@ -1938,12 +1947,16 @@ def add_cash_movement(
         note,
         now.strftime("%Y-%m-%d %I:%M %p"),
     ]
+    if len(row) < len(headers):
+        row.extend([""] * (len(headers) - len(row)))
+    row[headers.index("Status")] = "Pending"
     _append_unified_row(
         ws,
         row,
         "cash_movement",
         movement_id,
         provider_id=moved_by,
+        human_verified=False,
     )
     return movement_id
 
@@ -1959,6 +1972,72 @@ def get_cash_movements_for_date(date_str: str) -> list[dict]:
     rows.sort(key=lambda row: str(row.get("Timestamp", "")), reverse=True)
     return rows
 
+
+def get_pending_cash_movements() -> list[dict]:
+    """Return pending handovers for the bound clinic, newest first."""
+    ws = _worksheet(config.SHEET_CASH_MOVEMENT)
+    rows = [
+        row for row in safe_get_all_records(ws)
+        if str(row.get("Status", "")).strip() == "Pending"
+    ]
+    rows.sort(key=lambda row: str(row.get("Timestamp", "")), reverse=True)
+    return rows
+
+
+def finalize_cash_movement(
+    movement_id: str,
+    confirmed_by: str,
+    decision: str = "Accepted",
+) -> dict:
+    """Accept or reject one pending handover exactly once."""
+    if decision not in {"Accepted", "Rejected"}:
+        raise ValueError(f"Invalid cash movement decision: {decision}")
+
+    ws = _worksheet(config.SHEET_CASH_MOVEMENT)
+    values = ws.get_all_values()
+    if not values:
+        return {"ok": False, "reason": "not_found"}
+
+    headers = values[0]
+    required = {"Movement_ID", "Status", "Confirmed_By", "Confirmed_At"}
+    missing = sorted(required.difference(headers))
+    if missing:
+        raise RuntimeError(
+            "21_Cash_Movement is missing required handover columns: "
+            + ", ".join(missing)
+        )
+
+    id_index = headers.index("Movement_ID")
+    status_index = headers.index("Status")
+    for row_number, row in enumerate(values[1:], start=2):
+        current_id = row[id_index].strip() if len(row) > id_index else ""
+        if current_id != movement_id.strip():
+            continue
+        current_status = row[status_index].strip() if len(row) > status_index else ""
+        if current_status != "Pending":
+            return {
+                "ok": False,
+                "reason": "already_finalized",
+                "status": current_status,
+            }
+        confirmed_at = bd_now().strftime("%Y-%m-%d %I:%M %p")
+        _batch_update_cells(
+            ws,
+            row_number,
+            {
+                status_index + 1: decision,
+                headers.index("Confirmed_By") + 1: confirmed_by,
+                headers.index("Confirmed_At") + 1: confirmed_at,
+            },
+        )
+        return {
+            "ok": True,
+            "movement_id": movement_id,
+            "status": decision,
+            "confirmed_at": confirmed_at,
+        }
+
+    return {"ok": False, "reason": "not_found"}
 
 def add_learning_event(staff_id: str, full_name: str, role: str, event_type: str,
                         item_id: str, category: str, selected: str = "", correct: str = "") -> None:
