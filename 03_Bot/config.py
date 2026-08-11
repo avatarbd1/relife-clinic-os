@@ -22,6 +22,9 @@ MASTER_SHEET_ID = os.getenv("MASTER_SHEET_ID")
 MULTITENANT_ENABLED = os.getenv("MULTITENANT_ENABLED", "false").strip().lower() in {
     "1", "true", "yes", "on"
 }
+DEPARTMENT_ENFORCEMENT_ENABLED = os.getenv(
+    "DEPARTMENT_ENFORCEMENT_ENABLED", "false"
+).strip().lower() in {"1", "true", "yes", "on"}
 if MULTITENANT_ENABLED and not MASTER_SHEET_ID:
     raise RuntimeError("MULTITENANT_ENABLED=true but MASTER_SHEET_ID is missing.")
 if not GOOGLE_SHEET_ID and not MULTITENANT_ENABLED:
