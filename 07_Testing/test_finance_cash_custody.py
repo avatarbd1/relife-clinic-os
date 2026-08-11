@@ -375,6 +375,13 @@ class CashHandoverRoleTests(unittest.TestCase):
             "cash_receive_start",
             "cash_finalize_callback",
             "cash_movements_start",
+            "small_expense_start",
+            "expense_approval_start",
+            "expense_approval_callback",
+            "approved_expenses_start",
+            "expense_paid_callback",
+            "household_withdrawal_start",
+            "custody_balance_start",
         ):
             with self.subTest(handler=handler):
                 self.assertIn(handler, source)
