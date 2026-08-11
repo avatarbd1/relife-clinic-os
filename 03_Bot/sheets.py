@@ -652,9 +652,45 @@ def get_all_appointments() -> list[dict]:
     return safe_get_all_records(ws)
 
 
+def filter_appointments_for_staff(
+    appointments: list[dict], staff: dict, mappings: list[dict]
+) -> list[dict]:
+    """Apply the central department decision to appointment records when enabled."""
+    if not config.DEPARTMENT_ENFORCEMENT_ENABLED:
+        return appointments
+    return [
+        appointment for appointment in appointments
+        if authorize_record(staff, appointment, AccessAction.READ, mappings).allowed
+    ]
+
+
+def search_appointments(query: str) -> list[dict]:
+    query = query.strip().lower()
+    return [
+        appointment for appointment in get_all_appointments()
+        if query in str(appointment.get("Appointment_ID", "")).lower()
+        or query in str(appointment.get("Patient_ID", "")).lower()
+        or query in str(appointment.get("Patient_Name", "")).lower()
+    ]
+
+
+def search_appointments_for_staff(
+    query: str, staff: dict, mappings: list[dict]
+) -> list[dict]:
+    return filter_appointments_for_staff(search_appointments(query), staff, mappings)
+
+
 def get_appointments_for_date(date_str: str) -> list[dict]:
     all_appts = get_all_appointments()
     return [a for a in all_appts if str(a.get("Date", "")).strip() == date_str.strip()]
+
+
+def get_appointments_for_date_for_staff(
+    date_str: str, staff: dict, mappings: list[dict]
+) -> list[dict]:
+    return filter_appointments_for_staff(
+        get_appointments_for_date(date_str), staff, mappings
+    )
 
 
 def get_appointments_for_therapist(therapist_name: str) -> list[dict]:
@@ -664,6 +700,14 @@ def get_appointments_for_therapist(therapist_name: str) -> list[dict]:
         if a.get("Therapist", "").strip() == therapist_name.strip()
         and a.get("Status", "").strip() == "Scheduled"
     ]
+
+
+def get_appointments_for_therapist_for_staff(
+    therapist_name: str, staff: dict, mappings: list[dict]
+) -> list[dict]:
+    return filter_appointments_for_staff(
+        get_appointments_for_therapist(therapist_name), staff, mappings
+    )
 
 
 def _next_attendance_id(ws) -> str:
@@ -882,6 +926,16 @@ def get_appointment_by_id(appointment_id: str) -> dict | None:
         if str(a.get("Appointment_ID", "")).strip() == str(appointment_id).strip():
             return a
     return None
+
+
+def get_appointment_by_id_for_staff(
+    appointment_id: str, staff: dict, mappings: list[dict]
+) -> dict | None:
+    appointment = get_appointment_by_id(appointment_id)
+    if appointment is None:
+        return None
+    visible = filter_appointments_for_staff([appointment], staff, mappings)
+    return visible[0] if visible else None
 
 
 def has_payment_for_appointment(appointment_id: str, date_str: str) -> bool:
@@ -1182,6 +1236,14 @@ def get_payments_for_patient(patient_id: str) -> list[dict]:
 def get_appointments_for_patient(patient_id: str) -> list[dict]:
     all_apts = get_all_appointments()
     return [a for a in all_apts if str(a.get("Patient_ID", "")).strip() == str(patient_id).strip()]
+
+
+def get_appointments_for_patient_for_staff(
+    patient_id: str, staff: dict, mappings: list[dict]
+) -> list[dict]:
+    return filter_appointments_for_staff(
+        get_appointments_for_patient(patient_id), staff, mappings
+    )
 
 
 def get_treatment_notes_for_patient(patient_id: str) -> list[dict]:
