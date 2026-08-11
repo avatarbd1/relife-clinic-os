@@ -49,7 +49,7 @@ class FinanceLedgerTests(unittest.TestCase):
     expense_headers = [
         "Expense_ID", "Date", "Category", "Amount", "Added_By",
         "Timestamp", "Note", "Type",
-    ]
+    ] + cash_migration.EXPENSE_WORKFLOW_HEADERS
 
     def test_default_new_expense_is_clinic_expense(self):
         ws = WriteWorksheet(self.expense_headers)
@@ -63,8 +63,16 @@ class FinanceLedgerTests(unittest.TestCase):
             sheets.add_expense(
                 "অন্যান্য", 50, "S1",
                 expense_type=config.EXPENSE_TYPE_HOUSEHOLD,
+                paid_from=config.CASH_CUSTODIAN_HOME_TREASURY,
             )
         self.assertEqual(ws.appended[0][7], config.EXPENSE_TYPE_HOUSEHOLD)
+        self.assertEqual(
+            ws.appended[0][self.expense_headers.index("Paid_From")],
+            config.CASH_CUSTODIAN_HOME_TREASURY,
+        )
+        self.assertEqual(
+            ws.appended[0][self.expense_headers.index("Status")], "Paid"
+        )
 
     def test_invalid_expense_type_is_rejected_before_write(self):
         with self.assertRaises(ValueError):
@@ -121,6 +129,126 @@ class FinanceLedgerTests(unittest.TestCase):
         ):
             result = sheets.get_cash_movements_for_date("2026-08-11")
         self.assertEqual([row["Movement_ID"] for row in result], ["CM3", "CM1"])
+
+
+class ExpenseFinalizeWorksheet(WriteWorksheet):
+    def __init__(self, status="Pending Approval"):
+        headers = FinanceLedgerTests.expense_headers
+        super().__init__(headers)
+        row = [""] * len(headers)
+        row[headers.index("Expense_ID")] = "EX0001"
+        row[headers.index("Status")] = status
+        self.rows = [row]
+        self.batch_calls = []
+
+    def get_all_values(self):
+        return [list(self.headers)] + [list(row) for row in self.rows]
+
+    def batch_update(self, data, value_input_option=None):
+        self.batch_calls.append((data, value_input_option))
+        for item in data:
+            row, column = a1_to_rowcol(item["range"])
+            self.rows[row - 2][column - 1] = item["values"][0][0]
+
+
+class ExpenseApprovalWorkflowTests(unittest.TestCase):
+    def test_reception_request_is_pending_and_unpaid(self):
+        ws = WriteWorksheet(FinanceLedgerTests.expense_headers)
+        with patch.object(sheets, "_worksheet", return_value=ws):
+            expense_id = sheets.create_expense_request(
+                "অন্যান্য", 300, "Reception One", "courier"
+            )
+        row = ws.appended[0]
+        self.assertEqual(expense_id, "EX0001")
+        self.assertEqual(
+            row[ws.headers.index("Type")], config.EXPENSE_TYPE_CLINIC
+        )
+        self.assertEqual(
+            row[ws.headers.index("Paid_From")],
+            config.CASH_CUSTODIAN_RECEPTION,
+        )
+        self.assertEqual(row[ws.headers.index("Status")], "Pending Approval")
+        self.assertEqual(row[ws.headers.index("Paid_At")], "")
+
+    def test_owner_approval_then_reception_payment_is_exactly_once(self):
+        ws = ExpenseFinalizeWorksheet()
+        with patch.object(sheets, "_worksheet", return_value=ws):
+            approved = sheets.finalize_expense_request(
+                "EX0001", "Owner One", "Approved"
+            )
+            duplicate_approval = sheets.finalize_expense_request(
+                "EX0001", "Owner Two", "Approved"
+            )
+            paid = sheets.mark_expense_paid("EX0001", "Reception One")
+            duplicate_payment = sheets.mark_expense_paid(
+                "EX0001", "Reception Two"
+            )
+        self.assertTrue(approved["ok"])
+        self.assertFalse(duplicate_approval["ok"])
+        self.assertEqual(duplicate_approval["status"], "Approved")
+        self.assertTrue(paid["ok"])
+        self.assertFalse(duplicate_payment["ok"])
+        self.assertEqual(duplicate_payment["status"], "Paid")
+        self.assertEqual(
+            ws.rows[0][ws.headers.index("Approved_By")], "Owner One"
+        )
+        self.assertEqual(
+            ws.rows[0][ws.headers.index("Paid_By")], "Reception One"
+        )
+        self.assertEqual(len(ws.batch_calls), 2)
+
+    def test_rejected_request_cannot_be_paid(self):
+        ws = ExpenseFinalizeWorksheet()
+        with patch.object(sheets, "_worksheet", return_value=ws):
+            rejected = sheets.finalize_expense_request(
+                "EX0001", "Owner One", "Rejected"
+            )
+            paid = sheets.mark_expense_paid("EX0001", "Reception One")
+        self.assertTrue(rejected["ok"])
+        self.assertFalse(paid["ok"])
+        self.assertEqual(paid["status"], "Rejected")
+
+    def test_monthly_total_excludes_pending_and_household(self):
+        records = [
+            {"Date": "2026-08-01", "Amount": 100, "Type": "Clinic Expense", "Status": "Paid"},
+            {"Date": "2026-08-02", "Amount": 200, "Type": "Clinic Expense", "Status": "Pending Approval"},
+            {"Date": "2026-08-03", "Amount": 300, "Type": "Household Withdrawal", "Status": "Paid"},
+        ]
+        with patch.object(sheets, "_worksheet", return_value=object()), patch.object(
+            sheets, "safe_get_all_records", return_value=records
+        ):
+            total = sheets.get_expense_total_for_month("2026-08")
+        self.assertEqual(total, 100)
+
+    def test_daily_custody_reconciliation(self):
+        payment_ws, expense_ws, movement_ws = object(), object(), object()
+        records = {
+            payment_ws: [
+                {"Date": "2026-08-11", "Amount": 10000, "Payment_Method": "Cash"},
+                {"Date": "2026-08-11", "Amount": 500, "Payment_Method": "bKash"},
+            ],
+            expense_ws: [
+                {"Date": "2026-08-11", "Amount": 500, "Type": "Clinic Expense", "Status": "Paid", "Paid_From": "Reception"},
+                {"Date": "2026-08-11", "Amount": 1000, "Type": "Clinic Expense", "Status": "Paid", "Paid_From": "Home Treasury"},
+                {"Date": "2026-08-11", "Amount": 2000, "Type": "Household Withdrawal", "Status": "Paid", "Paid_From": "Home Treasury"},
+            ],
+            movement_ws: [
+                {"Date": "2026-08-11", "Amount": 7000, "From_Custodian": "Reception", "To_Custodian": "Home Treasury", "Status": "Accepted"},
+                {"Date": "2026-08-11", "Amount": 900, "From_Custodian": "Reception", "To_Custodian": "Home Treasury", "Status": "Pending"},
+            ],
+        }
+        with patch.object(
+            sheets,
+            "_worksheet",
+            side_effect=[payment_ws, expense_ws, movement_ws],
+        ), patch.object(
+            sheets,
+            "safe_get_all_records",
+            side_effect=lambda ws: records[ws],
+        ):
+            summary = sheets.get_cash_custody_summary("2026-08-11")
+        self.assertEqual(summary["Reception_Balance"], 2500)
+        self.assertEqual(summary["Home_Balance"], 4000)
 
 
 class FinalizeWorksheet(WriteWorksheet):
@@ -220,6 +348,26 @@ class CashHandoverRoleTests(unittest.TestCase):
             roles.can_access("Therapist", roles.MENU_CASH_HANDOVER)
         )
 
+    def test_expense_permissions_match_custody_roles(self):
+        self.assertTrue(roles.can_access(
+            "Receptionist", roles.MENU_SMALL_EXPENSE_REQUEST
+        ))
+        self.assertTrue(roles.can_access(
+            "Receptionist", roles.MENU_APPROVED_EXPENSES
+        ))
+        self.assertFalse(roles.can_access(
+            "Receptionist", roles.MENU_EXPENSE_APPROVAL
+        ))
+        self.assertTrue(roles.can_access(
+            "Owner", roles.MENU_EXPENSE_APPROVAL
+        ))
+        self.assertTrue(roles.can_access(
+            "Owner", roles.MENU_HOUSEHOLD_WITHDRAWAL
+        ))
+        self.assertFalse(roles.can_access(
+            "Manager", roles.MENU_EXPENSE_APPROVAL
+        ))
+
     def test_bot_wires_cash_handover_handlers(self):
         source = (BOT_DIR / "bot.py").read_text(encoding="utf-8")
         for handler in (
@@ -285,11 +433,19 @@ class MigrationTests(unittest.TestCase):
         legacy_rows = list(book.worksheet("07_Expenses").rows)
         self.assertEqual(
             cash_migration.migrate(book, apply=False),
-            ["add_expense_type", "create_cash_movement"],
+            [
+                "add_expense_type",
+                "add_expense_workflow_columns",
+                "create_cash_movement",
+            ],
         )
         cash_migration.migrate(book, apply=True)
         self.assertEqual(book.worksheet("07_Expenses").rows, legacy_rows)
-        self.assertEqual(book.worksheet("07_Expenses").headers[-1], "Type")
+        self.assertIn("Type", book.worksheet("07_Expenses").headers)
+        self.assertEqual(
+            book.worksheet("07_Expenses").headers[-7:],
+            cash_migration.EXPENSE_WORKFLOW_HEADERS,
+        )
         self.assertEqual(cash_migration.migrate(book, apply=True), [])
 
     def test_existing_cash_ledger_gets_confirmation_columns_only(self):
@@ -299,7 +455,9 @@ class MigrationTests(unittest.TestCase):
         book.tabs["21_Cash_Movement"] = FakeMigrationWorksheet(
             "21_Cash_Movement", cash_headers, rows=cash_rows
         )
-        book.tabs["07_Expenses"].headers.append("Type")
+        book.tabs["07_Expenses"].headers.extend(
+            ["Type"] + cash_migration.EXPENSE_WORKFLOW_HEADERS
+        )
         self.assertEqual(
             cash_migration.migrate(book, apply=False),
             ["add_cash_handover_columns"],
