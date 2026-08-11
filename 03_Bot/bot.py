@@ -406,10 +406,14 @@ def _patient_last_visit(notes: list[dict], patient: dict) -> str:
 def _therapist_today_queue(staff: dict) -> list[dict]:
     therapist_name = str(staff.get("Full_Name", "")).strip()
     today_str = bd_now().strftime("%Y-%m-%d")
-    appointments = sheets.get_appointments_for_date(today_str)
     mappings = (
         sheets.get_staff_department_access(staff.get("Staff_ID", ""))
         if config.DEPARTMENT_ENFORCEMENT_ENABLED else []
+    )
+    appointments = (
+        sheets.get_appointments_for_date_for_staff(today_str, staff, mappings)
+        if config.DEPARTMENT_ENFORCEMENT_ENABLED
+        else sheets.get_appointments_for_date(today_str)
     )
     items = []
     for appt in sorted(appointments, key=lambda a: str(a.get("Time", ""))):
@@ -638,8 +642,8 @@ async def pt_dashboard_history_callback(update: Update, context: ContextTypes.DE
     if not await _patient_by_id_for_request(update, context, patient_id):
         await query.edit_message_text("⛔ এই রোগী দেখার অনুমতি নেই।")
         return
-    history = await async_runtime.run_sheets_read(
-        _build_full_history_text, patient_id
+    history = await _full_history_for_request(
+        update, context, patient_id
     ) or "কোনো history পাওয়া যায়নি।"
     await query.message.reply_text(history, reply_markup=_therapist_patient_action_keyboard(patient_id))
 
@@ -648,6 +652,14 @@ async def pt_dashboard_receive_callback(update: Update, context: ContextTypes.DE
     query = update.callback_query
     await query.answer()
     _, appointment_id, patient_id = query.data.split("_", 2)
+    if config.DEPARTMENT_ENFORCEMENT_ENABLED:
+        appointment = await _appointment_by_id_for_request(
+            update, context, appointment_id
+        )
+        if not appointment:
+            await query.edit_message_text("⛔ এই অ্যাপয়েন্টমেন্ট দেখার অনুমতি নেই।")
+            return ConversationHandler.END
+        patient_id = str(appointment.get("Patient_ID", "")).strip()
     patient = await _patient_by_id_for_request(update, context, patient_id)
     if not patient:
         await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
@@ -714,6 +726,19 @@ async def pt_dashboard_done_callback(update: Update, context: ContextTypes.DEFAU
         await query.edit_message_text("❌ Session context পাওয়া যায়নি। আবার dashboard থেকে শুরু করো।")
         return ConversationHandler.END
 
+    appointment_id = context.user_data.get("pt_appointment_id", "")
+    if config.DEPARTMENT_ENFORCEMENT_ENABLED:
+        appointment = await _appointment_by_id_for_request(
+            update, context, appointment_id
+        )
+        patient = await _patient_by_id_for_request(update, context, patient_id)
+        if (
+            not appointment or not patient
+            or str(appointment.get("Patient_ID", "")).strip() != patient_id
+        ):
+            await query.edit_message_text("⛔ এই অ্যাপয়েন্টমেন্ট দেখার অনুমতি নেই।")
+            return ConversationHandler.END
+
     patient, plan, notes = await async_runtime.run_sheets_read(
         _load_patient_workspace, patient_id
     )
@@ -759,7 +784,6 @@ async def pt_dashboard_done_callback(update: Update, context: ContextTypes.DEFAU
             created_by=staff.get("Full_Name", "Unknown"),
         )
         await async_runtime.run_sheets_write(sheets.increment_plan_session, patient_id)
-        appointment_id = context.user_data.get("pt_appointment_id", "")
         if appointment_id:
             await async_runtime.run_sheets_write(
                 sheets.update_appointment_status, appointment_id, "Completed"
@@ -864,8 +888,8 @@ async def pt_workspace_history_callback(update: Update, context: ContextTypes.DE
     if not await _patient_by_id_for_request(update, context, patient_id):
         await query.edit_message_text("⛔ এই রোগী দেখার অনুমতি নেই।")
         return ConversationHandler.END
-    history = await async_runtime.run_sheets_read(
-        _build_full_history_text, patient_id
+    history = await _full_history_for_request(
+        update, context, patient_id
     ) or "কোনো history পাওয়া যায়নি।"
     await query.message.reply_text(history)
     return "PT_DASH_WORKSPACE"
@@ -1107,6 +1131,51 @@ async def _patient_by_id_for_request(update, context, patient_id: str):
     mappings = await _patient_department_mappings(staff)
     return await async_runtime.run_sheets_read(
         sheets.get_patient_by_id_for_staff, patient_id, staff, mappings
+    )
+
+
+async def _appointments_for_date_for_request(update, context, date_str: str):
+    if not config.DEPARTMENT_ENFORCEMENT_ENABLED:
+        return await async_runtime.run_sheets_read(
+            sheets.get_appointments_for_date, date_str
+        )
+    staff = await _require_staff(update, context)
+    if staff is None:
+        return []
+    mappings = await _patient_department_mappings(staff)
+    return await async_runtime.run_sheets_read(
+        sheets.get_appointments_for_date_for_staff,
+        date_str, staff, mappings,
+    )
+
+
+async def _appointment_by_id_for_request(update, context, appointment_id: str):
+    """Re-authorize direct/stale Appointment IDs using the current staff record."""
+    if not config.DEPARTMENT_ENFORCEMENT_ENABLED:
+        return await async_runtime.run_sheets_read(
+            sheets.get_appointment_by_id, appointment_id
+        )
+    staff = await _require_staff(update, context)
+    if staff is None:
+        return None
+    mappings = await _patient_department_mappings(staff)
+    return await async_runtime.run_sheets_read(
+        sheets.get_appointment_by_id_for_staff,
+        appointment_id, staff, mappings,
+    )
+
+
+async def _full_history_for_request(update, context, patient_id: str):
+    if not config.DEPARTMENT_ENFORCEMENT_ENABLED:
+        return await async_runtime.run_sheets_read(
+            _build_full_history_text, patient_id
+        )
+    staff = await _require_staff(update, context)
+    if staff is None:
+        return None
+    mappings = await _patient_department_mappings(staff)
+    return await async_runtime.run_sheets_read(
+        _build_full_history_text, patient_id, staff, mappings
     )
 
 
@@ -2145,8 +2214,8 @@ async def today_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
     date_str = bd_now().strftime("%Y-%m-%d")
-    all_appts = await async_runtime.run_sheets_read(
-        sheets.get_appointments_for_date, date_str
+    all_appts = await _appointments_for_date_for_request(
+        update, context, date_str
     )
     appts = [
         a for a in all_appts
@@ -2176,6 +2245,14 @@ async def apt_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     patient_id = parts[3] if len(parts) > 3 else ""
     status_map = {"Completed": "Completed", "NoShow": "No-show"}
     status = status_map.get(status_code, status_code)
+    if config.DEPARTMENT_ENFORCEMENT_ENABLED:
+        appointment = await _appointment_by_id_for_request(
+            update, context, appointment_id
+        )
+        if not appointment:
+            await query.edit_message_text("⛔ এই অ্যাপয়েন্টমেন্ট দেখার অনুমতি নেই।")
+            return
+        patient_id = str(appointment.get("Patient_ID", "")).strip()
     ok = await async_runtime.run_sheets_write(
         sheets.update_appointment_status, appointment_id, status
     )
@@ -2208,9 +2285,7 @@ async def apt_today_back_callback(update: Update, context: ContextTypes.DEFAULT_
     query = update.callback_query
     await query.answer()
     appointment_id = query.data.replace("apttodayback_", "", 1)
-    a = await async_runtime.run_sheets_read(
-        sheets.get_appointment_by_id, appointment_id
-    )
+    a = await _appointment_by_id_for_request(update, context, appointment_id)
     if not a:
         await query.edit_message_text("❌ এই অ্যাপয়েন্টমেন্টটা আর পাওয়া যাচ্ছে না।")
         return
@@ -3992,7 +4067,9 @@ async def thist_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-def _build_full_history_text(patient_id: str) -> str | None:
+def _build_full_history_text(
+    patient_id: str, staff: dict | None = None, mappings: list[dict] | None = None
+) -> str | None:
     """রোগীর সম্পূর্ণ ইতিহাস (প্রোফাইল + পেমেন্ট + অ্যাপয়েন্টমেন্ট + ট্রিটমেন্ট নোট) টেক্সট বানায়।
     আগে hist_select_callback() আর plist_action_hist() -এ এই একই কোড হুবহু দুইবার লেখা ছিল —
     এখন দুটোই এই একটামাত্র ফাংশন কল করে, তাই এক জায়গায় ফিক্স করলেই দুই জায়গায় কাজ করবে।"""
@@ -4041,7 +4118,13 @@ def _build_full_history_text(patient_id: str) -> str | None:
         lines.append("💳 কোনো পেমেন্ট রেকর্ড নেই।")
     lines.append("")
 
-    appointments = sheets.get_appointments_for_patient(patient_id)
+    appointments = (
+        sheets.get_appointments_for_patient_for_staff(
+            patient_id, staff or {}, mappings or []
+        )
+        if config.DEPARTMENT_ENFORCEMENT_ENABLED
+        else sheets.get_appointments_for_patient(patient_id)
+    )
     if appointments:
         lines.append("📅 অ্যাপয়েন্টমেন্ট হিস্টরি:")
         for a in appointments[-10:]:
@@ -4100,9 +4183,7 @@ async def hist_select_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         await query.edit_message_text("⛔ এই রোগী দেখার অনুমতি নেই।")
         return ConversationHandler.END
 
-    full_text = await async_runtime.run_sheets_read(
-        _build_full_history_text, patient_id
-    )
+    full_text = await _full_history_for_request(update, context, patient_id)
     if full_text is None:
         await query.edit_message_text("রোগী পাওয়া যায়নি।")
         return ConversationHandler.END
@@ -4455,9 +4536,7 @@ async def plist_action_hist(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("⛔ এই রোগী দেখার অনুমতি নেই।")
         return
 
-    full_text = await async_runtime.run_sheets_read(
-        _build_full_history_text, patient_id
-    )
+    full_text = await _full_history_for_request(update, context, patient_id)
     if full_text is None:
         await query.edit_message_text("রোগী পাওয়া যায়নি।")
         return
