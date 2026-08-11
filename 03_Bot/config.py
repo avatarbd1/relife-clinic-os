@@ -50,6 +50,7 @@ SHEET_APPOINTMENTS = "04_Appointments"
 SHEET_TREATMENTS = "05_Treatments"
 SHEET_PAYMENTS = "06_Payments"
 SHEET_STAFF = "08_Staff"
+SHEET_STAFF_DEPARTMENT_ACCESS = "Staff_Department_Access"
 SHEET_PACKAGES = "11_Packages"
 SHEET_TREATMENT_PLANS = "12_Treatment_Plans"
 SHEET_ASSESSMENTS = "10_Assessments"
@@ -65,6 +66,23 @@ SHEET_LEARNING_PROGRESS = "18_Learning_Progress"
 SHEET_CONSENT = "19_Consent"
 SHEET_DATA_AUDIT = "20_Data_Audit"
 SHEET_CASH_MOVEMENT = "21_Cash_Movement"
+
+# ---- Department and access classifications ----
+DEPARTMENT_PHYSIO = "Physio"
+DEPARTMENT_DENTAL = "Dental"
+DEPARTMENT_ALL = "All"
+DEPARTMENTS = [DEPARTMENT_PHYSIO, DEPARTMENT_DENTAL, DEPARTMENT_ALL]
+
+ROLE_DENTIST = "Dentist"
+ROLE_DENTAL_ASSISTANT = "Dental_Assistant"
+
+STAFF_ACCESS_FIELDS = [
+    "Primary_Department",
+    "Department_Access",
+    "Clinical_Write_Scope",
+    "Financial_Access",
+]
+
 
 # ---- Finance classifications ----
 EXPENSE_TYPE_CLINIC = "Clinic Expense"
