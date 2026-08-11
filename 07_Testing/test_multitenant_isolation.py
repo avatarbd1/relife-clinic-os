@@ -1,8 +1,10 @@
 import asyncio
 import os
 import sys
+import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 BOT_DIR = Path(__file__).resolve().parents[1] / "03_Bot"
@@ -115,6 +117,135 @@ class TenantResolverTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 sheets._records_cache_key(FakeClinicWorksheet("S02"))
         finally:
+            reset_tenant(token)
+            config.MULTITENANT_ENABLED = previous
+
+    def test_write_invalidation_forces_fresh_read_without_touching_other_clinic(self):
+        class CacheWorksheet:
+            title = "02_Patients"
+            id = 77
+            row_count = 2
+
+            def __init__(self, spreadsheet_id, records):
+                self.spreadsheet_id = spreadsheet_id
+                self.records = records
+                self.read_count = 0
+
+            def get_all_records(self):
+                self.read_count += 1
+                return [dict(row) for row in self.records]
+
+        previous = config.MULTITENANT_ENABLED
+        config.MULTITENANT_ENABLED = True
+        clinic_one = CacheWorksheet("S01", [{"Patient_ID": "P1", "Due": 100}])
+        other_key = ("S02", 77)
+        token = bind_tenant(TenantIdentity("C01", "One", "S01"))
+        try:
+            sheets._records_cache.clear()
+            sheets._records_cache_generation.clear()
+            sheets._records_cache[other_key] = (
+                time.monotonic(),
+                [{"Patient_ID": "P2", "Due": 500}],
+            )
+
+            first = sheets.safe_get_all_records(clinic_one)
+            clinic_one.records = [{"Patient_ID": "P1", "Due": 40}]
+            cached = sheets.safe_get_all_records(clinic_one)
+            self.assertEqual(first[0]["Due"], 100)
+            self.assertEqual(cached[0]["Due"], 100)
+            self.assertEqual(clinic_one.read_count, 1)
+
+            sheets._invalidate_cache(clinic_one)
+            fresh = sheets.safe_get_all_records(clinic_one)
+            self.assertEqual(fresh[0]["Due"], 40)
+            self.assertEqual(clinic_one.read_count, 2)
+            self.assertIn(other_key, sheets._records_cache)
+        finally:
+            sheets._records_cache.clear()
+            sheets._records_cache_generation.clear()
+            reset_tenant(token)
+            config.MULTITENANT_ENABLED = previous
+
+    def test_write_during_inflight_read_discards_stale_result(self):
+        class RacingWorksheet:
+            title = "02_Patients"
+            id = 77
+            row_count = 2
+            spreadsheet_id = "S01"
+
+            def __init__(self):
+                self.records = [{"Patient_ID": "P1", "Due": 100}]
+                self.read_count = 0
+
+            def get_all_records(self):
+                self.read_count += 1
+                snapshot = [dict(row) for row in self.records]
+                if self.read_count == 1:
+                    self.records = [{"Patient_ID": "P1", "Due": 40}]
+                    sheets._invalidate_cache(self)
+                return snapshot
+
+        previous = config.MULTITENANT_ENABLED
+        config.MULTITENANT_ENABLED = True
+        token = bind_tenant(TenantIdentity("C01", "One", "S01"))
+        worksheet = RacingWorksheet()
+        try:
+            sheets._records_cache.clear()
+            sheets._records_cache_generation.clear()
+            result = sheets.safe_get_all_records(worksheet)
+            self.assertEqual(result[0]["Due"], 40)
+            self.assertEqual(worksheet.read_count, 2)
+        finally:
+            sheets._records_cache.clear()
+            sheets._records_cache_generation.clear()
+            reset_tenant(token)
+            config.MULTITENANT_ENABLED = previous
+
+    def test_batch_read_uses_one_request_and_populates_tenant_cache(self):
+        class BatchWorksheet:
+            def __init__(self, title, worksheet_id):
+                self.title = title
+                self.id = worksheet_id
+                self.spreadsheet_id = "S01"
+
+        class BatchSpreadsheet:
+            def __init__(self):
+                self.calls = []
+
+            def values_batch_get(self, ranges, params=None):
+                self.calls.append((list(ranges), params))
+                datasets = {
+                    "'02_Patients'": [["Patient_ID", "Due"], ["P1", "100"]],
+                    "'06_Payments'": [["Receipt_No", "Amount"], ["R1", "60"]],
+                }
+                return {
+                    "valueRanges": [{"values": datasets[item]} for item in ranges]
+                }
+
+        previous = config.MULTITENANT_ENABLED
+        config.MULTITENANT_ENABLED = True
+        token = bind_tenant(TenantIdentity("C01", "One", "S01"))
+        fake_sheet = BatchSpreadsheet()
+        worksheets = {
+            "02_Patients": BatchWorksheet("02_Patients", 2),
+            "06_Payments": BatchWorksheet("06_Payments", 6),
+        }
+        try:
+            sheets._records_cache.clear()
+            sheets._records_cache_generation.clear()
+            with patch.object(sheets, "_worksheet", side_effect=worksheets.get), patch.object(
+                sheets, "_get_spreadsheet", return_value=fake_sheet
+            ):
+                first = sheets.batch_get_records(["02_Patients", "06_Payments"])
+                second = sheets.batch_get_records(["02_Patients", "06_Payments"])
+
+            self.assertEqual(len(fake_sheet.calls), 1)
+            self.assertEqual(first, second)
+            self.assertEqual(first["02_Patients"][0]["Due"], 100)
+            self.assertEqual(first["06_Payments"][0]["Amount"], 60)
+        finally:
+            sheets._records_cache.clear()
+            sheets._records_cache_generation.clear()
             reset_tenant(token)
             config.MULTITENANT_ENABLED = previous
 
