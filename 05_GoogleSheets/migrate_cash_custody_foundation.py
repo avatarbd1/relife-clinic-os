@@ -24,7 +24,7 @@ CASH_MOVEMENT_SHEET = "21_Cash_Movement"
 CASH_MOVEMENT_HEADERS = [
     "Movement_ID", "Date", "From_Custodian", "To_Custodian", "Amount",
     "Moved_By", "Note", "Timestamp",
-] + UNIFIED_HEADERS
+] + UNIFIED_HEADERS + ["Status", "Confirmed_By", "Confirmed_At"]
 
 
 def plan_migration(book) -> list[str]:
@@ -41,9 +41,19 @@ def plan_migration(book) -> list[str]:
         actions.append("create_cash_movement")
     else:
         actual = book.worksheet(CASH_MOVEMENT_SHEET).row_values(1)
-        if actual[:len(CASH_MOVEMENT_HEADERS)] != CASH_MOVEMENT_HEADERS:
+        legacy_headers = CASH_MOVEMENT_HEADERS[:-3]
+        if actual[:len(legacy_headers)] != legacy_headers:
             raise RuntimeError(
                 f"{CASH_MOVEMENT_SHEET} business headers do not match exactly: {actual}"
+            )
+        workflow_headers = CASH_MOVEMENT_HEADERS[-3:]
+        actual_workflow = actual[len(legacy_headers):len(CASH_MOVEMENT_HEADERS)]
+        if not actual_workflow:
+            actions.append("add_cash_handover_columns")
+        elif actual_workflow != workflow_headers:
+            raise RuntimeError(
+                f"{CASH_MOVEMENT_SHEET} handover headers do not match exactly: "
+                f"{actual_workflow}"
             )
     return actions
 
@@ -68,6 +78,15 @@ def migrate(book, apply: bool = False) -> list[str]:
             cols=len(CASH_MOVEMENT_HEADERS),
         )
         ws.append_row(CASH_MOVEMENT_HEADERS, value_input_option="RAW")
+
+    if "add_cash_handover_columns" in actions:
+        ws = book.worksheet(CASH_MOVEMENT_SHEET)
+        headers = ws.row_values(1)
+        missing_count = len(CASH_MOVEMENT_HEADERS) - len(headers)
+        if missing_count > 0 and ws.col_count < len(CASH_MOVEMENT_HEADERS):
+            ws.add_cols(len(CASH_MOVEMENT_HEADERS) - ws.col_count)
+        for offset, header in enumerate(CASH_MOVEMENT_HEADERS[len(headers):], start=1):
+            ws.update_cell(1, len(headers) + offset, header)
 
     # Re-plan verifies postconditions and makes repeat application a no-op.
     remaining = plan_migration(book)
