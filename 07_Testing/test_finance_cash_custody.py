@@ -1,3 +1,6 @@
+Exit code: 0
+Wall time: 1.3 seconds
+Output:
 import importlib.util
 import os
 import sys
@@ -18,6 +21,7 @@ os.environ.setdefault("GOOGLE_CREDENTIALS_PATH", __file__)
 import config  # noqa: E402
 import sheets  # noqa: E402
 import roles  # noqa: E402
+import bot  # noqa: E402
 
 MIGRATION_PATH = ROOT / "05_GoogleSheets" / "migrate_cash_custody_foundation.py"
 spec = importlib.util.spec_from_file_location("cash_migration", MIGRATION_PATH)
@@ -54,25 +58,25 @@ class FinanceLedgerTests(unittest.TestCase):
     def test_default_new_expense_is_clinic_expense(self):
         ws = WriteWorksheet(self.expense_headers)
         with patch.object(sheets, "_worksheet", return_value=ws):
-            self.assertEqual(sheets.add_expense("ভাড়া", 100, "S1"), "EX0001")
+            self.assertEqual(sheets.add_expense("à¦­à¦¾à¦¡à¦¼à¦¾", 100, "S1"), "EX0001")
         self.assertEqual(ws.appended[0][7], config.EXPENSE_TYPE_CLINIC)
 
     def test_new_expense_persists_explicit_department(self):
         headers = self.expense_headers + ["Department"]
         ws = WriteWorksheet(headers)
         with patch.object(sheets, "_worksheet", return_value=ws):
-            sheets.add_expense("ভাড়া", 100, "S1", department="Dental")
+            sheets.add_expense("à¦­à¦¾à¦¡à¦¼à¦¾", 100, "S1", department="Dental")
         self.assertEqual(ws.appended[0][headers.index("Department")], "Dental")
 
     def test_invalid_finance_department_is_rejected(self):
         with self.assertRaises(ValueError):
-            sheets.add_expense("ভাড়া", 100, "S1", department="All")
+            sheets.add_expense("à¦­à¦¾à¦¡à¦¼à¦¾", 100, "S1", department="All")
 
     def test_household_withdrawal_is_accepted(self):
         ws = WriteWorksheet(self.expense_headers)
         with patch.object(sheets, "_worksheet", return_value=ws):
             sheets.add_expense(
-                "অন্যান্য", 50, "S1",
+                "à¦…à¦¨à§à¦¯à¦¾à¦¨à§à¦¯", 50, "S1",
                 expense_type=config.EXPENSE_TYPE_HOUSEHOLD,
                 paid_from=config.CASH_CUSTODIAN_HOME_TREASURY,
             )
@@ -87,7 +91,7 @@ class FinanceLedgerTests(unittest.TestCase):
 
     def test_invalid_expense_type_is_rejected_before_write(self):
         with self.assertRaises(ValueError):
-            sheets.add_expense("ভাড়া", 100, "S1", expense_type="Transfer")
+            sheets.add_expense("à¦­à¦¾à¦¡à¦¼à¦¾", 100, "S1", expense_type="Transfer")
 
     def test_legacy_blank_is_unclassified_and_not_monthly_clinic_expense(self):
         records = [
@@ -186,7 +190,7 @@ class ExpenseApprovalWorkflowTests(unittest.TestCase):
         ws = WriteWorksheet(FinanceLedgerTests.expense_headers)
         with patch.object(sheets, "_worksheet", return_value=ws):
             expense_id = sheets.create_expense_request(
-                "অন্যান্য", 300, "Reception One", "courier"
+                "à¦…à¦¨à§à¦¯à¦¾à¦¨à§à¦¯", 300, "Reception One", "courier"
             )
         row = ws.appended[0]
         self.assertEqual(expense_id, "EX0001")
@@ -279,6 +283,33 @@ class ExpenseApprovalWorkflowTests(unittest.TestCase):
             summary = sheets.get_cash_custody_summary("2026-08-11")
         self.assertEqual(summary["Reception_Balance"], 2500)
         self.assertEqual(summary["Home_Balance"], 4000)
+
+    def test_custody_reconciliation_text_hides_home_treasury_from_non_owner(self):
+        summary = {
+            "Date": "2026-08-12",
+            "Cash_Collected": 10000,
+            "Reception_Expense": 500,
+            "Reception_Handover": 7000,
+            "Reception_Balance": 2500,
+            "Home_Received": 7000,
+            "Home_Clinic_Expense": 1000,
+            "Household_Withdrawal": 2000,
+            "Home_Transfer_Out": 0,
+            "Home_Balance": 4000,
+        }
+
+        owner_text = bot._cash_custody_summary_text(summary, "Owner")
+        self.assertIn("Home Treasury", owner_text)
+        self.assertIn("Accepted receipt: à§³7000", owner_text)
+
+        for role in ("Receptionist", "Manager", "Therapist"):
+            with self.subTest(role=role):
+                text = bot._cash_custody_summary_text(summary, role)
+                self.assertIn("Reception", text)
+                self.assertNotIn("Home Treasury", text)
+                self.assertNotIn("Accepted receipt", text)
+                self.assertNotIn("Household Withdrawal", text)
+                self.assertNotIn("à§³4000", text)
 
 
 class FinalizeWorksheet(WriteWorksheet):
@@ -515,7 +546,7 @@ class FakeBook:
             "07_Expenses": FakeMigrationWorksheet(
                 "07_Expenses",
                 ["Expense_ID", "Date", "Category", "Amount", "Added_By", "Timestamp", "Note"],
-                rows=[["EX0001", "2026-01-01", "ভাড়া", 100]],
+                rows=[["EX0001", "2026-01-01", "à¦­à¦¾à¦¡à¦¼à¦¾", 100]],
             )
         }
 
@@ -578,3 +609,4 @@ class MigrationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
