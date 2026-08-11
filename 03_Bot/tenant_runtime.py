@@ -62,7 +62,9 @@ class MasterTenantResolver:
         self._cache_ttl = max(0.0, cache_ttl)
         self._cache: dict[str, TenantIdentity] = {}
         self._tenants: tuple[TenantIdentity, ...] = ()
-        self._cache_time = 0.0
+        # Force the first read even on a freshly booted host whose monotonic
+        # clock is still lower than cache_ttl.
+        self._cache_time = float("-inf")
         self._lock = threading.RLock()
 
     @staticmethod

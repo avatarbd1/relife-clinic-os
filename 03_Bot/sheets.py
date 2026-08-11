@@ -1816,8 +1816,36 @@ def _next_expense_id(ws) -> str:
     return f"EX{next_num:04d}"
 
 
-def add_expense(category: str, amount: float, added_by: str, note: str = "") -> str:
+def _positive_amount(amount: float) -> float:
+    try:
+        value = float(amount)
+    except (TypeError, ValueError) as error:
+        raise ValueError("Amount must be positive") from error
+    if value <= 0:
+        raise ValueError("Amount must be positive")
+    return value
+
+
+def _with_expense_type(record: dict) -> dict:
+    normalized = dict(record)
+    normalized["Type"] = (
+        str(record.get("Type", "")).strip()
+        or config.EXPENSE_TYPE_UNCLASSIFIED
+    )
+    return normalized
+
+
+def add_expense(
+    category: str,
+    amount: float,
+    added_by: str,
+    note: str = "",
+    expense_type: str = config.EXPENSE_TYPE_CLINIC,
+) -> str:
     """07_Expenses শীটে একটা খরচের এন্ট্রি সেভ করে।"""
+    if expense_type not in config.EXPENSE_TYPES:
+        raise ValueError(f"Invalid expense type: {expense_type}")
+    amount = _positive_amount(amount)
     ws = _worksheet(config.SHEET_EXPENSES)
     expense_id = _next_expense_id(ws)
     now = bd_now()
@@ -1830,11 +1858,16 @@ def add_expense(category: str, amount: float, added_by: str, note: str = "") -> 
         now.strftime("%Y-%m-%d %I:%M %p"),
         note,
     ]
+    headers = ws.row_values(1)
+    if "Type" not in headers:
+        raise RuntimeError("07_Expenses is missing required Type column; run migration")
+    if len(row) < len(headers):
+        row.extend([""] * (len(headers) - len(row)))
+    row[headers.index("Type")] = expense_type
     _append_unified_row(
         ws, row, "expense", expense_id,
         provider_id=added_by,
     )
-    _invalidate_cache(ws)
     return expense_id
 
 
@@ -1842,7 +1875,11 @@ def get_expenses_for_date(date_str: str) -> list[dict]:
     """নির্দিষ্ট তারিখের সব খরচের এন্ট্রি রিটার্ন করে (নতুন থেকে পুরনো)। date_str ফরম্যাট: 'YYYY-MM-DD'"""
     ws = _worksheet(config.SHEET_EXPENSES)
     records = safe_get_all_records(ws)
-    rows = [r for r in records if str(r.get("Date", "")).strip() == date_str]
+    rows = [
+        _with_expense_type(r)
+        for r in records
+        if str(r.get("Date", "")).strip() == date_str
+    ]
     rows.sort(key=lambda r: str(r.get("Timestamp", "")), reverse=True)
     return rows
 
@@ -1855,8 +1892,72 @@ def get_expense_total_for_month(month: str) -> float:
         float(r.get("Amount", 0) or 0)
         for r in records
         if str(r.get("Date", "")).strip().startswith(month)
+        and str(r.get("Type", "")).strip() == config.EXPENSE_TYPE_CLINIC
     )
     return round(total, 2)
+
+
+def _next_cash_movement_id(ws) -> str:
+    ids = ws.col_values(1)[1:]
+    numbers = []
+    for value in ids:
+        if str(value).startswith("CM"):
+            try:
+                numbers.append(int(str(value)[2:]))
+            except ValueError:
+                pass
+    return f"CM{((max(numbers) + 1) if numbers else 1):04d}"
+
+
+def add_cash_movement(
+    from_custodian: str,
+    to_custodian: str,
+    amount: float,
+    moved_by: str,
+    note: str = "",
+) -> str:
+    """Record a custody transfer. This is never an expense entry."""
+    if from_custodian not in config.CASH_CUSTODIANS:
+        raise ValueError(f"Invalid cash custodian: {from_custodian}")
+    if to_custodian not in config.CASH_CUSTODIANS:
+        raise ValueError(f"Invalid cash custodian: {to_custodian}")
+    if from_custodian == to_custodian:
+        raise ValueError("From and To custodians must be different")
+    amount = _positive_amount(amount)
+
+    ws = _worksheet(config.SHEET_CASH_MOVEMENT)
+    movement_id = _next_cash_movement_id(ws)
+    now = bd_now()
+    row = [
+        movement_id,
+        now.strftime("%Y-%m-%d"),
+        from_custodian,
+        to_custodian,
+        amount,
+        moved_by,
+        note,
+        now.strftime("%Y-%m-%d %I:%M %p"),
+    ]
+    _append_unified_row(
+        ws,
+        row,
+        "cash_movement",
+        movement_id,
+        provider_id=moved_by,
+    )
+    return movement_id
+
+
+def get_cash_movements_for_date(date_str: str) -> list[dict]:
+    """Return one tenant's cash movements for YYYY-MM-DD, newest first."""
+    ws = _worksheet(config.SHEET_CASH_MOVEMENT)
+    records = safe_get_all_records(ws)
+    rows = [
+        row for row in records
+        if str(row.get("Date", "")).strip() == date_str.strip()
+    ]
+    rows.sort(key=lambda row: str(row.get("Timestamp", "")), reverse=True)
+    return rows
 
 
 def add_learning_event(staff_id: str, full_name: str, role: str, event_type: str,

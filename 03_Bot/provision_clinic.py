@@ -28,6 +28,10 @@ SCOPES = (
     "https://www.googleapis.com/auth/drive",
 )
 REPO_ROOT = Path(__file__).resolve().parent.parent
+CASH_MOVEMENT_HEADERS = [
+    "Movement_ID", "Date", "From_Custodian", "To_Custodian", "Amount",
+    "Moved_By", "Note", "Timestamp",
+]
 
 
 def parse_args() -> argparse.Namespace:
@@ -89,6 +93,16 @@ def main() -> None:
         client = gspread.authorize(credentials)
         template = client.open_by_key(template_id)
         worksheet_names = [ws.title for ws in template.worksheets()]
+        if "07_Expenses" not in worksheet_names:
+            fail("Template is missing 07_Expenses.")
+        expense_headers = template.worksheet("07_Expenses").row_values(1)
+        if "Type" not in expense_headers:
+            fail("Template 07_Expenses is missing Type; run the cash custody migration.")
+        if "21_Cash_Movement" not in worksheet_names:
+            fail("Template is missing 21_Cash_Movement; run the cash custody migration.")
+        movement_headers = template.worksheet("21_Cash_Movement").row_values(1)
+        if movement_headers[:len(CASH_MOVEMENT_HEADERS)] != CASH_MOVEMENT_HEADERS:
+            fail("Template 21_Cash_Movement business headers do not match the contract.")
         master = client.open_by_key(master_sheet_id)
         clinics_ws = master.worksheet("Clinics")
         clinic_headers = clinics_ws.row_values(1)

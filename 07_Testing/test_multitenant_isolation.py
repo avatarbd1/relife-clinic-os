@@ -66,6 +66,14 @@ def master_tabs():
 
 
 class TenantResolverTests(unittest.TestCase):
+    def test_first_resolve_reloads_even_when_host_uptime_is_below_cache_ttl(self):
+        with patch("tenant_runtime.time.monotonic", return_value=1.0):
+            resolver = MasterTenantResolver(
+                FakeClient(master_tabs()), "MASTER", cache_ttl=60
+            )
+            tenant = resolver.resolve(101)
+        self.assertEqual((tenant.clinic_id, tenant.sheet_id), ("C01", "S01"))
+
     def test_resolves_two_staff_to_different_immutable_tenants(self):
         resolver = MasterTenantResolver(FakeClient(master_tabs()), "MASTER", cache_ttl=60)
         one = resolver.resolve(101)
