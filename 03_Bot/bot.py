@@ -5982,7 +5982,9 @@ async def _notify_expense_approvers(
 
 
 async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff", {})
+    staff = await _require_staff(update, context)
+    if staff is None:
+        return ConversationHandler.END
     expense = context.user_data.get("cost", {})
     answer = update.message.text.strip().lower()
     if answer not in ("হ্যাঁ", "yes", "y", "হা", "ha"):
@@ -6001,8 +6003,8 @@ async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
     mode = expense.get("Mode", "")
     try:
         if mode == "reception_request":
-            if not roles.can_access(
-                staff.get("Role", ""), roles.MENU_SMALL_EXPENSE_REQUEST
+            if not _staff_can_access_menu(
+                staff, roles.MENU_SMALL_EXPENSE_REQUEST
             ):
                 raise PermissionError("Reception expense permission denied")
             expense_id = await async_runtime.run_sheets_write(
