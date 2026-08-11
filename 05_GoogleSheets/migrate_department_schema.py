@@ -14,8 +14,6 @@ STAFF_SHEET = "08_Staff"
 STAFF_HEADERS = [
     "Primary_Department",
     "Department_Access",
-    "Clinical_Write_Scope",
-    "Financial_Access",
 ]
 MAPPING_SHEET = "Staff_Department_Access"
 MAPPING_HEADERS = [
@@ -23,55 +21,9 @@ MAPPING_HEADERS = [
     "Valid_To", "Approved_By", "Approved_At", "Notes",
 ]
 
-DEPARTMENT_RECORD_SHEETS = [
-    "02_Patients", "04_Appointments", "Daily_Visits", "Invoices",
-    "06_Payments", "05_Treatments", "10_Assessments",
-    "12_Treatment_Plans", "11_Packages", "07_Expenses",
-    "09_Inventory", "17_Inventory_Log",
-    "14_Reports", "16_Delete_Log", "20_Data_Audit",
-]
-
-DENTAL_SHEETS = {
-    "Dental_Procedures": [
-        "Procedure_ID", "Patient_ID", "Visit_ID", "Department", "Tooth_Code",
-        "Procedure_Code", "Procedure_Name", "Status", "Dentist_ID", "Assistant_ID",
-        "Performed_At", "Author_ID", "Created_At",
-    ],
-    "Dental_Tooth_Chart": [
-        "Chart_ID", "Patient_ID", "Department", "Tooth_Code", "Surface",
-        "Finding", "Status", "Author_ID", "Recorded_At",
-    ],
-    "Dental_Treatment_Plans": [
-        "Dental_Plan_ID", "Patient_ID", "Department", "Diagnosis", "Plan",
-        "Dentist_ID", "Status", "Author_ID", "Created_At",
-    ],
-    "Dental_Lab_Orders": [
-        "Lab_Order_ID", "Patient_ID", "Department", "Lab_Name", "Item",
-        "Shade", "Order_Date", "Due_Date", "Status", "Dentist_ID", "Created_At",
-    ],
-    "Dental_Material_Usage": [
-        "Usage_ID", "Patient_ID", "Procedure_ID", "Department", "Item_ID",
-        "Quantity", "Unit", "Used_By", "Used_At",
-    ],
-}
-
-CORE_NEW_SHEETS = {
-    "Daily_Visits": [
-        "Visit_ID", "Date", "Patient_ID", "Department", "Provider_ID",
-        "Appointment_ID", "Status", "Created_At",
-    ],
-    "Invoices": [
-        "Invoice_ID", "Date", "Patient_ID", "Department", "Visit_ID",
-        "Gross_Amount", "Discount", "Net_Amount", "Paid_Amount", "Due_Amount",
-        "Status", "Created_By", "Created_At",
-    ],
-}
-
-CASH_MOVEMENT_HEADERS = [
-    "Department", "From_Custodian_ID", "From_Staff_ID", "To_Custodian_ID",
-    "Requested_Amount", "Received_Amount", "Difference", "Accepted_By",
-    "Requested_At", "Accepted_At", "Completed_At", "Updated_At",
-]
+# Dental, visit/invoice, record-level Department, and cash-custody schema work
+# belongs to later rollout PRs.  This migration intentionally scaffolds only
+# staff department scope; see Department Separation PR #1 of ~14.
 
 
 @dataclass(frozen=True)
@@ -103,21 +55,6 @@ def plan_migration(book) -> list[Action]:
     if MAPPING_SHEET not in titles:
         actions.append(Action("create_sheet", MAPPING_SHEET, tuple(MAPPING_HEADERS)))
 
-    for sheet, headers in {**CORE_NEW_SHEETS, **DENTAL_SHEETS}.items():
-        if sheet not in titles:
-            actions.append(Action("create_sheet", sheet, tuple(headers)))
-
-    for sheet in DEPARTMENT_RECORD_SHEETS:
-        if sheet not in titles:
-            continue
-        missing = _missing_headers(book, sheet, ["Department"])
-        if missing:
-            actions.append(Action("add_headers", sheet, tuple(missing)))
-
-    if "21_Cash_Movement" in titles:
-        cash_missing = _missing_headers(book, "21_Cash_Movement", CASH_MOVEMENT_HEADERS)
-        if cash_missing:
-            actions.append(Action("add_headers", "21_Cash_Movement", tuple(cash_missing)))
     return actions
 
 
