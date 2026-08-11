@@ -5,6 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from gspread.utils import a1_to_rowcol
+
 
 ROOT = Path(__file__).resolve().parents[1]
 BOT_DIR = ROOT / "03_Bot"
@@ -92,6 +94,7 @@ class FinanceLedgerTests(unittest.TestCase):
             )
         self.assertEqual(movement_id, "CM0001")
         self.assertEqual(ws.appended[0][2:5], ["Reception", "Home Treasury", 500.0])
+        self.assertEqual(ws.appended[0][headers.index("Status")], "Pending")
 
     def test_invalid_custodian_is_rejected(self):
         with self.assertRaises(ValueError):
@@ -117,6 +120,78 @@ class FinanceLedgerTests(unittest.TestCase):
         ):
             result = sheets.get_cash_movements_for_date("2026-08-11")
         self.assertEqual([row["Movement_ID"] for row in result], ["CM3", "CM1"])
+
+
+class FinalizeWorksheet(WriteWorksheet):
+    def __init__(self, movement_id="CM0001", status="Pending"):
+        super().__init__(cash_migration.CASH_MOVEMENT_HEADERS)
+        self.title = config.SHEET_CASH_MOVEMENT
+        row = [""] * len(self.headers)
+        row[self.headers.index("Movement_ID")] = movement_id
+        row[self.headers.index("Status")] = status
+        self.rows = [row]
+        self.batch_calls = []
+
+    def get_all_values(self):
+        return [list(self.headers)] + [list(row) for row in self.rows]
+
+    def batch_update(self, data, value_input_option=None):
+        self.batch_calls.append((data, value_input_option))
+        for item in data:
+            row, column = a1_to_rowcol(item["range"])
+            self.rows[row - 2][column - 1] = item["values"][0][0]
+
+
+class CashHandoverConfirmationTests(unittest.TestCase):
+    def test_pending_movements_are_sorted(self):
+        records = [
+            {"Movement_ID": "CM1", "Status": "Pending", "Timestamp": "09:00"},
+            {"Movement_ID": "CM2", "Status": "Accepted", "Timestamp": "11:00"},
+            {"Movement_ID": "CM3", "Status": "Pending", "Timestamp": "10:00"},
+        ]
+        with patch.object(sheets, "_worksheet", return_value=object()), patch.object(
+            sheets, "safe_get_all_records", return_value=records
+        ):
+            result = sheets.get_pending_cash_movements()
+        self.assertEqual([row["Movement_ID"] for row in result], ["CM3", "CM1"])
+
+    def test_pending_handover_is_accepted_exactly_once(self):
+        ws = FinalizeWorksheet()
+        with patch.object(sheets, "_worksheet", return_value=ws):
+            first = sheets.finalize_cash_movement("CM0001", "Owner One")
+            second = sheets.finalize_cash_movement("CM0001", "Owner Two")
+        self.assertTrue(first["ok"])
+        self.assertEqual(first["status"], "Accepted")
+        self.assertFalse(second["ok"])
+        self.assertEqual(second["reason"], "already_finalized")
+        self.assertEqual(second["status"], "Accepted")
+        self.assertEqual(len(ws.batch_calls), 1)
+        self.assertEqual(
+            ws.rows[0][ws.headers.index("Confirmed_By")],
+            "Owner One",
+        )
+
+    def test_rejection_and_invalid_decision(self):
+        ws = FinalizeWorksheet()
+        with patch.object(sheets, "_worksheet", return_value=ws):
+            result = sheets.finalize_cash_movement(
+                "CM0001", "Manager One", "Rejected"
+            )
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["status"], "Rejected")
+        with self.assertRaises(ValueError):
+            sheets.finalize_cash_movement(
+                "CM0002", "Manager One", "Cancelled"
+            )
+
+    def test_missing_confirmation_columns_fail_closed(self):
+        ws = WriteWorksheet(cash_migration.CASH_MOVEMENT_HEADERS[:-3])
+        ws.title = config.SHEET_CASH_MOVEMENT
+        with patch.object(sheets, "_worksheet", return_value=ws):
+            with self.assertRaises(RuntimeError):
+                sheets.add_cash_movement(
+                    "Reception", "Home Treasury", 500, "S1"
+                )
 
 
 class FakeMigrationWorksheet:
@@ -177,6 +252,26 @@ class MigrationTests(unittest.TestCase):
         cash_migration.migrate(book, apply=True)
         self.assertEqual(book.worksheet("07_Expenses").rows, legacy_rows)
         self.assertEqual(book.worksheet("07_Expenses").headers[-1], "Type")
+        self.assertEqual(cash_migration.migrate(book, apply=True), [])
+
+    def test_existing_cash_ledger_gets_confirmation_columns_only(self):
+        book = FakeBook()
+        cash_headers = cash_migration.CASH_MOVEMENT_HEADERS[:-3]
+        cash_rows = [["CM0001", "2026-08-11", "Reception", "Home Treasury", 500]]
+        book.tabs["21_Cash_Movement"] = FakeMigrationWorksheet(
+            "21_Cash_Movement", cash_headers, rows=cash_rows
+        )
+        book.tabs["07_Expenses"].headers.append("Type")
+        self.assertEqual(
+            cash_migration.migrate(book, apply=False),
+            ["add_cash_handover_columns"],
+        )
+        cash_migration.migrate(book, apply=True)
+        self.assertEqual(
+            book.tabs["21_Cash_Movement"].headers,
+            cash_migration.CASH_MOVEMENT_HEADERS,
+        )
+        self.assertEqual(book.tabs["21_Cash_Movement"].rows, cash_rows)
         self.assertEqual(cash_migration.migrate(book, apply=True), [])
 
 
