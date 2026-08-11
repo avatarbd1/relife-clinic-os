@@ -1874,6 +1874,7 @@ def add_expense(
     status: str = "Paid",
     approved_by: str = "",
     paid_by: str = "",
+    department: str = "",
 ) -> str:
     """Create a direct paid expense/withdrawal with explicit custody source."""
     if expense_type not in config.EXPENSE_TYPES:
@@ -1882,6 +1883,8 @@ def add_expense(
         raise ValueError(f"Invalid cash custodian: {paid_from}")
     if status not in EXPENSE_STATUSES:
         raise ValueError(f"Invalid expense status: {status}")
+    if department and department not in _FINANCE_DEPARTMENTS:
+        raise ValueError(f"Invalid finance department: {department}")
     amount = _positive_amount(amount)
     ws = _worksheet(config.SHEET_EXPENSES)
     headers = ws.row_values(1)
@@ -1902,6 +1905,7 @@ def add_expense(
     if len(row) < len(headers):
         row.extend([""] * (len(headers) - len(row)))
     values = {
+        "Department": department,
         "Type": expense_type,
         "Paid_From": paid_from,
         "Status": status,
@@ -1912,7 +1916,8 @@ def add_expense(
         "Paid_At": timestamp if status == "Paid" else "",
     }
     for header, value in values.items():
-        row[headers.index(header)] = value
+        if header in headers:
+            row[headers.index(header)] = value
     _append_unified_row(
         ws,
         row,
@@ -1929,6 +1934,7 @@ def create_expense_request(
     amount: float,
     requested_by: str,
     note: str = "",
+    department: str = "",
 ) -> str:
     """Reception requests a small clinic expense before paying it."""
     return add_expense(
@@ -1939,6 +1945,7 @@ def create_expense_request(
         expense_type=config.EXPENSE_TYPE_CLINIC,
         paid_from=config.CASH_CUSTODIAN_RECEPTION,
         status="Pending Approval",
+        department=department,
     )
 
 
@@ -2294,6 +2301,7 @@ def add_cash_movement(
     amount: float,
     moved_by: str,
     note: str = "",
+    department: str = "",
 ) -> str:
     """Create a pending custody handover. This is never an expense entry."""
     if from_custodian not in config.CASH_CUSTODIANS:
@@ -2302,6 +2310,8 @@ def add_cash_movement(
         raise ValueError(f"Invalid cash custodian: {to_custodian}")
     if from_custodian == to_custodian:
         raise ValueError("From and To custodians must be different")
+    if department and department not in _FINANCE_DEPARTMENTS:
+        raise ValueError(f"Invalid finance department: {department}")
     amount = _positive_amount(amount)
 
     ws = _worksheet(config.SHEET_CASH_MOVEMENT)
@@ -2329,6 +2339,19 @@ def add_cash_movement(
     if len(row) < len(headers):
         row.extend([""] * (len(headers) - len(row)))
     row[headers.index("Status")] = "Pending"
+    extra_values = {
+        "Department": department,
+        "From_Custodian_ID": (
+            f"{department} Reception Cash"
+            if department and from_custodian == config.CASH_CUSTODIAN_RECEPTION
+            else from_custodian
+        ),
+        "To_Custodian_ID": to_custodian,
+        "Requested_Amount": amount,
+    }
+    for header, value in extra_values.items():
+        if header in headers:
+            row[headers.index(header)] = value
     _append_unified_row(
         ws,
         row,
