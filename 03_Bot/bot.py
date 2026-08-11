@@ -6245,7 +6245,18 @@ def main():
 
     cost_conv = ConversationHandler(
         entry_points=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_ADD_EXPENSE}$"), cost_start)
+            MessageHandler(
+                filters.Regex(f"^{roles.MENU_SMALL_EXPENSE_REQUEST}$"),
+                small_expense_start,
+            ),
+            MessageHandler(
+                filters.Regex(f"^{roles.MENU_OWNER_CLINIC_EXPENSE}$"),
+                owner_clinic_expense_start,
+            ),
+            MessageHandler(
+                filters.Regex(f"^{roles.MENU_HOUSEHOLD_WITHDRAWAL}$"),
+                household_withdrawal_start,
+            ),
         ],
         states={
             COST_CATEGORY: [
@@ -6269,7 +6280,36 @@ def main():
         ],
     )
     app.add_handler(cost_conv)
-    app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_EXPENSE_TRACKER}$"), costtracker_start))
+    app.add_handler(
+        MessageHandler(
+            filters.Regex(f"^{roles.MENU_EXPENSE_APPROVAL}$"),
+            expense_approval_start,
+        )
+    )
+    app.add_handler(
+        MessageHandler(
+            filters.Regex(f"^{roles.MENU_APPROVED_EXPENSES}$"),
+            approved_expenses_start,
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(expense_approval_callback, pattern="^expact_")
+    )
+    app.add_handler(
+        CallbackQueryHandler(expense_paid_callback, pattern="^exppaid_")
+    )
+    app.add_handler(
+        MessageHandler(
+            filters.Regex(f"^{roles.MENU_EXPENSE_TRACKER}$"),
+            costtracker_start,
+        )
+    )
+    app.add_handler(
+        MessageHandler(
+            filters.Regex(f"^{roles.MENU_CUSTODY_BALANCE}$"),
+            custody_balance_start,
+        )
+    )
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(learning_quiz_answer_callback, pattern="^lquiz:"))
     app.add_handler(CommandHandler("search", search_patient))
