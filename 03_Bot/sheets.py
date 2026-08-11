@@ -15,6 +15,7 @@ import time
 import threading
 
 import config
+from department_access import AccessAction, authorize_record
 from tenant_runtime import current_tenant
 from gspread.http_client import HTTPClient
 from gspread.utils import numericise_all, rowcol_to_a1, to_records
@@ -461,6 +462,34 @@ def get_staff_by_telegram_id(telegram_id: int) -> dict | None:
     return None
 
 
+def get_staff_department_access(staff_id: str | None = None) -> list[dict]:
+    """Load active mapping rows once for a staff-scoped authorization request."""
+    ws = _worksheet(config.SHEET_STAFF_DEPARTMENT_ACCESS)
+    records = safe_get_all_records(ws)
+    if staff_id is None:
+        return records
+    target = str(staff_id).strip()
+    return [
+        row for row in records
+        if str(row.get("Staff_ID", "")).strip() == target
+        and str(row.get("Status", "Active")).strip().casefold() == "active"
+    ]
+
+
+def filter_patients_for_staff(
+    patients: list[dict], staff: dict, mappings: list[dict]
+) -> list[dict]:
+    """Apply the central department decision to patient records when enabled."""
+    if not config.DEPARTMENT_ENFORCEMENT_ENABLED:
+        return patients
+    return [
+        patient for patient in patients
+        if authorize_record(
+            staff, patient, AccessAction.READ, mappings
+        ).allowed
+    ]
+
+
 def _next_patient_id(ws) -> str:
     ids = ws.col_values(1)[1:]
     numbers = []
@@ -564,6 +593,12 @@ def search_patients(query: str) -> list[dict]:
         or query in str(p.get("Phone", ""))
         or query in str(p.get("Patient_ID", "")).lower()
     ]
+
+
+def search_patients_for_staff(
+    query: str, staff: dict, mappings: list[dict]
+) -> list[dict]:
+    return filter_patients_for_staff(search_patients(query), staff, mappings)
 
 
 def find_patient_by_phone(phone: str) -> dict | None:
@@ -775,6 +810,16 @@ def get_patient_by_id(patient_id: str) -> dict | None:
         if str(p.get("Patient_ID", "")).strip() == patient_id:
             return p
     return None
+
+
+def get_patient_by_id_for_staff(
+    patient_id: str, staff: dict, mappings: list[dict]
+) -> dict | None:
+    patient = get_patient_by_id(patient_id)
+    if patient is None:
+        return None
+    visible = filter_patients_for_staff([patient], staff, mappings)
+    return visible[0] if visible else None
 
 
 def update_patient_payment(patient_id: str, additional_paid: float, discount: float = 0) -> dict | None:
