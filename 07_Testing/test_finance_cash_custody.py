@@ -382,9 +382,72 @@ class CashHandoverRoleTests(unittest.TestCase):
             "expense_paid_callback",
             "household_withdrawal_start",
             "custody_balance_start",
+            "physio_finance_dashboard_start",
+            "dental_finance_dashboard_start",
+            "combined_business_summary_start",
         ):
             with self.subTest(handler=handler):
                 self.assertIn(handler, source)
+
+    def test_owner_alone_receives_three_financial_dashboard_views(self):
+        owner_items = roles.ROLE_FINANCE_ITEMS[roles.Role.OWNER]
+        for item in (
+            roles.MENU_PHYSIO_FINANCE_DASHBOARD,
+            roles.MENU_DENTAL_FINANCE_DASHBOARD,
+            roles.MENU_COMBINED_BUSINESS_SUMMARY,
+        ):
+            self.assertIn(item, owner_items)
+            self.assertNotIn(item, roles.ROLE_FINANCE_ITEMS[roles.Role.RECEPTIONIST])
+            self.assertNotIn(item, roles.ROLE_FINANCE_ITEMS[roles.Role.MANAGER])
+
+
+class OwnerFinancialDashboardTests(unittest.TestCase):
+    def test_department_views_preserve_scope_and_opening_balances(self):
+        payment_ws, expense_ws, movement_ws = object(), object(), object()
+        records = {
+            payment_ws: [
+                {"Date": "2026-08-10", "Department": "Physio", "Amount": 1000, "Payment_Method": "Cash"},
+                {"Date": "2026-08-11", "Department": "Physio", "Amount": 500, "Payment_Method": "Cash"},
+                {"Date": "2026-08-11", "Department": "Dental", "Amount": 800, "Payment_Method": "bKash"},
+                {"Date": "2026-08-11", "Department": "", "Amount": 9999, "Payment_Method": "Cash"},
+            ],
+            expense_ws: [
+                {"Date": "2026-08-11", "Department": "Physio", "Amount": 100, "Type": "Clinic Expense", "Status": "Paid", "Paid_From": "Reception"},
+                {"Date": "2026-08-11", "Department": "Dental", "Amount": 50, "Type": "Household Withdrawal", "Status": "Paid", "Paid_From": "Home Treasury"},
+            ],
+            movement_ws: [
+                {"Date": "2026-08-10", "Department": "Physio", "Received_Amount": 400, "Status": "Accepted", "From_Custodian_ID": "Physio Reception Cash", "To_Custodian_ID": "Home Treasury"},
+                {"Date": "2026-08-11", "Department": "Physio", "Requested_Amount": 300, "Received_Amount": 250, "Status": "Accepted", "From_Custodian_ID": "Physio Reception Cash", "To_Custodian_ID": "Home Treasury"},
+            ],
+        }
+        with patch.object(sheets, "_worksheet", side_effect=[payment_ws, expense_ws, movement_ws]), patch.object(
+            sheets, "safe_get_all_records", side_effect=lambda ws: records[ws]
+        ):
+            data = sheets.get_owner_financial_dashboard("2026-08-11")
+
+        physio = data["Physio"]
+        dental = data["Dental"]
+        combined = data["Combined"]
+        self.assertEqual(physio["Today_Collection"], 500)
+        self.assertEqual(dental["Today_Collection"], 800)
+        self.assertEqual(physio["Opening"]["Reception"], 600)
+        self.assertEqual(physio["Opening"]["Home Treasury"], 400)
+        self.assertEqual(physio["Closing"]["Reception"], 750)
+        self.assertEqual(physio["Closing"]["Home Treasury"], 650)
+        self.assertEqual(dental["Closing"]["Digital/Bank"], 800)
+        self.assertEqual(combined["Today_Collection"], 1300)
+        self.assertEqual(combined["Unclassified_Rows"]["Payments"], 1)
+
+    def test_missing_department_never_enters_department_totals(self):
+        tabs = [object(), object(), object()]
+        with patch.object(sheets, "_worksheet", side_effect=tabs), patch.object(
+            sheets,
+            "safe_get_all_records",
+            side_effect=[[{"Date": "2026-08-11", "Amount": 100}], [], []],
+        ):
+            data = sheets.get_owner_financial_dashboard("2026-08-11")
+        self.assertEqual(data["Combined"]["Today_Collection"], 0)
+        self.assertEqual(data["Combined"]["Unclassified_Rows"]["Payments"], 1)
 
 
 class FakeMigrationWorksheet:
