@@ -173,6 +173,7 @@ _ALL_MENU_ITEMS = [
     roles.MENU_REPORTS,
     roles.MENU_SETTINGS,
     roles.MENU_ATTENDANCE,
+    "🏠 হাজিরা",
     roles.MENU_TODAY_APPOINTMENTS,
     roles.MENU_PATIENT_HISTORY,
     roles.MENU_TREATMENT_HISTORY,
@@ -194,6 +195,10 @@ _ALL_MENU_ITEMS = [
     roles.MENU_FINANCE,
 ]
 _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
+_ATTENDANCE_MENU_LABELS = (roles.MENU_ATTENDANCE, "🏠 হাজিরা")
+_ATTENDANCE_MENU_REGEX = "^(?:" + "|".join(
+    re.escape(label) for label in _ATTENDANCE_MENU_LABELS
+) + ")$"
 
 (
     TPLAN_SEARCH,
@@ -5654,7 +5659,7 @@ def main():
         MessageHandler(filters.Regex(f"^{roles.MENU_MY_PATIENTS}$"), my_patients)
     )
     app.add_handler(
-        MessageHandler(filters.Regex(f"^{roles.MENU_ATTENDANCE}$"), attendance_menu)
+        MessageHandler(filters.Regex(_ATTENDANCE_MENU_REGEX), attendance_menu)
     )
     app.add_handler(
         MessageHandler(filters.Regex(f"^{roles.MENU_TODAY_SCHEDULE}$"), today_schedule_menu)
