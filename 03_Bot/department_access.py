@@ -56,6 +56,15 @@ class AccessDecision:
     department: Department | None = None
 
 
+@dataclass(frozen=True)
+class DepartmentRoleAssignment:
+    """One active role held by a staff member inside one department."""
+
+    staff_id: str
+    department: Department
+    role: Role
+
+
 def normalize_department(value: object) -> Department | None:
     text = str(value or "").strip().casefold()
     return {
@@ -110,6 +119,72 @@ def allowed_departments(
     if not resolved and primary in {Department.PHYSIO, Department.DENTAL}:
         resolved.add(primary)
     return frozenset(resolved)
+
+
+def effective_assignments(
+    staff: Mapping[str, object] | None,
+    mappings: Iterable[Mapping[str, object]] = (),
+) -> frozenset[DepartmentRoleAssignment]:
+    """Resolve active department-role tuples from the authoritative mapping.
+
+    A role stored only on 08_Staff is not an assignment. Mapping rows without
+    an explicit valid Role fail closed so migration cannot accidentally grant
+    global access.
+    """
+    if not staff:
+        return frozenset()
+    staff_id = str(staff.get("Staff_ID", "")).strip()
+    if not staff_id:
+        return frozenset()
+
+    resolved: set[DepartmentRoleAssignment] = set()
+    for row in mappings:
+        if str(row.get("Staff_ID", "")).strip() != staff_id:
+            continue
+        if str(row.get("Status", "Active")).strip().casefold() != "active":
+            continue
+        department = normalize_department(row.get("Department"))
+        role = normalize_role(row.get("Role"))
+        if department is None or role is None:
+            continue
+        if department is Department.ALL and role is not Role.OWNER:
+            continue
+        resolved.add(DepartmentRoleAssignment(staff_id, department, role))
+    return frozenset(resolved)
+
+
+def roles_for_department(
+    staff: Mapping[str, object] | None,
+    department: object,
+    mappings: Iterable[Mapping[str, object]] = (),
+) -> frozenset[Role]:
+    """Return roles explicitly assigned inside department (or explicit All owner)."""
+    target = normalize_department(department)
+    if target is None:
+        return frozenset()
+    roles: set[Role] = set()
+    for assignment in effective_assignments(staff, mappings):
+        if assignment.department is target:
+            roles.add(assignment.role)
+        elif (
+            assignment.department is Department.ALL
+            and assignment.role is Role.OWNER
+        ):
+            roles.add(Role.OWNER)
+    return frozenset(roles)
+
+
+def has_department_role(
+    staff: Mapping[str, object] | None,
+    department: object,
+    role: object,
+    mappings: Iterable[Mapping[str, object]] = (),
+) -> bool:
+    """Fail-closed check for one explicit department-role tuple."""
+    expected_role = normalize_role(role)
+    if expected_role is None:
+        return False
+    return expected_role in roles_for_department(staff, department, mappings)
 
 
 def authorize_record(
