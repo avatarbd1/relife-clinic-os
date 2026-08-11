@@ -4497,6 +4497,53 @@ def _therapist_has_access_to_patient(therapist_name: str, patient: dict) -> bool
     )
 
 
+async def _staff_can_view_patient_files(staff: dict, patient: dict) -> bool:
+    role = staff.get("Role", "").strip()
+    if role in ("Owner", "Manager"):
+        return True
+    if role != "Therapist":
+        return False
+    therapist_name = staff.get("Full_Name", "").strip()
+    if not therapist_name:
+        return False
+    return await async_runtime.run_sheets_read(
+        _therapist_has_access_to_patient, therapist_name, patient
+    )
+
+
+_REPORT_FILES_PER_PAGE = 8
+
+
+def _report_files_page(
+    reports: list[dict], patient_id: str, page: int
+) -> tuple[InlineKeyboardMarkup, int, int]:
+    total_pages = max(1, (len(reports) + _REPORT_FILES_PER_PAGE - 1) // _REPORT_FILES_PER_PAGE)
+    page = max(0, min(page, total_pages - 1))
+    newest_first = list(reversed(reports))
+    start = page * _REPORT_FILES_PER_PAGE
+    chunk = newest_first[start:start + _REPORT_FILES_PER_PAGE]
+    buttons = [
+        [InlineKeyboardButton(
+            f"{r.get('File_Type', 'ফাইল')} — {r.get('Upload_Date', '')}",
+            callback_data=f"plistact_getfile_{r.get('Report_ID', '')}",
+        )]
+        for r in chunk
+    ]
+    navigation = []
+    if page > 0:
+        navigation.append(InlineKeyboardButton(
+            "⬅️ আগের", callback_data=f"plistfiles_{patient_id}_{page - 1}"
+        ))
+    if page + 1 < total_pages:
+        navigation.append(InlineKeyboardButton(
+            "পরের ➡️", callback_data=f"plistfiles_{patient_id}_{page + 1}"
+        ))
+    if navigation:
+        buttons.append(navigation)
+    buttons.append([InlineKeyboardButton("🔙 তালিকায় ফিরুন", callback_data="plistact_back")])
+    return InlineKeyboardMarkup(buttons), page, total_pages
+
+
 async def plist_action_viewfiles(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -4510,8 +4557,7 @@ async def plist_action_viewfiles(update: Update, context: ContextTypes.DEFAULT_T
     if not patient:
         await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
         return
-    role = staff.get("Role", "").strip()
-    allowed = role in ("Owner", "Manager", "Therapist")
+    allowed = await _staff_can_view_patient_files(staff, patient)
     if not allowed:
         await query.edit_message_text("⛔ এই রোগীর ফাইল দেখার অনুমতি তোমার নেই।")
         return
@@ -4521,17 +4567,44 @@ async def plist_action_viewfiles(update: Update, context: ContextTypes.DEFAULT_T
     if not reports:
         await query.edit_message_text(f"📂 {patient.get('Full_Name')}-এর কোনো ফাইল এখনো আপলোড হয়নি।")
         return
-    buttons = [
-        [InlineKeyboardButton(
-            f"{r.get('File_Type', 'ফাইল')} — {r.get('Upload_Date', '')}",
-            callback_data=f"plistact_getfile_{r.get('Report_ID', '')}",
-        )]
-        for r in reversed(reports)
-    ]
-    buttons.append([InlineKeyboardButton("🔙 তালিকায় ফিরুন", callback_data="plistact_back")])
+    context.user_data.setdefault("plist_reports", {})[patient_id] = reports
+    markup, page, total_pages = _report_files_page(reports, patient_id, 0)
     await query.edit_message_text(
-        f"📂 {patient.get('Full_Name')}-এর ফাইল ({len(reports)}টি) — দেখতে চাপো:",
-        reply_markup=InlineKeyboardMarkup(buttons),
+        f"📂 {patient.get('Full_Name')}-এর ফাইল ({len(reports)}টি) — "
+        f"পাতা {page + 1}/{total_pages}",
+        reply_markup=markup,
+    )
+
+
+async def plist_report_files_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    payload = query.data.replace("plistfiles_", "", 1)
+    patient_id, page_text = payload.rsplit("_", 1)
+    page = int(page_text)
+    staff = await _require_staff(update, context)
+    if staff is None:
+        return
+    patient = await async_runtime.run_sheets_read(
+        sheets.get_patient_by_id, patient_id
+    )
+    if not patient or not await _staff_can_view_patient_files(staff, patient):
+        await query.edit_message_text("⛔ এই রোগীর ফাইল দেখার অনুমতি তোমার নেই।")
+        return
+    reports = context.user_data.get("plist_reports", {}).get(patient_id)
+    if reports is None:
+        reports = await async_runtime.run_sheets_read(
+            sheets.get_reports_for_patient, patient_id
+        )
+        context.user_data.setdefault("plist_reports", {})[patient_id] = reports
+    if not reports:
+        await query.edit_message_text("📂 কোনো ফাইল পাওয়া যায়নি।")
+        return
+    markup, page, total_pages = _report_files_page(reports, patient_id, page)
+    patient_name = reports[-1].get("Patient_Name", patient_id)
+    await query.edit_message_text(
+        f"📂 {patient_name}-এর ফাইল ({len(reports)}টি) — পাতা {page + 1}/{total_pages}",
+        reply_markup=markup,
     )
 
 
@@ -4551,8 +4624,7 @@ async def plist_action_getfile(update: Update, context: ContextTypes.DEFAULT_TYP
     patient = await async_runtime.run_sheets_read(
         sheets.get_patient_by_id, record.get("Patient_ID", "")
     )
-    role = staff.get("Role", "").strip()
-    allowed = patient and role in ("Owner", "Manager", "Therapist")
+    allowed = patient and await _staff_can_view_patient_files(staff, patient)
     if not allowed:
         await query.message.reply_text("⛔ এই ফাইল দেখার অনুমতি তোমার নেই।")
         return
@@ -5643,6 +5715,7 @@ def main():
     app.add_handler(CallbackQueryHandler(patient_list_select_callback, pattern="^plistsel_"))
     app.add_handler(CallbackQueryHandler(patient_list_back_callback, pattern="^plistact_back$"))
     app.add_handler(CallbackQueryHandler(plist_action_viewfiles, pattern="^plistact_viewfiles_"))
+    app.add_handler(CallbackQueryHandler(plist_report_files_page_callback, pattern="^plistfiles_"))
     app.add_handler(CallbackQueryHandler(plist_action_getfile, pattern="^plistact_getfile_"))
     app.add_handler(CallbackQueryHandler(plist_action_hist, pattern="^plistact_hist_"))
     app.add_handler(CallbackQueryHandler(pt_dashboard_refresh_callback, pattern="^ptdash_refresh$"))

@@ -17,7 +17,7 @@ import threading
 import config
 from tenant_runtime import current_tenant
 from gspread.http_client import HTTPClient
-from gspread.utils import numericise_all, to_records
+from gspread.utils import numericise_all, rowcol_to_a1, to_records
 
 
 def _safe_float(value):
@@ -357,6 +357,18 @@ def _append_unified_row(
     _invalidate_cache(ws)
 
 
+def _batch_update_cells(ws, row_number: int, updates: dict[int, object]) -> None:
+    """Update non-contiguous cells in one atomic Sheets values batch request."""
+    if not updates:
+        return
+    data = [
+        {"range": rowcol_to_a1(row_number, column), "values": [[value]]}
+        for column, value in sorted(updates.items())
+    ]
+    ws.batch_update(data, value_input_option="USER_ENTERED")
+    _invalidate_cache(ws)
+
+
 def _find_inventory_row(item_name: str):
     ws = _worksheet(config.SHEET_INVENTORY)
     values = ws.get_all_values()
@@ -396,10 +408,11 @@ def adjust_inventory_stock(item_name: str, change: float, reason: str, staff: st
         new_balance = current + change
         if new_balance < 0:
             new_balance = 0
-        ws.update_cell(row_num, stock_idx, new_balance)
         now = bd_now()
+        updates = {stock_idx: new_balance}
         if lastupd_idx:
-            ws.update_cell(row_num, lastupd_idx, now.strftime("%Y-%m-%d %I:%M %p"))
+            updates[lastupd_idx] = now.strftime("%Y-%m-%d %I:%M %p")
+        _batch_update_cells(ws, row_num, updates)
         item_id = ws.cell(row_num, id_idx).value if id_idx else ""
 
         try:
@@ -501,10 +514,12 @@ def add_patient(data: dict, created_by: str) -> str:
     new_row_number = len(ws.get_all_values())
     phone_val = data.get("Phone", "")
     alt_phone_val = data.get("Alternative_Phone", "")
+    phone_updates = {}
     if phone_val:
-        ws.update_cell(new_row_number, 6, "'" + str(phone_val))
+        phone_updates[6] = "'" + str(phone_val)
     if alt_phone_val:
-        ws.update_cell(new_row_number, 7, "'" + str(alt_phone_val))
+        phone_updates[7] = "'" + str(alt_phone_val)
+    _batch_update_cells(ws, new_row_number, phone_updates)
     return patient_id
 
 
@@ -645,6 +660,7 @@ def get_today_attendance(staff_id: str, date_str: str) -> dict | None:
 def _update_attendance_cell(row_number: int, col_index: int, value):
     ws = _worksheet(config.SHEET_ATTENDANCE)
     ws.update_cell(row_number, col_index, value)
+    _invalidate_cache(ws)
 
 
 def attendance_check_in(staff: dict, location_note: str = "") -> str:
@@ -743,9 +759,11 @@ def attendance_check_out(staff_id: str, date_str: str) -> dict | None:
     overtime_min = max(0, raw_overtime_min - late_min)
     overtime = round(overtime_min / 60, 2)
 
-    _update_attendance_cell(record["_row_number"], 9, time_str)
-    _update_attendance_cell(record["_row_number"], 10, working_hours)
-    _update_attendance_cell(record["_row_number"], 12, overtime)
+    _batch_update_cells(
+        ws,
+        record["_row_number"],
+        {9: time_str, 10: working_hours, 12: overtime},
+    )
 
     return {"time": time_str, "working_hours": working_hours, "overtime": overtime}
 
@@ -784,10 +802,16 @@ def update_patient_payment(patient_id: str, additional_paid: float, discount: fl
     new_due = max(0.0, total_bill - new_paid - discount)
     status = "Paid" if new_due <= 0 else "Due"
 
-    ws.update_cell(row_number, 20, status)      # Payment_Status
-    ws.update_cell(row_number, 22, new_paid)    # Paid_Amount
-    ws.update_cell(row_number, 23, new_due)     # Due_Amount
-    ws.update_cell(row_number, 29, bd_now().strftime("%Y-%m-%d %I:%M %p"))  # updated_at
+    _batch_update_cells(
+        ws,
+        row_number,
+        {
+            20: status,
+            22: new_paid,
+            23: new_due,
+            29: bd_now().strftime("%Y-%m-%d %I:%M %p"),
+        },
+    )
 
     return {
         "total_bill": total_bill,
@@ -876,29 +900,27 @@ def update_package_payment(row_number: int, additional_paid: float) -> bool:
     paid_amount = float(row[7] or 0) + additional_paid
     package_amount = float(row[6] or 0)
     due_amount = package_amount - paid_amount
-    ws.update_cell(row_number, 8, paid_amount)
-    ws.update_cell(row_number, 9, due_amount)
+    _batch_update_cells(ws, row_number, {8: paid_amount, 9: due_amount})
     return True
 
 
-def increment_package_session(patient_id: str) -> bool:
+def increment_package_session(patient_id: str, count: int = 1) -> bool:
     pkg = get_active_package_for_patient(patient_id)
     if pkg is None:
         return False
     ws = _worksheet(config.SHEET_PACKAGES)
-    used = int(pkg.get("Sessions_Used", 0)) + 1
+    used = int(pkg.get("Sessions_Used", 0)) + max(0, int(count or 0))
     total = int(pkg.get("Total_Sessions", 0))
     remaining = max(0, total - used)
     row_number = pkg["_row_number"]
-    ws.update_cell(row_number, 5, used)
-    ws.update_cell(row_number, 6, remaining)
+    updates = {5: used, 6: remaining}
     if remaining == 0:
-        ws.update_cell(row_number, 11, "Completed")
-    _invalidate_cache(ws)
+        updates[11] = "Completed"
+    _batch_update_cells(ws, row_number, updates)
     return True
 
 
-def decrement_package_session(patient_id: str) -> bool:
+def decrement_package_session(patient_id: str, count: int = 1) -> bool:
     """increment_package_session-এর উল্টো — ভুল সেশন এন্ট্রি ডিলিট হলে সেশন কাউন্ট ফিরিয়ে আনার
     জন্য ব্যবহার হয় (delete_payment থেকে কল হয়)। রোগীর সবচেয়ে সাম্প্রতিক প্যাকেজ রো ধরা হয় —
     এটা Active অথবা সদ্য Completed যেকোনোটাই হতে পারে (উদাহরণ: শেষ সেশন এন্ট্রিটাই ডিলিট হচ্ছে
@@ -913,14 +935,16 @@ def decrement_package_session(patient_id: str) -> bool:
             pkg = r  # সবচেয়ে নিচের (সর্বশেষ) মিলটাই থেকে যাবে
     if pkg is None:
         return False
-    used = max(0, int(pkg.get("Sessions_Used", 0) or 0) - 1)
+    used = max(
+        0,
+        int(pkg.get("Sessions_Used", 0) or 0) - max(0, int(count or 0)),
+    )
     total = int(pkg.get("Total_Sessions", 0) or 0)
     remaining = max(0, total - used)
-    ws.update_cell(row_number, 5, used)
-    ws.update_cell(row_number, 6, remaining)
+    updates = {5: used, 6: remaining}
     if remaining > 0 and str(pkg.get("Status", "")).strip() == "Completed":
-        ws.update_cell(row_number, 11, "Active")
-    _invalidate_cache(ws)
+        updates[11] = "Active"
+    _batch_update_cells(ws, row_number, updates)
     return True
 
 
@@ -990,8 +1014,8 @@ def record_payment_transaction(
         payload["Due"] = bill_status["due_amount"]
     receipt_no = add_payment(payload)
 
-    for _ in range(max(0, int(sessions or 0))):
-        increment_package_session(patient_id)
+    if int(sessions or 0) > 0:
+        increment_package_session(patient_id, int(sessions))
     return bill_status, receipt_no
 
 
@@ -1069,12 +1093,10 @@ def delete_payment(receipt_no: str, deleted_by: str) -> dict | None:
 
     # ৩) প্যাকেজের সেশন কমানো (সেশন এন্ট্রি থাকলে)
     if sessions > 0 and patient_id:
-        for _ in range(sessions):
-            try:
-                decrement_package_session(patient_id)
-            except Exception as e:
-                print(f"⚠️ প্যাকেজ সেশন রিভার্স করতে সমস্যা হয়েছে: {e}")
-                break
+        try:
+            decrement_package_session(patient_id, sessions)
+        except Exception as e:
+            print(f"⚠️ প্যাকেজ সেশন রিভার্স করতে সমস্যা হয়েছে: {e}")
 
     # ৪) Delete_Log শীটে রেকর্ড রাখা
     try:
@@ -1243,6 +1265,7 @@ def update_next_visit(patient_id: str, next_visit_date: str) -> bool:
     if cell is None:
         return False
     ws.update_cell(cell.row, 19, next_visit_date)
+    _invalidate_cache(ws)
     return True
 
 
@@ -1394,10 +1417,10 @@ def increment_plan_session(patient_id: str) -> bool:
     done = int(plan.get("Sessions_Done", 0) or 0) + 1
     total = int(plan.get("Total_Sessions", 0) or 0)
     row_number = plan["_row_number"]
-    ws.update_cell(row_number, 6, done)   # Sessions_Done কলাম F
+    updates = {6: done}
     if total and done >= total:
-        ws.update_cell(row_number, 12, "Completed")  # Status কলাম L
-    _invalidate_cache(ws)
+        updates[12] = "Completed"
+    _batch_update_cells(ws, row_number, updates)
     return True
 
 
