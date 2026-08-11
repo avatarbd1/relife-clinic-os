@@ -18,6 +18,7 @@ os.environ.setdefault("GOOGLE_CREDENTIALS_PATH", __file__)
 import config  # noqa: E402
 import sheets  # noqa: E402
 import roles  # noqa: E402
+import bot  # noqa: E402
 
 MIGRATION_PATH = ROOT / "05_GoogleSheets" / "migrate_cash_custody_foundation.py"
 spec = importlib.util.spec_from_file_location("cash_migration", MIGRATION_PATH)
@@ -279,6 +280,33 @@ class ExpenseApprovalWorkflowTests(unittest.TestCase):
             summary = sheets.get_cash_custody_summary("2026-08-11")
         self.assertEqual(summary["Reception_Balance"], 2500)
         self.assertEqual(summary["Home_Balance"], 4000)
+
+    def test_custody_reconciliation_text_hides_home_treasury_from_non_owner(self):
+        summary = {
+            "Date": "2026-08-12",
+            "Cash_Collected": 10000,
+            "Reception_Expense": 500,
+            "Reception_Handover": 7000,
+            "Reception_Balance": 2500,
+            "Home_Received": 7000,
+            "Home_Clinic_Expense": 1000,
+            "Household_Withdrawal": 2000,
+            "Home_Transfer_Out": 0,
+            "Home_Balance": 4000,
+        }
+
+        owner_text = bot._cash_custody_summary_text(summary, "Owner")
+        self.assertIn("Home Treasury", owner_text)
+        self.assertIn("Accepted receipt: ৳7000", owner_text)
+
+        for role in ("Receptionist", "Manager", "Therapist"):
+            with self.subTest(role=role):
+                text = bot._cash_custody_summary_text(summary, role)
+                self.assertIn("Reception", text)
+                self.assertNotIn("Home Treasury", text)
+                self.assertNotIn("Accepted receipt", text)
+                self.assertNotIn("Household Withdrawal", text)
+                self.assertNotIn("৳4000", text)
 
 
 class FinalizeWorksheet(WriteWorksheet):

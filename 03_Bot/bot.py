@@ -6167,6 +6167,30 @@ async def costtracker_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(lines))
 
 
+def _cash_custody_summary_text(summary: dict, role_str: str) -> str:
+    text = (
+        f"⚖️ আজকের cash reconciliation — {summary['Date']}\n\n"
+        f"Reception\n"
+        f"Cash collection: ৳{summary['Cash_Collected']:.0f}\n"
+        f"Paid ছোট খরচ: ৳{summary['Reception_Expense']:.0f}\n"
+        f"Accepted handover: ৳{summary['Reception_Handover']:.0f}\n"
+        f"আজকের net balance: ৳{summary['Reception_Balance']:.0f}"
+    )
+    if role_str.strip() == roles.Role.OWNER.value:
+        text += (
+            f"\n\nHome Treasury\n"
+            f"Accepted receipt: ৳{summary['Home_Received']:.0f}\n"
+            f"বড় clinic expense: ৳{summary['Home_Clinic_Expense']:.0f}\n"
+            f"Household Withdrawal: ৳{summary['Household_Withdrawal']:.0f}\n"
+            f"Transfer out: ৳{summary['Home_Transfer_Out']:.0f}\n"
+            f"আজকের net balance: ৳{summary['Home_Balance']:.0f}"
+        )
+    return (
+        text
+        + "\n\nℹ️ এটি আজকের movement balance; আগের দিনের opening cash এতে নেই।"
+    )
+
+
 async def custody_balance_start(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
@@ -6181,19 +6205,7 @@ async def custody_balance_start(
         sheets.get_cash_custody_summary, today
     )
     await update.message.reply_text(
-        f"⚖️ আজকের cash reconciliation — {today}\n\n"
-        f"Reception\n"
-        f"Cash collection: ৳{summary['Cash_Collected']:.0f}\n"
-        f"Paid ছোট খরচ: ৳{summary['Reception_Expense']:.0f}\n"
-        f"Accepted handover: ৳{summary['Reception_Handover']:.0f}\n"
-        f"আজকের net balance: ৳{summary['Reception_Balance']:.0f}\n\n"
-        f"Home Treasury\n"
-        f"Accepted receipt: ৳{summary['Home_Received']:.0f}\n"
-        f"বড় clinic expense: ৳{summary['Home_Clinic_Expense']:.0f}\n"
-        f"Household Withdrawal: ৳{summary['Household_Withdrawal']:.0f}\n"
-        f"Transfer out: ৳{summary['Home_Transfer_Out']:.0f}\n"
-        f"আজকের net balance: ৳{summary['Home_Balance']:.0f}\n\n"
-        "ℹ️ এটি আজকের movement balance; আগের দিনের opening cash এতে নেই।"
+        _cash_custody_summary_text(summary, staff.get("Role", ""))
     )
 
 
