@@ -57,6 +57,17 @@ class FinanceLedgerTests(unittest.TestCase):
             self.assertEqual(sheets.add_expense("ভাড়া", 100, "S1"), "EX0001")
         self.assertEqual(ws.appended[0][7], config.EXPENSE_TYPE_CLINIC)
 
+    def test_new_expense_persists_explicit_department(self):
+        headers = self.expense_headers + ["Department"]
+        ws = WriteWorksheet(headers)
+        with patch.object(sheets, "_worksheet", return_value=ws):
+            sheets.add_expense("ভাড়া", 100, "S1", department="Dental")
+        self.assertEqual(ws.appended[0][headers.index("Department")], "Dental")
+
+    def test_invalid_finance_department_is_rejected(self):
+        with self.assertRaises(ValueError):
+            sheets.add_expense("ভাড়া", 100, "S1", department="All")
+
     def test_household_withdrawal_is_accepted(self):
         ws = WriteWorksheet(self.expense_headers)
         with patch.object(sheets, "_worksheet", return_value=ws):
@@ -104,6 +115,25 @@ class FinanceLedgerTests(unittest.TestCase):
         self.assertEqual(movement_id, "CM0001")
         self.assertEqual(ws.appended[0][2:5], ["Reception", "Home Treasury", 500.0])
         self.assertEqual(ws.appended[0][headers.index("Status")], "Pending")
+
+    def test_cash_movement_persists_department_and_requested_amount(self):
+        headers = cash_migration.CASH_MOVEMENT_HEADERS + [
+            "Department", "From_Custodian_ID", "To_Custodian_ID",
+            "Requested_Amount",
+        ]
+        ws = WriteWorksheet(headers)
+        ws.title = config.SHEET_CASH_MOVEMENT
+        with patch.object(sheets, "_worksheet", return_value=ws):
+            sheets.add_cash_movement(
+                "Reception", "Home Treasury", 500, "S1",
+                department="Physio",
+            )
+        row = ws.appended[0]
+        self.assertEqual(row[headers.index("Department")], "Physio")
+        self.assertEqual(
+            row[headers.index("From_Custodian_ID")], "Physio Reception Cash"
+        )
+        self.assertEqual(row[headers.index("Requested_Amount")], 500)
 
     def test_invalid_custodian_is_rejected(self):
         with self.assertRaises(ValueError):
@@ -385,6 +415,8 @@ class CashHandoverRoleTests(unittest.TestCase):
             "physio_finance_dashboard_start",
             "dental_finance_dashboard_start",
             "combined_business_summary_start",
+            "cash_department_callback",
+            "cost_department_callback",
         ):
             with self.subTest(handler=handler):
                 self.assertIn(handler, source)
