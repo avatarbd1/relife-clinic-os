@@ -87,6 +87,34 @@ class DepartmentAccessTests(unittest.TestCase):
         manager = staff(Role.MANAGER.value, Department.DENTAL.value)
         self.assertTrue(authorize_record(manager, {"Department": "Dental"}, AccessAction.READ).allowed)
 
+    def test_auditor_is_business_read_only_without_clinical_access(self):
+        person = staff("Auditor", "All")
+        mappings = [
+            {"Staff_ID": "S1", "Department": "Physio", "Status": "Active"},
+            {"Staff_ID": "S1", "Department": "Dental", "Status": "Active"},
+        ]
+        record = {"Department": "Dental"}
+        self.assertTrue(authorize_record(person, record, AccessAction.READ, mappings).allowed)
+        self.assertTrue(authorize_record(person, record, AccessAction.FINANCIAL_READ, mappings).allowed)
+        self.assertFalse(authorize_record(person, record, AccessAction.WRITE, mappings).allowed)
+        self.assertFalse(authorize_record(person, record, AccessAction.CLINICAL_READ, mappings).allowed)
+
+    def test_manager_therapist_secondary_scope_requires_assignment(self):
+        person = staff("Manager", "Physio")
+        person["Clinical_Write_Scope"] = "Assigned_Or_Today_Cross_Cover"
+        record = {"Department": "Physio"}
+        self.assertFalse(authorize_record(person, record, AccessAction.CLINICAL_WRITE).allowed)
+        self.assertTrue(
+            authorize_record(person, record, AccessAction.CLINICAL_WRITE, assigned_or_cross_cover=True).allowed
+        )
+
+    def test_dental_receptionist_assistant_can_read_but_not_write_clinical_data(self):
+        person = staff("Receptionist", "Dental")
+        person["Clinical_Write_Scope"] = "Dental_Assistant_Support_No_Independent_Write"
+        record = {"Department": "Dental"}
+        self.assertTrue(authorize_record(person, record, AccessAction.CLINICAL_READ).allowed)
+        self.assertFalse(authorize_record(person, record, AccessAction.CLINICAL_WRITE).allowed)
+
 
 if __name__ == "__main__":
     unittest.main()
