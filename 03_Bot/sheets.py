@@ -17,6 +17,7 @@ import threading
 import config
 from tenant_runtime import current_tenant
 from gspread.http_client import HTTPClient
+from gspread.utils import numericise_all, to_records
 
 
 def _safe_float(value):
@@ -43,6 +44,7 @@ def _safe_bool(value, default: bool = False) -> bool:
 
 _records_cache = {}  # {(spreadsheet_id, worksheet_id): (timestamp, records)}
 _records_cache_lock = threading.RLock()
+_records_cache_generation: dict[tuple[str, int | str], int] = {}
 _RECORDS_CACHE_TTL = max(
     0.0, float(os.getenv("SHEETS_RECORDS_CACHE_TTL_SECONDS", "10"))
 )
@@ -77,49 +79,126 @@ def _records_cache_key(ws) -> tuple[str, int | str]:
     return (_assert_current_worksheet(ws), getattr(ws, "id", ws.title))
 
 
-def safe_get_all_records(ws, _retries: int = 2, _use_cache: bool = True):
+def safe_get_all_records(
+    ws,
+    _retries: int = 2,
+    _use_cache: bool = True,
+    _race_retries: int = 2,
+):
     """get_all_records()-এর নিরাপদ ভার্সন — sheet-এ শুধু header বা কোনো row না থাকলে crash না করে খালি list রিটার্ন করে।
     Google Sheets rate-limit/temporary error হলে ১-২ বার retry করে, যাতে দ্রুত পরপর ক্লিকে
     ভুল করে 'কিছুই নেই' না দেখায়। কয়েক সেকেন্ডের জন্য ফলাফল ক্যাশে রাখে যাতে একই Dashboard
     রেন্ডারের মধ্যে (যেখানে অনেক রোগীর জন্য বারবার একই শীট পড়া লাগে) API কল কম হয় এবং দ্রুত হয়।"""
     cache_key = _records_cache_key(ws)
-    if _use_cache:
-        with _records_cache_lock:
+    with _records_cache_lock:
+        generation = _records_cache_generation.get(cache_key, 0)
+        if _use_cache:
             entry = _records_cache.get(cache_key)
+        else:
+            entry = None
         if entry is not None:
             ts, cached = entry
             if time.monotonic() - ts < _RECORDS_CACHE_TTL:
                 return cached
     try:
-        if ws.row_count < 2:
-            result = []
-        else:
-            first_row = ws.row_values(1)
-            if not first_row:
-                result = []
-            else:
-                dupes = {h for h in first_row if h and first_row.count(h) > 1}
-                if dupes:
-                    _sheet_warnings[(cache_key[0], ws.title)] = (
-                        f"শীট '{ws.title}'-এ ডুপ্লিকেট হেডার কলাম আছে: {', '.join(dupes)} — "
-                        f"ডেটা ভুল/খালি দেখাতে পারে। হেডার রো ঠিক করো।"
-                    )
-                else:
-                    _sheet_warnings.pop((cache_key[0], ws.title), None)
-                result = ws.get_all_records()
+        result = [] if ws.row_count < 2 else ws.get_all_records()
+        _sheet_warnings.pop((cache_key[0], ws.title), None)
         with _records_cache_lock:
-            _records_cache[cache_key] = (time.monotonic(), result)
+            changed_during_read = (
+                _records_cache_generation.get(cache_key, 0) != generation
+            )
+            if not changed_during_read:
+                _records_cache[cache_key] = (time.monotonic(), result)
+        if changed_during_read and _race_retries > 0:
+            return safe_get_all_records(
+                ws,
+                _retries,
+                _use_cache=False,
+                _race_retries=_race_retries - 1,
+            )
         return result
     except gspread.exceptions.APIError as e:
         status = getattr(getattr(e, "response", None), "status_code", None)
         if _retries > 0 and status in (429, 500, 503):
             time.sleep(1.5)
-            return safe_get_all_records(ws, _retries - 1, _use_cache)
+            return safe_get_all_records(
+                ws, _retries - 1, _use_cache, _race_retries
+            )
         _sheet_warnings[(cache_key[0], ws.title)] = f"শীট '{ws.title}' পড়তে API এরর: {e}"
         return []
     except Exception as e:
         _sheet_warnings[(cache_key[0], ws.title)] = f"শীট '{ws.title}' পড়তে সমস্যা: {e}"
         return []
+
+
+def _records_from_batch_values(values: list[list]) -> list[dict]:
+    """Match gspread get_all_records semantics for values.batchGet output."""
+    if not values or values == [[]] or not values[0]:
+        return []
+    headers = values[0]
+    if len(headers) != len(set(headers)):
+        raise gspread.exceptions.GSpreadException(
+            "the header row in the worksheet is not unique"
+        )
+    width = len(headers)
+    rows = []
+    for source_row in values[1:]:
+        row = list(source_row[:width])
+        row.extend([""] * (width - len(row)))
+        rows.append(numericise_all(row, False, "", False, []))
+    return to_records(headers, rows)
+
+
+def batch_get_records(sheet_names: list[str]) -> dict[str, list[dict]]:
+    """Read multiple worksheets with one Sheets values.batchGet request.
+
+    Tenant identity is asserted for every worksheet and each result uses the
+    same tenant-scoped cache as safe_get_all_records().
+    """
+    names = list(dict.fromkeys(str(name) for name in sheet_names if name))
+    if not names:
+        return {}
+
+    worksheets = {name: _worksheet(name) for name in names}
+    result: dict[str, list[dict]] = {}
+    missing: list[str] = []
+    generations: dict[str, int] = {}
+    now = time.monotonic()
+    for name, ws in worksheets.items():
+        key = _records_cache_key(ws)
+        with _records_cache_lock:
+            entry = _records_cache.get(key)
+            generations[name] = _records_cache_generation.get(key, 0)
+        if entry is not None and now - entry[0] < _RECORDS_CACHE_TTL:
+            result[name] = entry[1]
+        else:
+            missing.append(name)
+
+    if missing:
+        ranges = [f"'{name.replace(chr(39), chr(39) * 2)}'" for name in missing]
+        response = _get_spreadsheet().values_batch_get(
+            ranges,
+            params={"valueRenderOption": "FORMATTED_VALUE"},
+        )
+        value_ranges = response.get("valueRanges", [])
+        for index, name in enumerate(missing):
+            values = value_ranges[index].get("values", []) if index < len(value_ranges) else []
+            records = _records_from_batch_values(values)
+            ws = worksheets[name]
+            key = _records_cache_key(ws)
+            with _records_cache_lock:
+                changed_during_read = (
+                    _records_cache_generation.get(key, 0)
+                    != generations[name]
+                )
+                if not changed_during_read:
+                    _records_cache[key] = (time.monotonic(), records)
+            if changed_during_read:
+                records = safe_get_all_records(ws, _use_cache=False)
+            _sheet_warnings.pop((key[0], ws.title), None)
+            result[name] = records
+
+    return {name: result.get(name, []) for name in names}
 
 
 _sheet_warnings: dict = {}
@@ -135,7 +214,9 @@ def _invalidate_cache(ws) -> None:
     """কোনো শীটে write (append/update) হওয়ার পর সেই শীটের cache মুছে দেয়, যাতে সাথে সাথে
     করা পরবর্তী read পুরনো (stale) ডেটা না দেখায়।"""
     with _records_cache_lock:
-        _records_cache.pop(_records_cache_key(ws), None)
+        key = _records_cache_key(ws)
+        _records_cache.pop(key, None)
+        _records_cache_generation[key] = _records_cache_generation.get(key, 0) + 1
 
 
 from google.oauth2.service_account import Credentials
