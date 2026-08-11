@@ -66,14 +66,29 @@ def legacy_book():
 
 
 class DepartmentSchemaMigrationTests(unittest.TestCase):
-    def test_dry_run_is_non_mutating_and_complete(self):
+    def test_dry_run_is_non_mutating_and_limited_to_staff_scope(self):
         book = legacy_book()
         before = {name: ws.headers[:] for name, ws in book.sheets.items()}
         actions = MODULE.migrate(book)
-        self.assertTrue(actions)
+        self.assertEqual(
+            actions,
+            [
+                MODULE.Action(
+                    "add_headers", MODULE.STAFF_SHEET, tuple(MODULE.STAFF_HEADERS)
+                ),
+                MODULE.Action(
+                    "create_sheet", MODULE.MAPPING_SHEET,
+                    tuple(MODULE.MAPPING_HEADERS),
+                ),
+            ],
+        )
         self.assertEqual(before, {name: ws.headers[:] for name, ws in book.sheets.items()})
-        self.assertTrue(any(a.sheet == MODULE.MAPPING_SHEET for a in actions))
-        self.assertTrue(any(a.sheet == "Dental_Procedures" for a in actions))
+        out_of_scope_tabs = {
+            "Daily_Visits", "Invoices", "Dental_Procedures",
+            "Dental_Tooth_Chart", "Dental_Treatment_Plans",
+            "Dental_Lab_Orders", "Dental_Material_Usage",
+        }
+        self.assertTrue(out_of_scope_tabs.isdisjoint(book.sheets))
 
     def test_apply_requires_backup_and_snapshot(self):
         book = legacy_book()
@@ -105,23 +120,18 @@ class DepartmentSchemaMigrationTests(unittest.TestCase):
                 ),
                 [],
             )
-            self.assertIn("Department", book.worksheet("05_Treatments").headers)
+            self.assertEqual(
+                book.worksheet(MODULE.STAFF_SHEET).headers,
+                ["ID", "Primary_Department", "Department_Access"],
+            )
             self.assertEqual(
                 book.worksheet(MODULE.MAPPING_SHEET).headers,
                 MODULE.MAPPING_HEADERS,
             )
+            self.assertEqual(book.worksheet("05_Treatments").headers, ["ID"])
+            self.assertEqual(book.worksheet("21_Cash_Movement").headers, ["ID"])
         finally:
             Path(snapshot).unlink(missing_ok=True)
-
-    def test_cash_movement_receives_department_custody_fields(self):
-        book = legacy_book()
-        actions = MODULE.plan_migration(book)
-        cash = next(a for a in actions if a.sheet == "21_Cash_Movement" and a.kind == "add_headers")
-        self.assertIn("Department", cash.headers)
-        self.assertIn("Requested_Amount", cash.headers)
-        self.assertIn("Received_Amount", cash.headers)
-        self.assertIn("Difference", cash.headers)
-
 
 if __name__ == "__main__":
     unittest.main()
