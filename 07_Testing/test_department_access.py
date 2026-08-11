@@ -50,8 +50,8 @@ class DepartmentAccessTests(unittest.TestCase):
     def test_mapping_supports_multiple_departments_without_csv_scope(self):
         person = staff("Manager", "Physio")
         mappings = [
-            {"Staff_ID": "S1", "Department": "Physio", "Status": "Active"},
-            {"Staff_ID": "S1", "Department": "Dental", "Status": "Active"},
+            {"Staff_ID": "S1", "Department": "Physio", "Role": "Manager", "Status": "Active"},
+            {"Staff_ID": "S1", "Department": "Dental", "Role": "Manager", "Status": "Active"},
         ]
         self.assertEqual(
             allowed_departments(person, mappings),
@@ -90,8 +90,8 @@ class DepartmentAccessTests(unittest.TestCase):
     def test_auditor_is_business_read_only_without_clinical_access(self):
         person = staff("Auditor", "All")
         mappings = [
-            {"Staff_ID": "S1", "Department": "Physio", "Status": "Active"},
-            {"Staff_ID": "S1", "Department": "Dental", "Status": "Active"},
+            {"Staff_ID": "S1", "Department": "Physio", "Role": "Auditor", "Status": "Active"},
+            {"Staff_ID": "S1", "Department": "Dental", "Role": "Auditor", "Status": "Active"},
         ]
         record = {"Department": "Dental"}
         self.assertTrue(authorize_record(person, record, AccessAction.READ, mappings).allowed)
@@ -114,6 +114,90 @@ class DepartmentAccessTests(unittest.TestCase):
         record = {"Department": "Dental"}
         self.assertTrue(authorize_record(person, record, AccessAction.CLINICAL_READ).allowed)
         self.assertFalse(authorize_record(person, record, AccessAction.CLINICAL_WRITE).allowed)
+
+
+class LiveAssignmentAuthorizationTests(unittest.TestCase):
+    def test_owner_all_mapping_works_without_primary_department(self):
+        owner = {"Staff_ID": "ST001", "Role": "Owner"}
+        mappings = [{
+            "Staff_ID": "ST001",
+            "Department": "All",
+            "Role": "Owner",
+            "Status": "Active",
+        }]
+        self.assertTrue(
+            authorize_record(
+                owner, {"Department": "Physio"}, AccessAction.READ, mappings
+            ).allowed
+        )
+        self.assertTrue(
+            authorize_record(
+                owner, {"Department": "Dental"}, AccessAction.READ, mappings
+            ).allowed
+        )
+
+    def test_nipa_secondary_therapist_role_authorizes_assigned_write(self):
+        nipa = {"Staff_ID": "ST005", "Role": "Manager"}
+        mappings = [
+            {
+                "Staff_ID": "ST005", "Department": "Physio",
+                "Role": "Manager", "Status": "Active",
+            },
+            {
+                "Staff_ID": "ST005", "Department": "Physio",
+                "Role": "Therapist", "Status": "Active",
+            },
+        ]
+        record = {"Department": "Physio"}
+        self.assertFalse(
+            authorize_record(
+                nipa, record, AccessAction.CLINICAL_WRITE, mappings
+            ).allowed
+        )
+        self.assertTrue(
+            authorize_record(
+                nipa, record, AccessAction.CLINICAL_WRITE, mappings,
+                assigned_or_cross_cover=True,
+            ).allowed
+        )
+
+    def test_rakib_assistant_role_allows_dental_read_not_write(self):
+        rakib = {"Staff_ID": "ST002", "Role": "Receptionist"}
+        mappings = [
+            {
+                "Staff_ID": "ST002", "Department": "Dental",
+                "Role": "Receptionist", "Status": "Active",
+            },
+            {
+                "Staff_ID": "ST002", "Department": "Dental",
+                "Role": "Dental_Assistant", "Status": "Active",
+            },
+        ]
+        record = {"Department": "Dental"}
+        self.assertTrue(
+            authorize_record(
+                rakib, record, AccessAction.CLINICAL_READ, mappings
+            ).allowed
+        )
+        self.assertFalse(
+            authorize_record(
+                rakib, record, AccessAction.CLINICAL_WRITE, mappings,
+                assigned_or_cross_cover=True,
+            ).allowed
+        )
+
+    def test_roleless_mapping_fails_closed(self):
+        person = {"Staff_ID": "ST010", "Role": "Manager"}
+        mappings = [{
+            "Staff_ID": "ST010",
+            "Department": "Dental",
+            "Status": "Active",
+        }]
+        decision = authorize_record(
+            person, {"Department": "Dental"}, AccessAction.READ, mappings
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, "staff_scope_missing")
 
 
 if __name__ == "__main__":
