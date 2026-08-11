@@ -6,6 +6,10 @@ class Role(str, Enum):
     RECEPTIONIST = "Receptionist"
     THERAPIST = "Therapist"
     MANAGER = "Manager"
+    DENTIST = "Dentist"
+    DENTAL_ASSISTANT = "Dental_Assistant"
+    AUDITOR = "Auditor"
+    SYSTEM_ADMIN = "System Admin"
 
 
 # ---- মেনু আইটেমসমূহ ----
@@ -184,8 +188,71 @@ def get_menu_for_role(role_str: str) -> list[str]:
     return flat
 
 
+def _normalized_roles(role_values) -> list[Role]:
+    """Return known roles once, in deterministic privilege/menu order."""
+    if isinstance(role_values, str):
+        role_values = [role_values]
+    resolved = set()
+    for value in role_values or []:
+        try:
+            resolved.add(Role(str(value).strip()))
+        except ValueError:
+            continue
+    priority = [
+        Role.OWNER,
+        Role.MANAGER,
+        Role.RECEPTIONIST,
+        Role.THERAPIST,
+        Role.DENTIST,
+        Role.DENTAL_ASSISTANT,
+        Role.AUDITOR,
+        Role.SYSTEM_ADMIN,
+    ]
+    return [role for role in priority if role in resolved]
+
+
+def get_menu_rows_for_roles(role_values) -> list[list[str]]:
+    """Merge menus for explicit effective roles without duplicate buttons."""
+    rows: list[list[str]] = []
+    seen: set[str] = set()
+    for role in _normalized_roles(role_values):
+        for row in ROLE_MENU_ROWS.get(role, []):
+            filtered = [item for item in row if item not in seen]
+            if filtered:
+                rows.append(filtered)
+                seen.update(filtered)
+    return rows
+
+
+def get_menu_for_roles(role_values) -> list[str]:
+    items = [item for row in get_menu_rows_for_roles(role_values) for item in row]
+    seen = set(items)
+    for role in _normalized_roles(role_values):
+        for item in ROLE_HIDDEN_MENU_ITEMS.get(role, []):
+            if item not in seen:
+                items.append(item)
+                seen.add(item)
+    return items
+
+
+def get_items_for_roles(items_map: dict[Role, list[str]], role_values) -> list[str]:
+    items: list[str] = []
+    seen: set[str] = set()
+    for role in _normalized_roles(role_values):
+        for item in items_map.get(role, []):
+            if item not in seen:
+                items.append(item)
+                seen.add(item)
+    return items
+
+
+def can_any_access(role_values, menu_item: str) -> bool:
+    return menu_item in get_menu_for_roles(role_values)
+
+
 def can_access(role_str: str, menu_item: str) -> bool:
-    return menu_item in get_menu_for_role(role_str)
+    """Legacy single-role adapter; production handlers use can_any_access."""
+    return can_any_access([role_str], menu_item)
 
 
 def is_therapist_owner_of_patient(therapist_name: str, patient_row: dict) -> bool:
