@@ -201,6 +201,9 @@ _ALL_MENU_ITEMS = [
     roles.MENU_OWNER_CLINIC_EXPENSE,
     roles.MENU_HOUSEHOLD_WITHDRAWAL,
     roles.MENU_CUSTODY_BALANCE,
+    roles.MENU_PHYSIO_FINANCE_DASHBOARD,
+    roles.MENU_DENTAL_FINANCE_DASHBOARD,
+    roles.MENU_COMBINED_BUSINESS_SUMMARY,
     roles.MENU_FINANCE,
 ]
 _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
@@ -6134,6 +6137,83 @@ async def custody_balance_start(
     )
 
 
+def _owner_finance_view_text(data: dict, view: str) -> str:
+    date_str = data["Date"]
+    if view in {config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL}:
+        summary = data[view]
+        icon = "🩺" if view == config.DEPARTMENT_PHYSIO else "🦷"
+        title = f"{icon} {view} Dashboard"
+        comparison = ""
+        warning = ""
+    else:
+        summary = data["Combined"]
+        title = "🏢 Combined Business Summary"
+        physio = data[config.DEPARTMENT_PHYSIO]
+        dental = data[config.DEPARTMENT_DENTAL]
+        comparison = (
+            "\nDepartment totals\n"
+            f"🩺 Physio: collection ৳{physio['Month_Collection']:.0f}, "
+            f"net ৳{physio['Month_Net_Before_Salary']:.0f}\n"
+            f"🦷 Dental: collection ৳{dental['Month_Collection']:.0f}, "
+            f"net ৳{dental['Month_Net_Before_Salary']:.0f}\n"
+        )
+        unclassified = summary["Unclassified_Rows"]
+        warning = (
+            "\n\n⚠️ Unclassified (totals থেকে বাদ): "
+            f"Payment {unclassified['Payments']}, Expense {unclassified['Expenses']}, "
+            f"Cash Movement {unclassified['Cash_Movements']}"
+        )
+    opening = summary["Opening"]
+    closing = summary["Closing"]
+    return (
+        f"{title} — {date_str}\n\n"
+        f"আজকের collection: ৳{summary['Today_Collection']:.0f}\n"
+        f"এই মাসের collection: ৳{summary['Month_Collection']:.0f}\n"
+        f"এই মাসের clinic expense: ৳{summary['Month_Clinic_Expense']:.0f}\n"
+        f"এই মাসের net (salary-এর আগে): ৳{summary['Month_Net_Before_Salary']:.0f}\n"
+        f"Household Withdrawal: ৳{summary['Month_Household_Withdrawal']:.0f}\n"
+        f"{comparison}\n"
+        "Opening → Closing custody\n"
+        f"Reception: ৳{opening['Reception']:.0f} → ৳{closing['Reception']:.0f}\n"
+        f"Home Treasury: ৳{opening['Home Treasury']:.0f} → ৳{closing['Home Treasury']:.0f}\n"
+        f"Digital/Bank: ৳{opening['Digital/Bank']:.0f} → ৳{closing['Digital/Bank']:.0f}"
+        f"{warning}"
+    )
+
+
+async def owner_financial_dashboard_start(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, view: str
+):
+    staff = await _require_staff(update, context)
+    if staff is None:
+        return
+    menu_item = {
+        config.DEPARTMENT_PHYSIO: roles.MENU_PHYSIO_FINANCE_DASHBOARD,
+        config.DEPARTMENT_DENTAL: roles.MENU_DENTAL_FINANCE_DASHBOARD,
+        "Combined": roles.MENU_COMBINED_BUSINESS_SUMMARY,
+    }[view]
+    if not roles.can_access(staff.get("Role", ""), menu_item):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    today = bd_now().strftime("%Y-%m-%d")
+    data = await async_runtime.run_sheets_read(
+        sheets.get_owner_financial_dashboard, today
+    )
+    await update.message.reply_text(_owner_finance_view_text(data, view))
+
+
+async def physio_finance_dashboard_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await owner_financial_dashboard_start(update, context, config.DEPARTMENT_PHYSIO)
+
+
+async def dental_finance_dashboard_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await owner_financial_dashboard_start(update, context, config.DEPARTMENT_DENTAL)
+
+
+async def combined_business_summary_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await owner_financial_dashboard_start(update, context, "Combined")
+
+
 def main():
     global _tenant_resolver
     init_sentry()
@@ -6302,6 +6382,18 @@ def main():
             custody_balance_start,
         )
     )
+    app.add_handler(MessageHandler(
+        filters.Regex(f"^{roles.MENU_PHYSIO_FINANCE_DASHBOARD}$"),
+        physio_finance_dashboard_start,
+    ))
+    app.add_handler(MessageHandler(
+        filters.Regex(f"^{roles.MENU_DENTAL_FINANCE_DASHBOARD}$"),
+        dental_finance_dashboard_start,
+    ))
+    app.add_handler(MessageHandler(
+        filters.Regex(f"^{roles.MENU_COMBINED_BUSINESS_SUMMARY}$"),
+        combined_business_summary_start,
+    ))
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(learning_quiz_answer_callback, pattern="^lquiz:"))
     app.add_handler(CommandHandler("search", search_patient))
