@@ -66,6 +66,8 @@ class DepartmentRoleAssignment:
 
 
 def normalize_department(value: object) -> Department | None:
+    if isinstance(value, Department):
+        return value
     text = str(value or "").strip().casefold()
     return {
         "physio": Department.PHYSIO,
@@ -75,6 +77,8 @@ def normalize_department(value: object) -> Department | None:
 
 
 def normalize_role(value: object) -> Role | None:
+    if isinstance(value, Role):
+        return value
     text = str(value or "").strip().replace("-", "_").replace(" ", "_").casefold()
     return {
         "owner": Role.OWNER,
