@@ -397,8 +397,11 @@ class CashHandoverRoleTests(unittest.TestCase):
             roles.MENU_COMBINED_BUSINESS_SUMMARY,
         ):
             self.assertIn(item, owner_items)
+            self.assertTrue(roles.can_access("Owner", item))
             self.assertNotIn(item, roles.ROLE_FINANCE_ITEMS[roles.Role.RECEPTIONIST])
             self.assertNotIn(item, roles.ROLE_FINANCE_ITEMS[roles.Role.MANAGER])
+            self.assertFalse(roles.can_access("Receptionist", item))
+            self.assertFalse(roles.can_access("Manager", item))
 
 
 class OwnerFinancialDashboardTests(unittest.TestCase):
