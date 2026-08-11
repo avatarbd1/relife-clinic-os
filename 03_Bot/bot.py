@@ -233,6 +233,7 @@ _ATTENDANCE_MENU_REGEX = "^(?:" + "|".join(
 (SALARY_SELECT_STAFF, SALARY_ENTER_AMOUNT, SALARY_NOTE, SALARY_CONFIRM) = range(45, 49)  # Staff Salary System
 (COST_CATEGORY, COST_AMOUNT, COST_NOTE, COST_CONFIRM) = range(49, 53)  # Daily Cost Tracker
 (CASH_AMOUNT, CASH_NOTE, CASH_CONFIRM) = range(53, 56)  # Cash handover workflow
+(COST_DEPARTMENT, CASH_DEPARTMENT) = range(56, 58)
 (PAYDEL_LIST, PAYDEL_CONFIRM) = range(300, 302)  # আজকের এন্ট্রি মুছার ফ্লো
 (INV_UPDATE,) = range(310, 311)  # ইনভেন্টরি স্টক আপডেট ফ্লো
 
@@ -5431,8 +5432,27 @@ async def cash_handover_start(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not roles.can_access(staff.get("Role", ""), roles.MENU_CASH_HANDOVER):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
+    context.user_data["cash_handover"] = {}
     await update.message.reply_text(
-        "💵 Reception থেকে Home Treasury-তে কত টাকা হ্যান্ডওভার করবে?\n"
+        "কোন বিভাগের Reception cash হ্যান্ডওভার করবে?",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🩺 Physio", callback_data="cashdept_Physio")],
+            [InlineKeyboardButton("🦷 Dental", callback_data="cashdept_Dental")],
+        ]),
+    )
+    return CASH_DEPARTMENT
+
+
+async def cash_department_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    department = query.data.replace("cashdept_", "", 1)
+    if department not in (config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL):
+        await query.edit_message_text("❌ বিভাগ সঠিক নয়।")
+        return ConversationHandler.END
+    context.user_data["cash_handover"] = {"Department": department}
+    await query.edit_message_text(
+        f"{department} Reception থেকে Home Treasury-তে কত টাকা হ্যান্ডওভার করবে?\n"
         "শুধু টাকার পরিমাণ লেখো (যেমন: 5000):"
     )
     return CASH_AMOUNT
@@ -5447,7 +5467,9 @@ async def cash_amount_receive(update: Update, context: ContextTypes.DEFAULT_TYPE
     if amount <= 0:
         await update.message.reply_text("❌ Amount অবশ্যই ০-এর বেশি হতে হবে:")
         return CASH_AMOUNT
-    context.user_data["cash_handover"] = {"Amount": amount}
+    handover = context.user_data.get("cash_handover", {})
+    handover["Amount"] = amount
+    context.user_data["cash_handover"] = handover
     await update.message.reply_text("কোনো নোট থাকলে লেখো, না থাকলে '-' দাও:")
     return CASH_NOTE
 
@@ -5459,6 +5481,7 @@ async def cash_note_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["cash_handover"] = handover
     await update.message.reply_text(
         "💵 ক্যাশ হ্যান্ডওভার\n"
+        f"Department: {handover.get('Department', '')}\n"
         "From: Reception\n"
         "To: Home Treasury\n"
         f"Amount: ৳{handover.get('Amount', 0):.0f}\n"
@@ -5496,6 +5519,7 @@ async def cash_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
             handover.get("Amount", 0),
             moved_by,
             handover.get("Note", ""),
+            handover.get("Department", ""),
         )
         await update.message.reply_text(
             f"✅ হ্যান্ডওভার request পাঠানো হয়েছে। ID: {movement_id}\n"
@@ -5679,14 +5703,44 @@ async def _expense_form_start(
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
     context.user_data["cost"] = {"Mode": mode}
+    await update.message.reply_text(
+        "খরচ কোন বিভাগের?",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🩺 Physio", callback_data="costdept_Physio")],
+            [InlineKeyboardButton("🦷 Dental", callback_data="costdept_Dental")],
+        ]),
+    )
+    return COST_DEPARTMENT
+
+
+async def _send_expense_category_prompt(message):
     buttons = [
         [InlineKeyboardButton(cat, callback_data=f"costcat_{cat}")]
         for cat in sheets.EXPENSE_CATEGORIES
     ]
-    await update.message.reply_text(
+    await message.reply_text(
         "খরচের ক্যাটাগরি বেছে নাও:",
         reply_markup=InlineKeyboardMarkup(buttons),
     )
+
+
+async def cost_department_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    department = query.data.replace("costdept_", "", 1)
+    if department not in (config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL):
+        await query.edit_message_text("❌ বিভাগ সঠিক নয়।")
+        return ConversationHandler.END
+    expense = context.user_data.get("cost", {})
+    expense["Department"] = department
+    context.user_data["cost"] = expense
+    await query.edit_message_text(f"বিভাগ: {department}")
+    if expense.get("Mode") == "household":
+        await query.message.reply_text(
+            "🏠 Home Treasury থেকে household-এর জন্য কত টাকা নিচ্ছেন?"
+        )
+        return COST_AMOUNT
+    await _send_expense_category_prompt(query.message)
     return COST_CATEGORY
 
 
@@ -5726,9 +5780,13 @@ async def household_withdrawal_start(
         "Category": "Household Withdrawal",
     }
     await update.message.reply_text(
-        "🏠 Home Treasury থেকে household-এর জন্য কত টাকা নিচ্ছেন?"
+        "এই withdrawal কোন বিভাগের business source থেকে?",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🩺 Physio", callback_data="costdept_Physio")],
+            [InlineKeyboardButton("🦷 Dental", callback_data="costdept_Dental")],
+        ]),
     )
-    return COST_AMOUNT
+    return COST_DEPARTMENT
 
 
 async def cost_category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -5850,6 +5908,7 @@ async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
                 expense.get("Amount", 0),
                 actor,
                 expense.get("Note", ""),
+                expense.get("Department", ""),
             )
             await update.message.reply_text(
                 f"✅ খরচের request পাঠানো হয়েছে। ID: {expense_id}\n"
@@ -5884,6 +5943,7 @@ async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
                 status="Paid",
                 approved_by=actor,
                 paid_by=actor,
+                department=expense.get("Department", ""),
             )
             label = (
                 "Household Withdrawal"
@@ -6269,6 +6329,9 @@ def main():
             )
         ],
         states={
+            CASH_DEPARTMENT: [
+                CallbackQueryHandler(cash_department_callback, pattern="^cashdept_")
+            ],
             CASH_AMOUNT: [
                 MessageHandler(
                     filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX),
@@ -6331,6 +6394,9 @@ def main():
             ),
         ],
         states={
+            COST_DEPARTMENT: [
+                CallbackQueryHandler(cost_department_callback, pattern="^costdept_")
+            ],
             COST_CATEGORY: [
                 CallbackQueryHandler(cost_category_callback, pattern="^costcat_")
             ],
