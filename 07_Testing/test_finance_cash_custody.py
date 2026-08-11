@@ -17,6 +17,7 @@ os.environ.setdefault("GOOGLE_CREDENTIALS_PATH", __file__)
 
 import config  # noqa: E402
 import sheets  # noqa: E402
+import roles  # noqa: E402
 
 MIGRATION_PATH = ROOT / "05_GoogleSheets" / "migrate_cash_custody_foundation.py"
 spec = importlib.util.spec_from_file_location("cash_migration", MIGRATION_PATH)
@@ -192,6 +193,43 @@ class CashHandoverConfirmationTests(unittest.TestCase):
                 sheets.add_cash_movement(
                     "Reception", "Home Treasury", 500, "S1"
                 )
+
+
+class CashHandoverRoleTests(unittest.TestCase):
+    def test_reception_can_handover_but_cannot_receive(self):
+        self.assertTrue(
+            roles.can_access("Receptionist", roles.MENU_CASH_HANDOVER)
+        )
+        self.assertTrue(
+            roles.can_access("Receptionist", roles.MENU_CASH_MOVEMENTS)
+        )
+        self.assertFalse(
+            roles.can_access("Receptionist", roles.MENU_CASH_RECEIVE)
+        )
+
+    def test_owner_and_manager_can_finalize_but_therapist_cannot(self):
+        for role in ("Owner", "Manager"):
+            with self.subTest(role=role):
+                self.assertTrue(
+                    roles.can_access(role, roles.MENU_CASH_RECEIVE)
+                )
+        self.assertFalse(
+            roles.can_access("Therapist", roles.MENU_CASH_RECEIVE)
+        )
+        self.assertFalse(
+            roles.can_access("Therapist", roles.MENU_CASH_HANDOVER)
+        )
+
+    def test_bot_wires_cash_handover_handlers(self):
+        source = (BOT_DIR / "bot.py").read_text(encoding="utf-8")
+        for handler in (
+            "cash_handover_start",
+            "cash_receive_start",
+            "cash_finalize_callback",
+            "cash_movements_start",
+        ):
+            with self.subTest(handler=handler):
+                self.assertIn(handler, source)
 
 
 class FakeMigrationWorksheet:
