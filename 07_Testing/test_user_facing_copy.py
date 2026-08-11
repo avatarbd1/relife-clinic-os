@@ -91,5 +91,27 @@ class UserFacingCopyTests(unittest.TestCase):
                 self.assertIsNotNone(route_pattern.fullmatch(label))
 
 
+    def test_all_therapists_owner_and_manager_can_view_patient_files(self):
+        tree = ast.parse(BOT_SOURCE)
+        function = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.AsyncFunctionDef)
+            and node.name == "_staff_can_view_patient_files"
+        )
+        return_node = next(
+            node for node in ast.walk(function) if isinstance(node, ast.Return)
+        )
+        self.assertIsInstance(return_node.value, ast.Compare)
+        allowed = {
+            element.value
+            for element in return_node.value.comparators[0].elts
+            if isinstance(element, ast.Constant)
+        }
+        self.assertEqual(allowed, {"Owner", "Manager", "Therapist"})
+        function_source = ast.get_source_segment(BOT_SOURCE, function)
+        self.assertNotIn("_therapist_has_access_to_patient", function_source)
+
+
 if __name__ == "__main__":
     unittest.main()

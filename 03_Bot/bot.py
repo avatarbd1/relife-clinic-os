@@ -4513,17 +4513,9 @@ def _therapist_has_access_to_patient(therapist_name: str, patient: dict) -> bool
 
 
 async def _staff_can_view_patient_files(staff: dict, patient: dict) -> bool:
-    role = staff.get("Role", "").strip()
-    if role in ("Owner", "Manager"):
-        return True
-    if role != "Therapist":
-        return False
-    therapist_name = staff.get("Full_Name", "").strip()
-    if not therapist_name:
-        return False
-    return await async_runtime.run_sheets_read(
-        _therapist_has_access_to_patient, therapist_name, patient
-    )
+    """Clinical reports are shared with every therapist plus Owner/Manager."""
+    role = str(staff.get("Role", "")).strip()
+    return role in ("Owner", "Manager", "Therapist")
 
 
 _REPORT_FILES_PER_PAGE = 8
