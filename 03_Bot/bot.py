@@ -49,6 +49,7 @@ from telegram.ext import (
 import config
 from config import bd_now
 import sheets
+import department_access
 from attendance_location import validate_location
 from observability import capture_exception, init_sentry
 import roles
@@ -293,8 +294,26 @@ async def _cancel_and_go_home(update: Update, context: ContextTypes.DEFAULT_TYPE
     return ConversationHandler.END
 
 
-def _menu_keyboard(role_str: str) -> ReplyKeyboardMarkup:
-    rows = roles.get_menu_rows_for_role(role_str)
+def _effective_role_strings(staff_or_role) -> list[str]:
+    if isinstance(staff_or_role, str):
+        return [staff_or_role]
+    staff = staff_or_role or {}
+    assignments = staff.get("_Department_Role_Assignments", ())
+    role_values = [assignment.role.value for assignment in assignments]
+    if role_values or config.DEPARTMENT_ENFORCEMENT_ENABLED:
+        return role_values
+    legacy_role = str(staff.get("Role", "")).strip()
+    return [legacy_role] if legacy_role else []
+
+
+def _staff_can_access_menu(staff: dict, menu_item: str) -> bool:
+    return roles.can_any_access(_effective_role_strings(staff), menu_item)
+
+
+def _menu_keyboard(staff_or_role) -> ReplyKeyboardMarkup:
+    rows = roles.get_menu_rows_for_roles(
+        _effective_role_strings(staff_or_role)
+    )
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
 
 
@@ -609,7 +628,7 @@ async def pt_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
         return
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_MY_PATIENTS):
+    if not _staff_can_access_menu(staff, roles.MENU_MY_PATIENTS):
         await update.effective_message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
     await update.effective_message.reply_text(
@@ -1057,6 +1076,22 @@ async def _require_staff(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "এই ID-টা ক্লিনিক ম্যানেজারকে দাও, তিনি 08_Staff শীটে যোগ করে দেবেন।"
         )
         return None
+
+    staff = dict(staff)
+    if config.DEPARTMENT_ENFORCEMENT_ENABLED:
+        mappings = await async_runtime.run_sheets_read(
+            sheets.get_staff_department_access, staff.get("Staff_ID", "")
+        )
+        assignments = department_access.effective_assignments(staff, mappings)
+        if not assignments:
+            await update.effective_message.reply_text(
+                "⛔ তোমার সক্রিয় Department + Role assignment পাওয়া যায়নি। "
+                "Owner-কে Staff_Department_Access ঠিক করতে বলো।"
+            )
+            return None
+        staff["_Department_Mappings"] = mappings
+        staff["_Department_Role_Assignments"] = assignments
+
     context.user_data["staff"] = staff
     return staff
 
@@ -1064,6 +1099,9 @@ async def _require_staff(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def _patient_department_mappings(staff: dict) -> list[dict]:
     if not config.DEPARTMENT_ENFORCEMENT_ENABLED:
         return []
+    cached = staff.get("_Department_Mappings")
+    if cached is not None:
+        return cached
     return await async_runtime.run_sheets_read(
         sheets.get_staff_department_access, staff.get("Staff_ID", "")
     )
@@ -1144,7 +1182,7 @@ async def _send_daily_tip_and_menu(message, context: ContextTypes.DEFAULT_TYPE, 
 
     if not staff_id:
         await message.reply_text(
-            "নিচের মেনু থেকে বেছে নাও 👇", reply_markup=_menu_keyboard(role)
+            "নিচের মেনু থেকে বেছে নাও 👇", reply_markup=_menu_keyboard(staff)
         )
         return
 
@@ -1156,7 +1194,7 @@ async def _send_daily_tip_and_menu(message, context: ContextTypes.DEFAULT_TYPE, 
 
     await message.reply_text(
         f"💡 আজকের টিপ ({tip['category']}):\n{tip['text']}\n\nনিচের মেনু থেকে বেছে নাও 👇",
-        reply_markup=_menu_keyboard(role),
+        reply_markup=_menu_keyboard(staff),
     )
 
 
@@ -1189,7 +1227,7 @@ async def go_home(update: Update, context: ContextTypes.DEFAULT_TYPE):
     name = staff.get("Full_Name", "")
     await update.message.reply_text(
         f"স্বাগতম, {name}! ({role})\nনিচের মেনু থেকে বেছে নাও 👇",
-        reply_markup=_menu_keyboard(role),
+        reply_markup=_menu_keyboard(staff),
     )
 
 
@@ -1203,7 +1241,7 @@ async def reg_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_PATIENT_REG):
+    if not _staff_can_access_menu(staff, roles.MENU_PATIENT_REG):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
     context.user_data["new_patient"] = {}
@@ -1452,7 +1490,7 @@ async def reg_phone_dup_confirm(update: Update, context: ContextTypes.DEFAULT_TY
     context.user_data.pop("new_patient_missing", None)
     await update.message.reply_text(
         "❌ ডুপ্লিকেট এড়াতে রেজিস্ট্রেশন বাতিল করা হয়েছে।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
+        reply_markup=_menu_keyboard(staff),
     )
     return ConversationHandler.END
 
@@ -1495,7 +1533,7 @@ async def reg_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.warning(f"inventory auto-deduct (Patient Card) ব্যর্থ হয়েছে: {e}")
         await update.message.reply_text(
             f"✅ রোগী রেজিস্ট্রেশন সম্পন্ন! Patient ID: {patient_id}",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
+            reply_markup=_menu_keyboard(staff),
         )
         new_patient_row = await async_runtime.run_sheets_read(
             sheets.get_patient_by_id, patient_id
@@ -1508,7 +1546,7 @@ async def reg_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(
             "❌ বাতিল করা হয়েছে।",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
+            reply_markup=_menu_keyboard(staff),
         )
     context.user_data.pop("new_patient", None)
     context.user_data.pop("new_patient_dup_checked", None)
@@ -1523,7 +1561,7 @@ async def reg_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.pop("new_patient_missing", None)
     await update.message.reply_text(
         "রেজিস্ট্রেশন বাতিল করা হয়েছে।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
+        reply_markup=_menu_keyboard(staff),
     )
     return ConversationHandler.END
 
@@ -1534,7 +1572,7 @@ async def apt_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_APPOINTMENT):
+    if not _staff_can_access_menu(staff, roles.MENU_APPOINTMENT):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
     context.user_data["new_appointment"] = {}
@@ -1869,11 +1907,11 @@ async def apt_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             msg = f"✅ {len(ids)}টা অ্যাপয়েন্টমেন্ট বুক হয়েছে!\nAppointment IDs: {', '.join(ids)}"
         else:
             msg = f"✅ অ্যাপয়েন্টমেন্ট বুক হয়েছে! Appointment ID: {ids[0] if ids else '-'}"
-        await update.message.reply_text(msg, reply_markup=_menu_keyboard(staff.get("Role", "")))
+        await update.message.reply_text(msg, reply_markup=_menu_keyboard(staff))
     else:
         await update.message.reply_text(
             "❌ বাতিল করা হয়েছে।",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
+            reply_markup=_menu_keyboard(staff),
         )
     context.user_data.pop("new_appointment", None)
     context.user_data.pop("apt_dates", None)
@@ -1889,7 +1927,7 @@ async def apt_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.pop("apt_times", None)
     await update.effective_message.reply_text(
         "অ্যাপয়েন্টমেন্ট বুকিং বাতিল করা হয়েছে।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
+        reply_markup=_menu_keyboard(staff),
     )
     return ConversationHandler.END
 
@@ -1917,9 +1955,9 @@ async def today_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE
     if staff is None:
         return
     buttons = []
-    if roles.can_access(staff.get("Role", ""), roles.MENU_ATTENDANCE):
+    if _staff_can_access_menu(staff, roles.MENU_ATTENDANCE):
         buttons.append([InlineKeyboardButton("🕐 হাজিরা", callback_data="sched_att")])
-    if roles.can_access(staff.get("Role", ""), roles.MENU_TODAY_APPOINTMENTS):
+    if _staff_can_access_menu(staff, roles.MENU_TODAY_APPOINTMENTS):
         buttons.append([InlineKeyboardButton("📋 আজকের অ্যাপয়েন্টমেন্ট", callback_data="sched_apt")])
     if not buttons:
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
@@ -1951,11 +1989,9 @@ async def _generic_submenu(update: Update, context: ContextTypes.DEFAULT_TYPE, i
     staff = await _require_staff(update, context)
     if staff is None:
         return
-    try:
-        role = roles.Role(staff.get("Role", "").strip())
-    except ValueError:
-        role = None
-    items = items_map.get(role, []) if role else []
+    items = roles.get_items_for_roles(
+        items_map, _effective_role_strings(staff)
+    )
     if not items:
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
@@ -1982,14 +2018,14 @@ async def back_to_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
         return
-    await update.message.reply_text("🏠 মূল মেনু", reply_markup=_menu_keyboard(staff.get("Role", "")))
+    await update.message.reply_text("🏠 মূল মেনু", reply_markup=_menu_keyboard(staff))
 
 
 async def attendance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
         return
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_ATTENDANCE):
+    if not _staff_can_access_menu(staff, roles.MENU_ATTENDANCE):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
     staff_id = staff.get("Staff_ID", "") or str(staff.get("Telegram_ID", ""))
@@ -2131,7 +2167,7 @@ async def attendance_location_receive(update: Update, context: ContextTypes.DEFA
     )
     await update.message.reply_text(
         f"✅ Check In হয়েছে: {time_str}\n📍 লোকেশন যাচাই হয়েছে।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
+        reply_markup=_menu_keyboard(staff),
     )
 
 
@@ -2141,7 +2177,7 @@ async def today_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE)
     staff = await _require_staff(update, context)
     if staff is None:
         return
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_TODAY_APPOINTMENTS):
+    if not _staff_can_access_menu(staff, roles.MENU_TODAY_APPOINTMENTS):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
     date_str = bd_now().strftime("%Y-%m-%d")
@@ -2231,7 +2267,7 @@ async def pay_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_PAYMENT):
+    if not _staff_can_access_menu(staff, roles.MENU_PAYMENT):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
     context.user_data["payment"] = {}
@@ -2422,7 +2458,7 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text not in ("হ্যাঁ", "yes", "y", "হা", "ha"):
         context.user_data.pop("payment", None)
         await update.message.reply_text(
-            "❌ বাতিল করা হয়েছে।", reply_markup=_menu_keyboard(staff.get("Role", ""))
+            "❌ বাতিল করা হয়েছে।", reply_markup=_menu_keyboard(staff)
         )
         return ConversationHandler.END
 
@@ -2466,7 +2502,7 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
 
         await update.message.reply_text(
-            "\n".join(lines), reply_markup=_menu_keyboard(staff.get("Role", ""))
+            "\n".join(lines), reply_markup=_menu_keyboard(staff)
         )
         reg_text, reg_kb = await async_runtime.run_sheets_read(
             _register_view_text_and_keyboard
@@ -2477,7 +2513,7 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             f"❌ পেমেন্ট সেভ করতে সমস্যা হয়েছে।\nError: {e}\n\n"
             "স্ক্রিনশট দিয়ে জানাও, ঠিক করে দেওয়া হবে।",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
+            reply_markup=_menu_keyboard(staff),
         )
     context.user_data.pop("payment", None)
     return ConversationHandler.END
@@ -2489,7 +2525,7 @@ async def pay_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.pop("pay_search_results", None)
     await update.effective_message.reply_text(
         "পেমেন্ট এন্ট্রি বাতিল করা হয়েছে।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
+        reply_markup=_menu_keyboard(staff),
     )
     return ConversationHandler.END
 
@@ -2517,7 +2553,7 @@ async def paydel_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_DELETE_ENTRY):
+    if not _staff_can_access_menu(staff, roles.MENU_DELETE_ENTRY):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
 
@@ -2528,7 +2564,7 @@ async def paydel_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not entries:
         await update.message.reply_text(
             "আজকে তোমার নামে কোনো এন্ট্রি নেই।",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
+            reply_markup=_menu_keyboard(staff),
         )
         return ConversationHandler.END
 
@@ -2605,7 +2641,7 @@ async def paydel_confirm_callback(update: Update, context: ContextTypes.DEFAULT_
     context.user_data.pop("paydel_entries", None)
     context.user_data.pop("paydel_selected", None)
     await query.message.reply_text(
-        "🏠 মূল মেনু", reply_markup=_menu_keyboard(staff.get("Role", ""))
+        "🏠 মূল মেনু", reply_markup=_menu_keyboard(staff)
     )
     return ConversationHandler.END
 
@@ -2618,7 +2654,7 @@ async def paydel_cancel_callback(update: Update, context: ContextTypes.DEFAULT_T
     context.user_data.pop("paydel_selected", None)
     await query.edit_message_text("বাতিল করা হয়েছে — কিছুই মোছা হয়নি।")
     await query.message.reply_text(
-        "🏠 মূল মেনু", reply_markup=_menu_keyboard(staff.get("Role", ""))
+        "🏠 মূল মেনু", reply_markup=_menu_keyboard(staff)
     )
     return ConversationHandler.END
 
@@ -2694,7 +2730,7 @@ async def treat_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_TREATMENT_NOTE):
+    if not _staff_can_access_menu(staff, roles.MENU_TREATMENT_NOTE):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
     context.user_data["treatment"] = {}
@@ -3063,7 +3099,7 @@ async def inventory_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_INVENTORY):
+    if not _staff_can_access_menu(staff, roles.MENU_INVENTORY):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
     await update.message.reply_text(
@@ -3113,7 +3149,7 @@ async def inventory_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def inventory_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff", {})
     await update.message.reply_text(
-        "ইনভেন্টরি মেনু থেকে বের হওয়া হলো।", reply_markup=_menu_keyboard(staff.get("Role", "")),
+        "ইনভেন্টরি মেনু থেকে বের হওয়া হলো।", reply_markup=_menu_keyboard(staff),
     )
     return ConversationHandler.END
 
@@ -3147,7 +3183,7 @@ async def _treat_do_save(result_reply, menu_reply, context: ContextTypes.DEFAULT
     context.user_data.pop("treat_selected", None)
     context.user_data.pop("treat_ai_question", None)
     await menu_reply(
-        "নিচের মেনু থেকে বেছে নাও 👇", reply_markup=_menu_keyboard(staff.get("Role", ""))
+        "নিচের মেনু থেকে বেছে নাও 👇", reply_markup=_menu_keyboard(staff)
     )
     return ConversationHandler.END
 
@@ -3168,7 +3204,7 @@ async def treat_machine_cancel_callback(update: Update, context: ContextTypes.DE
     context.user_data.pop("treat_selected", None)
     await query.edit_message_text("❌ বাতিল করা হয়েছে।")
     await query.message.reply_text(
-        "নিচের মেনু থেকে বেছে নাও 👇", reply_markup=_menu_keyboard(staff.get("Role", ""))
+        "নিচের মেনু থেকে বেছে নাও 👇", reply_markup=_menu_keyboard(staff)
     )
     return ConversationHandler.END
 
@@ -3180,7 +3216,7 @@ async def treat_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.pop("treat_search_results", None)
     await update.effective_message.reply_text(
         "ট্রিটমেন্ট নোট এন্ট্রি বাতিল করা হয়েছে।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
+        reply_markup=_menu_keyboard(staff),
     )
     return ConversationHandler.END
 
@@ -3301,7 +3337,7 @@ async def tplan_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_TREATMENT_PLAN):
+    if not _staff_can_access_menu(staff, roles.MENU_TREATMENT_PLAN):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
     context.user_data["tplan"] = {}
@@ -3511,7 +3547,7 @@ async def tplan_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data.pop("tplan", None)
         context.user_data.pop("tplan_prev", None)
         await update.message.reply_text(
-            "❌ বাতিল করা হয়েছে।", reply_markup=_menu_keyboard(staff.get("Role", ""))
+            "❌ বাতিল করা হয়েছে।", reply_markup=_menu_keyboard(staff)
         )
         return ConversationHandler.END
 
@@ -3524,14 +3560,14 @@ async def tplan_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             f"✅ ট্রিটমেন্ট প্ল্যান সেভ হয়েছে! Plan ID: {plan_id}\n"
             "এখন থেকে 📝 ট্রিটমেন্ট নোট-এ এই রোগীর দৈনিক এন্ট্রি এই প্ল্যান থেকে অটো-ফিল হবে।",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
+            reply_markup=_menu_keyboard(staff),
         )
     except Exception as e:
         logger.exception("tplan_confirm ব্যর্থ হয়েছে")
         await update.message.reply_text(
             f"❌ প্ল্যান সেভ করতে সমস্যা হয়েছে।\nError: {e}\n\n"
             "স্ক্রিনশট দিয়ে জানাও, ঠিক করে দেওয়া হবে।",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
+            reply_markup=_menu_keyboard(staff),
         )
     context.user_data.pop("tplan", None)
     context.user_data.pop("tplan_prev", None)
@@ -3546,7 +3582,7 @@ async def tplan_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.pop("tplan_search_results", None)
     await update.effective_message.reply_text(
         "ট্রিটমেন্ট প্ল্যান বাতিল করা হয়েছে।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
+        reply_markup=_menu_keyboard(staff),
     )
     return ConversationHandler.END
 
@@ -3595,7 +3631,7 @@ async def register_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
         return
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_DAILY_REGISTER):
+    if not _staff_can_access_menu(staff, roles.MENU_DAILY_REGISTER):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
     text, keyboard = await async_runtime.run_sheets_read(
@@ -3687,7 +3723,7 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
         return
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_REPORTS):
+    if not _staff_can_access_menu(staff, roles.MENU_REPORTS):
         return
     now = bd_now()
     today_str = now.strftime("%Y-%m-%d")
@@ -3733,7 +3769,7 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.effective_message.reply_text(
         "মেনুতে ফিরতে নিচের কীবোর্ড ব্যবহার করো:",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
+        reply_markup=_menu_keyboard(staff),
     )
 
 
@@ -3836,7 +3872,7 @@ async def thist_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_TREATMENT_HISTORY):
+    if not _staff_can_access_menu(staff, roles.MENU_TREATMENT_HISTORY):
         return ConversationHandler.END
     await update.effective_message.reply_text(PATIENT_LOOKUP_PROMPT)
     return "THIST_SEARCH"
@@ -4072,7 +4108,7 @@ async def hist_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_PATIENT_HISTORY):
+    if not _staff_can_access_menu(staff, roles.MENU_PATIENT_HISTORY):
         return ConversationHandler.END
     await update.effective_message.reply_text(PATIENT_LOOKUP_PROMPT)
     return "HIST_SEARCH"
@@ -4115,7 +4151,7 @@ async def hist_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff", {})
     await update.effective_message.reply_text(
         "বাতিল করা হয়েছে।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
+        reply_markup=_menu_keyboard(staff),
     )
     return ConversationHandler.END
 
@@ -4125,7 +4161,7 @@ async def unknown_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if staff is None:
         return
     text = (update.message.text or "").strip()
-    allowed_items = roles.get_menu_for_role(staff.get("Role", ""))
+    allowed_items = roles.get_menu_for_roles(_effective_role_strings(staff))
     suggested = None
     if text:
         try:
@@ -4144,7 +4180,7 @@ async def unknown_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "এই সুবিধাটি এখনো সক্রিয় করা হয়নি।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
+        reply_markup=_menu_keyboard(staff),
     )
 
 
@@ -4243,7 +4279,7 @@ async def patient_list_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
     staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_PATIENT_LIST):
+    if not _staff_can_access_menu(staff, roles.MENU_PATIENT_LIST):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
     all_patients = await async_runtime.run_sheets_read(sheets.get_all_patients)
@@ -4291,7 +4327,7 @@ async def patient_list_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE
     staff = context.user_data.get("staff", {})
     await update.effective_message.reply_text(
         "❌ বাতিল করা হলো।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
+        reply_markup=_menu_keyboard(staff),
     )
     return ConversationHandler.END
 
@@ -4562,7 +4598,7 @@ async def report_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.pop("report_patient", None)
     await update.effective_message.reply_text(
         "রিপোর্ট আপলোড শেষ।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
+        reply_markup=_menu_keyboard(staff),
     )
     return ConversationHandler.END
 
@@ -4765,7 +4801,7 @@ async def staffai_start(update, context):
     staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_STAFF_AI_QUERY):
+    if not _staff_can_access_menu(staff, roles.MENU_STAFF_AI_QUERY):
         return ConversationHandler.END
     await update.message.reply_text(
         "🤖 ক্লিনিক সম্পর্কে কী জানতে চান? সাধারণ ভাষায় লিখুন।\n\n"
@@ -4793,7 +4829,7 @@ async def staffai_receive(update, context):
         await bot_api.send_message(
             chat_id,
             answer,
-            reply_markup=_menu_keyboard(role),
+            reply_markup=_menu_keyboard(staff),
         )
 
     async def deliver_error(reason):
@@ -4802,7 +4838,7 @@ async def staffai_receive(update, context):
             if reason == "timeout"
             else "⚠️ এই মুহূর্তে তথ্য বিশ্লেষণ সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।"
         )
-        await bot_api.send_message(chat_id, message, reply_markup=_menu_keyboard(role))
+        await bot_api.send_message(chat_id, message, reply_markup=_menu_keyboard(staff))
 
     context.application.create_task(async_runtime.run_ai_background(
         staff_ai_query.answer_staff_query,
@@ -4818,7 +4854,7 @@ async def staffai_cancel(update, context):
     staff = context.user_data.get("staff", {})
     await update.message.reply_text(
         "\u274c বাতিল করা হলো।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
+        reply_markup=_menu_keyboard(staff),
     )
     return ConversationHandler.END
 
@@ -4827,7 +4863,7 @@ async def clinicalai_start(update, context):
     staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_CLINICAL_AI):
+    if not _staff_can_access_menu(staff, roles.MENU_CLINICAL_AI):
         return ConversationHandler.END
     await update.message.reply_text(
         "\U0001FA7A রোগীর presentation লেখো (উপসর্গ, history, যা যা দেখেছো/জেনেছো)।\n"
@@ -4851,7 +4887,7 @@ async def clinicalai_receive(update, context):
         await bot_api.send_message(
             chat_id,
             prefix + answer,
-            reply_markup=_menu_keyboard(role),
+            reply_markup=_menu_keyboard(staff),
         )
 
     async def deliver_error(reason):
@@ -4860,7 +4896,7 @@ async def clinicalai_receive(update, context):
             if reason == "timeout"
             else "⚠️ এই মুহূর্তে ক্লিনিক্যাল বিশ্লেষণ সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।"
         )
-        await bot_api.send_message(chat_id, message, reply_markup=_menu_keyboard(role))
+        await bot_api.send_message(chat_id, message, reply_markup=_menu_keyboard(staff))
 
     context.application.create_task(async_runtime.run_ai_background(
         clinical_ai.get_clinical_guidance,
@@ -4875,7 +4911,7 @@ async def clinicalai_cancel(update, context):
     staff = context.user_data.get("staff", {})
     await update.message.reply_text(
         "\u274c বাতিল করা হলো।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
+        reply_markup=_menu_keyboard(staff),
     )
     return ConversationHandler.END
 
@@ -4955,7 +4991,7 @@ async def casestudy_start(update, context):
     staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_CASE_STUDY):
+    if not _staff_can_access_menu(staff, roles.MENU_CASE_STUDY):
         return ConversationHandler.END
     await update.message.reply_text(
         "\U0001F4DA কোন রোগীর কেস পড়াবে? নাম, ফোন নম্বর, অথবা Patient ID লেখো।\n"
@@ -5146,7 +5182,7 @@ async def casestudy_lesson_callback(update, context):
     if lesson >= len(case_study_ai.LESSON_TITLES):
         await query.message.reply_text(
             answer,
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
+            reply_markup=_menu_keyboard(staff),
         )
         return ConversationHandler.END
 
@@ -5160,7 +5196,7 @@ async def casestudy_cancel(update, context):
     staff = context.user_data.get("staff", {})
     await update.message.reply_text(
         "\u274c বাতিল করা হলো।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
+        reply_markup=_menu_keyboard(staff),
     )
     return ConversationHandler.END
 
@@ -5169,7 +5205,7 @@ async def salary_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_SALARY):
+    if not _staff_can_access_menu(staff, roles.MENU_SALARY):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
     staff_rows = await async_runtime.run_sheets_read(sheets.get_all_staff)
@@ -5287,7 +5323,7 @@ async def salary_confirm_receive(update: Update, context: ContextTypes.DEFAULT_T
 
     if text not in ("হ্যাঁ", "yes", "y", "হা", "ha"):
         context.user_data.pop("salary", None)
-        await update.message.reply_text("❌ বাতিল করা হয়েছে।", reply_markup=_menu_keyboard(staff.get("Role", "")))
+        await update.message.reply_text("❌ বাতিল করা হয়েছে।", reply_markup=_menu_keyboard(staff))
         return ConversationHandler.END
 
     paid_by_name = staff.get("Full_Name") or staff.get("Name") or str(staff.get("Staff_ID", ""))
@@ -5306,7 +5342,7 @@ async def salary_confirm_receive(update: Update, context: ContextTypes.DEFAULT_T
         await update.message.reply_text(
             f"✅ বেতন কিস্তি সেভ হয়েছে! Payment ID: {payment_id}\n"
             f"এই মাসের বাকি: ৳{remaining_due:.0f}",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
+            reply_markup=_menu_keyboard(staff),
         )
 
         staff_telegram_id = s.get("Telegram_ID")
@@ -5352,7 +5388,7 @@ async def salary_confirm_receive(update: Update, context: ContextTypes.DEFAULT_T
         logger.exception("salary_confirm_receive ব্যর্থ হয়েছে")
         await update.message.reply_text(
             f"❌ সেভ করতে সমস্যা হয়েছে।\nError: {e}",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
+            reply_markup=_menu_keyboard(staff),
         )
     context.user_data.pop("salary", None)
     return ConversationHandler.END
@@ -5361,7 +5397,7 @@ async def salary_confirm_receive(update: Update, context: ContextTypes.DEFAULT_T
 async def salary_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff", {})
     context.user_data.pop("salary", None)
-    await update.message.reply_text("❌ বাতিল করা হলো।", reply_markup=_menu_keyboard(staff.get("Role", "")))
+    await update.message.reply_text("❌ বাতিল করা হলো।", reply_markup=_menu_keyboard(staff))
     return ConversationHandler.END
 
 
@@ -5413,7 +5449,7 @@ async def salhist_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
         return
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_SALARY_HISTORY):
+    if not _staff_can_access_menu(staff, roles.MENU_SALARY_HISTORY):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
     staff_rows = await async_runtime.run_sheets_read(sheets.get_all_staff)
@@ -5470,7 +5506,7 @@ async def mypayments_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
         return
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_MY_PAYMENTS):
+    if not _staff_can_access_menu(staff, roles.MENU_MY_PAYMENTS):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
     my_name = staff.get("Full_Name") or staff.get("Name") or str(staff.get("Staff_ID", ""))
@@ -5496,7 +5532,7 @@ async def cash_handover_start(update: Update, context: ContextTypes.DEFAULT_TYPE
     staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_CASH_HANDOVER):
+    if not _staff_can_access_menu(staff, roles.MENU_CASH_HANDOVER):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
     context.user_data["cash_handover"] = {}
@@ -5569,7 +5605,7 @@ async def cash_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
         context.user_data.pop("cash_handover", None)
         await update.message.reply_text(
             "❌ হ্যান্ডওভার বাতিল করা হয়েছে।",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
+            reply_markup=_menu_keyboard(staff),
         )
         return ConversationHandler.END
 
@@ -5591,7 +5627,7 @@ async def cash_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text(
             f"✅ হ্যান্ডওভার request পাঠানো হয়েছে। ID: {movement_id}\n"
             "Owner/Manager গ্রহণ নিশ্চিত করলে এটি সম্পন্ন হবে।",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
+            reply_markup=_menu_keyboard(staff),
         )
         try:
             recipients = await async_runtime.run_sheets_read(sheets.get_all_staff)
@@ -5635,7 +5671,7 @@ async def cash_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
         logger.exception("cash_confirm_receive failed")
         await update.message.reply_text(
             f"❌ হ্যান্ডওভার save করা যায়নি।\nError: {error}",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
+            reply_markup=_menu_keyboard(staff),
         )
     context.user_data.pop("cash_handover", None)
     return ConversationHandler.END
@@ -5646,7 +5682,7 @@ async def cash_handover_cancel(update: Update, context: ContextTypes.DEFAULT_TYP
     context.user_data.pop("cash_handover", None)
     await update.effective_message.reply_text(
         "❌ হ্যান্ডওভার বাতিল করা হলো।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
+        reply_markup=_menu_keyboard(staff),
     )
     return ConversationHandler.END
 
@@ -5672,7 +5708,7 @@ async def cash_receive_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
     staff = await _require_staff(update, context)
     if staff is None:
         return
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_CASH_RECEIVE):
+    if not _staff_can_access_menu(staff, roles.MENU_CASH_RECEIVE):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
     rows = await async_runtime.run_sheets_read(sheets.get_pending_cash_movements)
@@ -5698,7 +5734,7 @@ async def cash_finalize_callback(update: Update, context: ContextTypes.DEFAULT_T
     if staff is None:
         await query.edit_message_text("❌ স্টাফ তথ্য পাওয়া যায়নি।")
         return
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_CASH_RECEIVE):
+    if not _staff_can_access_menu(staff, roles.MENU_CASH_RECEIVE):
         await query.edit_message_text("⛔ এই কাজের অনুমতি তোমার নেই।")
         return
 
@@ -5735,7 +5771,7 @@ async def cash_movements_start(update: Update, context: ContextTypes.DEFAULT_TYP
     staff = await _require_staff(update, context)
     if staff is None:
         return
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_CASH_MOVEMENTS):
+    if not _staff_can_access_menu(staff, roles.MENU_CASH_MOVEMENTS):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
     today = bd_now().strftime("%Y-%m-%d")
@@ -5766,7 +5802,7 @@ async def _expense_form_start(
     staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
-    if not roles.can_access(staff.get("Role", ""), menu_item):
+    if not _staff_can_access_menu(staff, menu_item):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
     context.user_data["cost"] = {"Mode": mode}
@@ -5837,8 +5873,8 @@ async def household_withdrawal_start(
     staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
-    if not roles.can_access(
-        staff.get("Role", ""), roles.MENU_HOUSEHOLD_WITHDRAWAL
+    if not _staff_can_access_menu(
+        staff, roles.MENU_HOUSEHOLD_WITHDRAWAL
     ):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
@@ -5953,7 +5989,7 @@ async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
         context.user_data.pop("cost", None)
         await update.message.reply_text(
             "❌ বাতিল করা হয়েছে।",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
+            reply_markup=_menu_keyboard(staff),
         )
         return ConversationHandler.END
 
@@ -5980,7 +6016,7 @@ async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
             await update.message.reply_text(
                 f"✅ খরচের request পাঠানো হয়েছে। ID: {expense_id}\n"
                 "Owner অনুমোদন করলে টাকা দেওয়ার button চালু হবে।",
-                reply_markup=_menu_keyboard(staff.get("Role", "")),
+                reply_markup=_menu_keyboard(staff),
             )
             try:
                 await _notify_expense_approvers(
@@ -5997,7 +6033,7 @@ async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
                 expense_type = config.EXPENSE_TYPE_HOUSEHOLD
             else:
                 raise ValueError("Unknown expense workflow mode")
-            if not roles.can_access(staff.get("Role", ""), menu_item):
+            if not _staff_can_access_menu(staff, menu_item):
                 raise PermissionError("Owner expense permission denied")
             expense_id = await async_runtime.run_sheets_write(
                 sheets.add_expense,
@@ -6019,13 +6055,13 @@ async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
             )
             await update.message.reply_text(
                 f"✅ {label} Paid হিসেবে save হয়েছে। ID: {expense_id}",
-                reply_markup=_menu_keyboard(staff.get("Role", "")),
+                reply_markup=_menu_keyboard(staff),
             )
     except Exception as error:
         logger.exception("expense workflow save failed")
         await update.message.reply_text(
             f"❌ Save করা যায়নি।\nError: {error}",
-            reply_markup=_menu_keyboard(staff.get("Role", "")),
+            reply_markup=_menu_keyboard(staff),
         )
     context.user_data.pop("cost", None)
     return ConversationHandler.END
@@ -6036,7 +6072,7 @@ async def cost_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.pop("cost", None)
     await update.effective_message.reply_text(
         "❌ বাতিল করা হলো।",
-        reply_markup=_menu_keyboard(staff.get("Role", "")),
+        reply_markup=_menu_keyboard(staff),
     )
     return ConversationHandler.END
 
@@ -6064,7 +6100,7 @@ async def expense_approval_start(
     staff = await _require_staff(update, context)
     if staff is None:
         return
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_EXPENSE_APPROVAL):
+    if not _staff_can_access_menu(staff, roles.MENU_EXPENSE_APPROVAL):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
     rows = await async_runtime.run_sheets_read(
@@ -6094,7 +6130,7 @@ async def expense_approval_callback(
     if staff is None:
         await query.edit_message_text("❌ স্টাফ তথ্য পাওয়া যায়নি।")
         return
-    if not roles.can_access(staff.get("Role", ""), roles.MENU_EXPENSE_APPROVAL):
+    if not _staff_can_access_menu(staff, roles.MENU_EXPENSE_APPROVAL):
         await query.edit_message_text("⛔ এই কাজের অনুমতি তোমার নেই।")
         return
     payload = query.data.replace("expact_", "", 1)
@@ -6129,8 +6165,8 @@ async def approved_expenses_start(
     staff = await _require_staff(update, context)
     if staff is None:
         return
-    if not roles.can_access(
-        staff.get("Role", ""), roles.MENU_APPROVED_EXPENSES
+    if not _staff_can_access_menu(
+        staff, roles.MENU_APPROVED_EXPENSES
     ):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
@@ -6166,8 +6202,8 @@ async def expense_paid_callback(
     if staff is None:
         await query.edit_message_text("❌ স্টাফ তথ্য পাওয়া যায়নি।")
         return
-    if not roles.can_access(
-        staff.get("Role", ""), roles.MENU_APPROVED_EXPENSES
+    if not _staff_can_access_menu(
+        staff, roles.MENU_APPROVED_EXPENSES
     ):
         await query.edit_message_text("⛔ এই কাজের অনুমতি তোমার নেই।")
         return
@@ -6233,7 +6269,7 @@ async def _authorized_financial_report_staff(update, context, report: str):
     menu_item = _FINANCIAL_REPORT_MENUS.get(report)
     if staff is None or menu_item is None:
         return None
-    if not roles.can_access(staff.get("Role", ""), menu_item):
+    if not _staff_can_access_menu(staff, menu_item):
         await update.effective_message.reply_text("⛔ এই রিপোর্ট দেখার অনুমতি তোমার নেই।")
         return None
     return staff
@@ -6458,7 +6494,7 @@ async def owner_financial_dashboard_start(
         config.DEPARTMENT_DENTAL: roles.MENU_DENTAL_FINANCE_DASHBOARD,
         "Combined": roles.MENU_COMBINED_BUSINESS_SUMMARY,
     }[view]
-    if not roles.can_access(staff.get("Role", ""), menu_item):
+    if not _staff_can_access_menu(staff, menu_item):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
     today = bd_now().strftime("%Y-%m-%d")
