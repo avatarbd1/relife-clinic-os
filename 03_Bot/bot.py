@@ -1300,7 +1300,9 @@ async def reg_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not _staff_can_access_menu(staff, roles.MENU_PATIENT_REG):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
-    context.user_data["new_patient"] = {}
+    context.user_data["new_patient"] = {
+        "Department": staff.get("Primary_Department", "")
+    }
     context.user_data.pop("new_patient_dup_checked", None)
     context.user_data.pop("new_patient_missing", None)
     choice_kb = ReplyKeyboardMarkup(
