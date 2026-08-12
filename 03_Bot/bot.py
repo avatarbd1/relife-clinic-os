@@ -7491,8 +7491,8 @@ def main():
         try:
             if isinstance(update, Update) and update.effective_message:
                 await update.effective_message.reply_text(
-                    "⚠️ সাময়িক সমস্যা হয়েছে (সম্ভবত Google Sheets সাময়িক ব্যস্ত)। "
-                    "কয়েক সেকেন্ড পর আবার চেষ্টা করো।"
+                    "⚠️ কাজটি সম্পন্ন হয়নি—এটি সব সময় Google Sheets busy বোঝায় না। "
+                    "একবার আবার চেষ্টা করো; একই button-এ আবার হলে Admin-কে জানাও।"
                 )
         except Exception:
             logger.exception("error handler নিজেই ব্যর্থ হয়েছে")
