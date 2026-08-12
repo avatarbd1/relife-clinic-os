@@ -3077,7 +3077,7 @@ async def treat_patient_comment_receive(update: Update, context: ContextTypes.DE
         await update.message.reply_text(note, reply_markup=_pain_score_keyboard(mandatory))
         return TREAT_PROGRESS_SCORE
 
-    return await _treat_save_note(update.message.reply_text, update.message.reply_text, context, t, selected)
+    return await _treat_save_note(update, update.message.reply_text, update.message.reply_text, context, t, selected)
 
 
 async def treat_progress_score_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3093,10 +3093,10 @@ async def treat_progress_score_callback(update: Update, context: ContextTypes.DE
         await query.edit_message_text(f"✅ Pain Score রেকর্ড হয়েছে: {score}/10")
     else:
         await query.edit_message_text("⏭️ Pain Score স্কিপ করা হলো।")
-    return await _treat_save_note(query.message.reply_text, query.message.reply_text, context, t, selected)
+    return await _treat_save_note(update, query.message.reply_text, query.message.reply_text, context, t, selected)
 
 
-async def _treat_save_note(reply_func, menu_reply, context: ContextTypes.DEFAULT_TYPE, t: dict, selected: set):
+async def _treat_save_note(update, reply_func, menu_reply, context: ContextTypes.DEFAULT_TYPE, t: dict, selected: set):
     """রোগীর মন্তব্য বিবেচনায় নিয়ে, সত্যিই কিছু মিসিং থাকলে AI ১টা প্রশ্ন করে (TREAT_AI_QUESTION state-এ যায়,
     আগের মন্তব্যে যা বলা হয়ে গেছে তা নিয়ে duplicate প্রশ্ন করে না), নাহলে সরাসরি সেভ করে দেয়।"""
     try:
@@ -3115,7 +3115,7 @@ async def _treat_save_note(reply_func, menu_reply, context: ContextTypes.DEFAULT
         )
         return TREAT_AI_QUESTION
 
-    return await _treat_do_save(reply_func, menu_reply, context, t, selected)
+    return await _treat_do_save(update, reply_func, menu_reply, context, t, selected)
 
 
 async def treat_ai_question_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3128,7 +3128,7 @@ async def treat_ai_question_receive(update: Update, context: ContextTypes.DEFAUL
         note = f"[AI প্রশ্ন] {question}\n[উত্তর] {text}"
         prev_remarks = t.get("Remarks", "")
         t["Remarks"] = (prev_remarks + "\n" + note).strip() if prev_remarks else note
-    return await _treat_do_save(update.message.reply_text, update.message.reply_text, context, t, selected)
+    return await _treat_do_save(update, update.message.reply_text, update.message.reply_text, context, t, selected)
 
 
 def _apply_inventory_auto_deduct(machines_str: str, staff_name: str):
@@ -3253,11 +3253,26 @@ async def inventory_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-async def _treat_do_save(result_reply, menu_reply, context: ContextTypes.DEFAULT_TYPE, t: dict, selected: set):
-    """t ও selected থেকে Machines বসিয়ে ট্রিটমেন্ট নোট সেভ করে, ফলাফল দেখায়, মেনুতে ফিরিয়ে দেয়।"""
-    staff = context.user_data.get("staff", {})
-    t["Machines"] = ", ".join(MACHINE_LIST[i] for i in sorted(selected))
+async def _treat_do_save(update, result_reply, menu_reply, context: ContextTypes.DEFAULT_TYPE, t: dict, selected: set):
+    """Reauthorize the live patient immediately before saving a clinical note."""
     patient_id = t.get("Patient_ID", "")
+    staff, patient = await _authorized_patient_action(
+        update, context, patient_id,
+        department_access.AccessAction.CLINICAL_WRITE,
+        roles.MENU_TREATMENT_NOTE,
+    )
+    if not patient:
+        context.user_data.pop("treatment", None)
+        context.user_data.pop("treat_selected", None)
+        await result_reply(
+            "⛔ বর্তমান Department/Role অনুযায়ী ট্রিটমেন্ট নোট সেভ করা যাবে না।"
+        )
+        return ConversationHandler.END
+    t["Patient_ID"] = patient.get("Patient_ID", "")
+    t["Patient_Name"] = patient.get("Full_Name", "")
+    t["Department"] = patient.get("Department", "")
+    t["Machines"] = ", ".join(MACHINE_LIST[i] for i in sorted(selected))
+    patient_id = t["Patient_ID"]
     try:
         treatment_id = await async_runtime.run_sheets_write(
             sheets.add_treatment_note,
@@ -3947,11 +3962,25 @@ async def rpt_todayregister_callback(update: Update, context: ContextTypes.DEFAU
     await query.message.reply_text(text, reply_markup=keyboard)
 
 
+async def _authorized_treatment_history_patient(update, context, patient_id: str):
+    staff, patient = await _authorized_patient_action(
+        update, context, patient_id,
+        department_access.AccessAction.CLINICAL_READ,
+        roles.MENU_TREATMENT_HISTORY,
+    )
+    return patient
+
+
 async def thist_progress_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """রোগীর Pain Score ট্র্যাকিং — সময়ের সাথে ব্যথা কমছে না বাড়ছে তা লিস্ট + বার-চার্ট আকারে দেখায়।"""
     query = update.callback_query
     await query.answer()
     patient_id = query.data.replace("thistprog_", "", 1)
+    if not await _authorized_treatment_history_patient(
+        update, context, patient_id
+    ):
+        await query.message.reply_text("⛔ এই ট্রিটমেন্ট হিস্ট্রি দেখার অনুমতি নেই।")
+        return
     notes = await async_runtime.run_sheets_read(
         sheets.get_treatment_notes_for_patient, patient_id
     )
@@ -4088,6 +4117,12 @@ async def thist_date_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     query = update.callback_query
     await query.answer()
     tid = query.data.replace("thdate_", "", 1)
+    note = context.user_data.get("thist_notes", {}).get(tid, {})
+    if not await _authorized_treatment_history_patient(
+        update, context, str(note.get("Patient_ID", "")).strip()
+    ):
+        await query.edit_message_text("⛔ এই ট্রিটমেন্ট হিস্ট্রি দেখার অনুমতি নেই।")
+        return ConversationHandler.END
     await _thist_render_note(query, context, tid)
     return ConversationHandler.END
 
@@ -4101,7 +4136,14 @@ async def thist_nav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await query.answer("আর কোনো সেশন নেই।", show_alert=True)
         return
     await query.answer()
-    await _thist_render_note(query, context, order[idx])
+    tid = order[idx]
+    note = context.user_data.get("thist_notes", {}).get(tid, {})
+    if not await _authorized_treatment_history_patient(
+        update, context, str(note.get("Patient_ID", "")).strip()
+    ):
+        await query.edit_message_text("⛔ এই ট্রিটমেন্ট হিস্ট্রি দেখার অনুমতি নেই।")
+        return
+    await _thist_render_note(query, context, tid)
 
 
 async def thist_back_to_dates_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4110,6 +4152,11 @@ async def thist_back_to_dates_callback(update: Update, context: ContextTypes.DEF
     query = update.callback_query
     await query.answer()
     patient_id = query.data.replace("thistback_", "", 1)
+    if not await _authorized_treatment_history_patient(
+        update, context, patient_id
+    ):
+        await query.edit_message_text("⛔ এই ট্রিটমেন্ট হিস্ট্রি দেখার অনুমতি নেই।")
+        return
     notes = await async_runtime.run_sheets_read(
         sheets.get_treatment_notes_for_patient, patient_id
     )
@@ -4677,8 +4724,9 @@ async def report_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not rp:
         await update.message.reply_text("❌ সমস্যা হয়েছে, আবার 📋 রোগীর তালিকা থেকে শুরু করো।")
         return ConversationHandler.END
-    patient = await _patient_by_id_for_request(
-        update, context, rp.get("Patient_ID", "")
+    staff, patient = await _authorized_patient_action(
+        update, context, rp.get("Patient_ID", ""),
+        department_access.AccessAction.CLINICAL_WRITE,
     )
     if not patient:
         context.user_data.pop("report_patient", None)
@@ -4713,8 +4761,8 @@ async def report_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         report_id = await async_runtime.run_sheets_write(sheets.add_report, {
-            "Patient_ID": rp["Patient_ID"],
-            "Patient_Name": rp["Patient_Name"],
+            "Patient_ID": patient.get("Patient_ID", ""),
+            "Patient_Name": patient.get("Full_Name", ""),
             "File_Telegram_ID": file_obj.file_id,
             "File_Name": file_name,
             "File_Type": file_type,
