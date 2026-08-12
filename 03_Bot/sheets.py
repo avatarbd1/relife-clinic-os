@@ -27,7 +27,7 @@ def _safe_float(value):
     if value is None:
         return 0.0
     try:
-        cleaned = str(value).replace(",", "").strip()
+        cleaned = str(value).replace("৳", "").replace(",", "").strip()
         if cleaned == "" or cleaned.upper() == "N/A":
             return 0.0
         return float(cleaned)
@@ -1895,14 +1895,14 @@ def get_salary_summary(staff_id: str, month: str) -> dict:
     if not staff:
         return {}
     try:
-        monthly_salary = float(staff.get("Salary", 0) or 0)
+        monthly_salary = _safe_float(staff.get("Salary", 0))
     except (TypeError, ValueError):
         monthly_salary = 0
 
     ws = _worksheet(config.SHEET_SALARY)
     records = safe_get_all_records(ws)
     paid = sum(
-        float(r.get("Amount", 0) or 0)
+        _safe_float(r.get("Amount", 0))
         for r in records
         if str(r.get("Staff_ID", "")).strip() == str(staff_id).strip()
         and str(r.get("Month", "")).strip() == month
@@ -1962,6 +1962,29 @@ def _next_salary_payment_id(ws) -> str:
                 pass
     next_num = (max(numbers) + 1) if numbers else 1
     return f"SP{next_num:04d}"
+
+
+def add_salary_payment_checked(
+    staff_id: str, month: str, amount: float, paid_by: str, note: str = ""
+) -> dict:
+    """Re-read the current due immediately before appending one salary payment."""
+    amount = _positive_amount(amount)
+    summary = get_salary_summary(staff_id, month)
+    if not summary:
+        return {"ok": False, "reason": "staff_not_found"}
+    due = _safe_float(summary.get("Due", 0))
+    if due <= 0:
+        return {"ok": False, "reason": "already_paid", "due": due}
+    if amount > due:
+        return {"ok": False, "reason": "amount_exceeds_due", "due": due}
+    payment_id = add_salary_payment(
+        staff_id, month, amount, paid_by=paid_by, note=note
+    )
+    return {
+        "ok": True,
+        "payment_id": payment_id,
+        "remaining_due": round(due - amount, 2),
+    }
 
 
 def add_salary_payment(staff_id: str, month: str, amount: float, paid_by: str, note: str = "") -> str:
