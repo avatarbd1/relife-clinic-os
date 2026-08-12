@@ -726,14 +726,25 @@ async def pt_dashboard_receive_callback(update: Update, context: ContextTypes.DE
 async def pt_dashboard_done_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    staff = await _require_staff(update, context)
     treatment = context.user_data.get("pt_treatment")
     patient_id = context.user_data.get("pt_patient_id", "")
-    if staff is None or not treatment or not patient_id:
+    if not treatment or not patient_id:
         await query.edit_message_text("❌ Session context পাওয়া যায়নি। আবার dashboard থেকে শুরু করো।")
         return ConversationHandler.END
+    staff, patient = await _authorized_patient_action(
+        update,
+        context,
+        patient_id,
+        department_access.AccessAction.CLINICAL_WRITE,
+        roles.MENU_TREATMENT_NOTE,
+    )
+    if staff is None or patient is None:
+        await query.edit_message_text(
+            "⛔ এই রোগীর clinical session save করার বর্তমান অনুমতি নেই।"
+        )
+        return ConversationHandler.END
 
-    patient, plan, notes = await async_runtime.run_sheets_read(
+    _, plan, notes = await async_runtime.run_sheets_read(
         _load_patient_workspace, patient_id
     )
     patient = patient or {"Full_Name": treatment.get("Patient_Name", "")}
@@ -780,9 +791,22 @@ async def pt_dashboard_done_callback(update: Update, context: ContextTypes.DEFAU
         await async_runtime.run_sheets_write(sheets.increment_plan_session, patient_id)
         appointment_id = context.user_data.get("pt_appointment_id", "")
         if appointment_id:
-            await async_runtime.run_sheets_write(
-                sheets.update_appointment_status, appointment_id, "Completed"
+            mappings = await _patient_department_mappings(staff)
+            appointment = await async_runtime.run_sheets_read(
+                sheets.get_appointment_by_id_for_staff,
+                appointment_id,
+                staff,
+                mappings,
+                department_access.AccessAction.WRITE,
             )
+            if appointment is not None:
+                await async_runtime.run_sheets_write(
+                    sheets.update_appointment_status_for_staff,
+                    appointment_id,
+                    "Completed",
+                    staff,
+                    mappings,
+                )
         await query.edit_message_text(
             f"✅ Session Completed\n\n"
             f"রোগী: {patient.get('Full_Name', treatment.get('Patient_Name', ''))} ({patient_id})\n"
@@ -790,9 +814,11 @@ async def pt_dashboard_done_callback(update: Update, context: ContextTypes.DEFAU
             f"Treatment ID: {treatment_id}\n"
             "Dashboard updated — next patient ready."
         )
-    except Exception as e:
+    except Exception:
         logger.exception("pt_dashboard_done_callback ব্যর্থ হয়েছে")
-        await query.edit_message_text(f"❌ সেভ করতে সমস্যা হয়েছে।\nError: {e}")
+        await query.edit_message_text(
+            "❌ Session সেভ করা যায়নি। আবার চেষ্টা করো; একই সমস্যা হলে Admin-কে জানাও।"
+        )
         return ConversationHandler.END
 
     context.user_data.pop("pt_treatment", None)
@@ -3747,8 +3773,22 @@ async def tplan_manual(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def tplan_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip().lower()
-    staff = context.user_data.get("staff", {})
-    t = context.user_data.get("tplan", {})
+    cached = context.user_data.get("tplan", {})
+    patient_id = str(cached.get("Patient_ID", "")).strip()
+
+    staff, patient = await _authorized_patient_action(
+        update,
+        context,
+        patient_id,
+        department_access.AccessAction.CLINICAL_WRITE,
+        roles.MENU_TREATMENT_PLAN,
+    )
+    if staff is None or patient is None:
+        context.user_data.pop("tplan", None)
+        await update.effective_message.reply_text(
+            "⛔ এই রোগীর treatment plan save করার বর্তমান অনুমতি নেই।"
+        )
+        return ConversationHandler.END
 
     if text not in ("হ্যাঁ", "yes", "y", "হা", "ha"):
         context.user_data.pop("tplan", None)
@@ -3758,10 +3798,11 @@ async def tplan_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return ConversationHandler.END
 
+    cached["Department"] = patient.get("Department", "")
     try:
         plan_id = await async_runtime.run_sheets_write(
             sheets.add_treatment_plan,
-            t,
+            cached,
             created_by=staff.get("Full_Name", "Unknown"),
         )
         await update.message.reply_text(
@@ -3769,11 +3810,10 @@ async def tplan_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "এখন থেকে 📝 ট্রিটমেন্ট নোট-এ এই রোগীর দৈনিক এন্ট্রি এই প্ল্যান থেকে অটো-ফিল হবে।",
             reply_markup=_menu_keyboard(staff),
         )
-    except Exception as e:
+    except Exception:
         logger.exception("tplan_confirm ব্যর্থ হয়েছে")
         await update.message.reply_text(
-            f"❌ প্ল্যান সেভ করতে সমস্যা হয়েছে।\nError: {e}\n\n"
-            "স্ক্রিনশট দিয়ে জানাও, ঠিক করে দেওয়া হবে।",
+            "❌ প্ল্যান সেভ করা যায়নি। আবার চেষ্টা করো; একই সমস্যা হলে Admin-কে জানাও।",
             reply_markup=_menu_keyboard(staff),
         )
     context.user_data.pop("tplan", None)
