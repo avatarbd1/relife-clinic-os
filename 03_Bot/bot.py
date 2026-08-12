@@ -5618,34 +5618,66 @@ async def salary_note_receive(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def salary_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip().lower()
-    staff = context.user_data.get("staff", {})
-    s = context.user_data.get("salary", {})
+    cached = context.user_data.get("salary", {})
+
+    staff = await _require_staff(update, context)
+    if staff is None or not _staff_can_access_menu(staff, roles.MENU_SALARY):
+        context.user_data.pop("salary", None)
+        await update.effective_message.reply_text(
+            "⛔ বেতন দেওয়ার বর্তমান অনুমতি নেই।"
+        )
+        return ConversationHandler.END
 
     if text not in ("হ্যাঁ", "yes", "y", "হা", "ha"):
         context.user_data.pop("salary", None)
-        await update.message.reply_text("❌ বাতিল করা হয়েছে।", reply_markup=_menu_keyboard(staff))
+        await update.message.reply_text(
+            "❌ বাতিল করা হয়েছে।", reply_markup=_menu_keyboard(staff)
+        )
         return ConversationHandler.END
 
-    paid_by_name = staff.get("Full_Name") or staff.get("Name") or str(staff.get("Staff_ID", ""))
-    staff_full_name = s.get("Full_Name", "")
-    amount = s.get("Amount", 0)
-    due = s.get("Due", 0)
-    remaining_due = due - amount
-
-    try:
-        payment_id = await async_runtime.run_sheets_write(
-            sheets.add_salary_payment,
-            s["Staff_ID"], s["Month"], amount,
-            paid_by=paid_by_name,
-            note=s.get("Note", ""),
+    required = ("Staff_ID", "Month", "Amount")
+    if any(not cached.get(key) for key in required):
+        context.user_data.pop("salary", None)
+        await update.message.reply_text(
+            "⚠️ বেতনের অনুরোধটি পুরোনো বা অসম্পূর্ণ। নতুন করে শুরু করো।",
+            reply_markup=_menu_keyboard(staff),
         )
+        return ConversationHandler.END
+
+    paid_by_name = (
+        staff.get("Full_Name")
+        or staff.get("Name")
+        or str(staff.get("Staff_ID", ""))
+    )
+    amount = _sheet_amount_value(cached.get("Amount", 0))
+    try:
+        result = await async_runtime.run_sheets_write(
+            sheets.add_salary_payment_checked,
+            cached["Staff_ID"],
+            cached["Month"],
+            amount,
+            paid_by=paid_by_name,
+            note=cached.get("Note", ""),
+        )
+        if not result.get("ok"):
+            due = _sheet_amount_value(result.get("due", 0))
+            context.user_data.pop("salary", None)
+            await update.message.reply_text(
+                f"⚠️ বেতনের বর্তমান বাকি পরিবর্তিত হয়েছে (এখন ৳{due:.0f})। "
+                "নতুন করে বেতন মেনু থেকে শুরু করো।",
+                reply_markup=_menu_keyboard(staff),
+            )
+            return ConversationHandler.END
+
+        payment_id = result["payment_id"]
+        remaining_due = _sheet_amount_value(result.get("remaining_due", 0))
         await update.message.reply_text(
             f"✅ বেতন কিস্তি সেভ হয়েছে! Payment ID: {payment_id}\n"
             f"এই মাসের বাকি: ৳{remaining_due:.0f}",
             reply_markup=_menu_keyboard(staff),
         )
 
-        staff_telegram_id = s.get("Telegram_ID")
+        staff_telegram_id = cached.get("Telegram_ID")
         if staff_telegram_id:
             try:
                 await context.bot.send_message(
@@ -5658,36 +5690,13 @@ async def salary_confirm_receive(update: Update, context: ContextTypes.DEFAULT_T
                     ),
                 )
             except Exception:
-                logger.exception(f"salary_confirm_receive: স্টাফ {staff_telegram_id}-কে notify করতে ব্যর্থ")
-
-        try:
-            owner_rows = await async_runtime.run_sheets_read(sheets.get_all_staff)
-            for o in owner_rows:
-                if str(o.get("Role", "")).strip() != "Owner":
-                    continue
-                if str(o.get("Staff_ID", "")) == str(staff.get("Staff_ID", "")):
-                    continue
-                owner_telegram_id = o.get("Telegram_ID")
-                if not owner_telegram_id:
-                    continue
-                try:
-                    await context.bot.send_message(
-                        chat_id=int(owner_telegram_id),
-                        text=(
-                            f"💰 {staff_full_name}-কে বেতনের কিস্তি দেওয়া হয়েছে ({paid_by_name})।\n"
-                            f"কিস্তি: ৳{amount:.0f}\n"
-                            f"এই মাসের বাকি: ৳{remaining_due:.0f}"
-                        ),
-                    )
-                except Exception:
-                    logger.exception(f"salary_confirm_receive: Owner {owner_telegram_id}-কে notify করতে ব্যর্থ")
-        except Exception:
-            logger.exception("salary_confirm_receive: Owner লিস্ট আনতে ব্যর্থ")
-
-    except Exception as e:
-        logger.exception("salary_confirm_receive ব্যর্থ হয়েছে")
+                logger.exception(
+                    "salary_confirm_receive: staff notification failed"
+                )
+    except Exception:
+        logger.exception("salary_confirm_receive failed")
         await update.message.reply_text(
-            f"❌ সেভ করতে সমস্যা হয়েছে।\nError: {e}",
+            "❌ বেতন সেভ করা যায়নি। আবার চেষ্টা করো; একই সমস্যা হলে Admin-কে জানাও।",
             reply_markup=_menu_keyboard(staff),
         )
     context.user_data.pop("salary", None)
