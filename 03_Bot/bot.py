@@ -232,6 +232,7 @@ _ATTENDANCE_MENU_REGEX = "^(?:" + "|".join(
 (REG_FIELDS,) = range(43, 44)  # রেজিস্ট্রেশনে missing fields একসাথে জিজ্ঞাসার state (patch38)
 (CLINICALAI_QUESTION,) = range(44, 45)  # AI Clinical Assistant state (patch40)
 (SALARY_SELECT_STAFF, SALARY_ENTER_AMOUNT, SALARY_NOTE, SALARY_CONFIRM) = range(45, 49)  # Staff Salary System
+SALARY_PAID_FROM = 58  # বেতন কোন ভান্ডার থেকে দেওয়া হলো
 (COST_CATEGORY, COST_AMOUNT, COST_NOTE, COST_CONFIRM) = range(49, 53)  # Daily Cost Tracker
 (CASH_AMOUNT, CASH_NOTE, CASH_CONFIRM) = range(53, 56)  # Cash handover workflow
 (COST_DEPARTMENT, CASH_DEPARTMENT) = range(56, 58)
@@ -2110,6 +2111,20 @@ async def _tap_the_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback-only ধাপে টেক্সট এলে চুপচাপ পড়ে না গিয়ে বুঝিয়ে দেয়।"""
     await update.message.reply_text("👆 উপরের বাটনগুলো থেকে বেছে নাও।")
     return None
+
+
+def _cash_custodian_keyboard(prefix: str) -> InlineKeyboardMarkup:
+    labels = {
+        config.CASH_CUSTODIAN_RECEPTION: "🏪 Reception",
+        config.CASH_CUSTODIAN_HOME_TREASURY: "🏠 Home Treasury",
+        config.CASH_CUSTODIAN_BANK: "🏦 Bank",
+    }
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(
+            labels.get(custodian, custodian), callback_data=f"{prefix}_{custodian}"
+        )]
+        for custodian in config.CASH_CUSTODIANS
+    ])
 
 
 def _finance_department_keyboard(prefix: str, staff: dict) -> InlineKeyboardMarkup:
@@ -5648,7 +5663,26 @@ async def salary_amount_receive(update: Update, context: ContextTypes.DEFAULT_TY
         return SALARY_ENTER_AMOUNT
     s["Amount"] = amount
     context.user_data["salary"] = s
-    await update.message.reply_text("কোনো নোট থাকলে লেখো, না থাকলে '-' দাও:")
+    await update.message.reply_text(
+        "টাকাটা কোন ভান্ডার থেকে দিচ্ছো?",
+        reply_markup=_cash_custodian_keyboard("salfrom"),
+    )
+    return SALARY_PAID_FROM
+
+
+async def salary_paid_from_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    custodian = query.data.replace("salfrom_", "", 1)
+    if custodian not in config.CASH_CUSTODIANS:
+        await query.edit_message_text("❌ ভান্ডারটি চেনা গেল না। আবার শুরু করো।")
+        context.user_data.pop("salary", None)
+        return ConversationHandler.END
+    s = context.user_data.get("salary", {})
+    s["Paid_From"] = custodian
+    context.user_data["salary"] = s
+    await query.edit_message_text(f"ভান্ডার: {custodian}")
+    await query.message.reply_text("কোনো নোট থাকলে লেখো, না থাকলে '-' দাও:")
     return SALARY_NOTE
 
 
@@ -5714,6 +5748,9 @@ async def salary_confirm_receive(update: Update, context: ContextTypes.DEFAULT_T
             amount,
             paid_by=paid_by_name,
             note=cached.get("Note", ""),
+            paid_from=cached.get(
+                "Paid_From", config.CASH_CUSTODIAN_HOME_TREASURY
+            ),
         )
         if not result.get("ok"):
             due = _sheet_amount_value(result.get("due", 0))
@@ -6731,27 +6768,70 @@ async def costtracker_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def _cash_custody_summary_text(summary: dict, role_str: str) -> str:
-    text = (
-        f"⚖️ Cash reconciliation — {summary['Date']}\n\n"
-        f"Reception\n"
-        f"Cash collection: ৳{summary['Cash_Collected']:.0f}\n"
-        f"Paid ছোট খরচ: ৳{summary['Reception_Expense']:.0f}\n"
-        f"Accepted handover: ৳{summary['Reception_Handover']:.0f}\n"
-        f"নির্বাচিত সময়ের net balance: ৳{summary['Reception_Balance']:.0f}"
-    )
-    if role_str.strip() == roles.Role.OWNER.value:
-        text += (
-            f"\n\nHome Treasury\n"
-            f"Accepted receipt: ৳{summary['Home_Received']:.0f}\n"
-            f"বড় clinic expense: ৳{summary['Home_Clinic_Expense']:.0f}\n"
-            f"Household Withdrawal: ৳{summary['Household_Withdrawal']:.0f}\n"
-            f"Transfer out: ৳{summary['Home_Transfer_Out']:.0f}\n"
-            f"নির্বাচিত সময়ের net balance: ৳{summary['Home_Balance']:.0f}"
+    is_owner = role_str.strip() == roles.Role.OWNER.value
+    lines = [
+        f"⚖️ Cash reconciliation — {summary['Date']}",
+        "",
+        "Reception",
+        f"Cash collection: ৳{summary['Cash_Collected']:.0f}",
+        f"Paid ছোট খরচ: ৳{summary['Reception_Expense']:.0f}",
+    ]
+    reception_salary = summary.get("Reception_Salary", 0)
+    if reception_salary:
+        lines.append(
+            f"{'বেতন পরিশোধ' if is_owner else 'অন্যান্য নগদ পরিশোধ'}: "
+            f"৳{reception_salary:.0f}"
         )
-    return (
-        text
-        + "\n\nℹ️ এটি নির্বাচিত সময়ের movement balance; আগের opening cash এতে নেই।"
+    lines.append(f"Accepted handover: ৳{summary['Reception_Handover']:.0f}")
+    in_transit = summary.get("Reception_In_Transit", 0)
+    if in_transit:
+        lines.append(
+            f"⏳ পাঠানো হয়েছে, গ্রহণ বাকি: ৳{in_transit:.0f}"
+        )
+    lines.append(
+        f"নির্বাচিত সময়ের net balance: ৳{summary['Reception_Balance']:.0f}"
     )
+
+    if is_owner:
+        lines += [
+            "",
+            "Home Treasury",
+            f"Accepted receipt: ৳{summary['Home_Received']:.0f}",
+            f"বড় clinic expense: ৳{summary['Home_Clinic_Expense']:.0f}",
+            f"বেতন পরিশোধ: ৳{summary.get('Home_Salary', 0):.0f}",
+            f"Household Withdrawal: ৳{summary['Household_Withdrawal']:.0f}",
+            f"Transfer out: ৳{summary['Home_Transfer_Out']:.0f}",
+        ]
+        home_transit = summary.get("Home_In_Transit", 0)
+        if home_transit:
+            lines.append(f"⏳ পাঠানো হয়েছে, গ্রহণ বাকি: ৳{home_transit:.0f}")
+        lines.append(
+            f"নির্বাচিত সময়ের net balance: ৳{summary['Home_Balance']:.0f}"
+        )
+
+        lines += [
+            "",
+            "Bank",
+            f"Accepted receipt: ৳{summary.get('Bank_Received', 0):.0f}",
+            f"খরচ: ৳{summary.get('Bank_Expense', 0):.0f}",
+            f"বেতন পরিশোধ: ৳{summary.get('Bank_Salary', 0):.0f}",
+            f"Transfer out: ৳{summary.get('Bank_Transfer_Out', 0):.0f}",
+            f"নির্বাচিত সময়ের net balance: ৳{summary.get('Bank_Balance', 0):.0f}",
+        ]
+
+        unclassified = summary.get("Unclassified_Total", 0)
+        if unclassified:
+            lines += [
+                "",
+                f"⚠️ Department ছাড়া এন্ট্রি: ৳{unclassified:.0f}",
+                "এগুলো উপরের কোনো হিসাবে ধরা হয়নি। Sheet-এ Department বসালে যোগ হবে।",
+            ]
+
+    lines += [
+        "",
+        "ℹ️ এটি নির্বাচিত সময়ের movement balance; আগের opening cash এতে নেই।",
+    ]
+    return "\n".join(lines)
 
 
 async def custody_balance_start(
@@ -6952,6 +7032,10 @@ def main():
             ],
             SALARY_ENTER_AMOUNT: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), salary_amount_receive)
+            ],
+            SALARY_PAID_FROM: [
+                CallbackQueryHandler(salary_paid_from_callback, pattern="^salfrom_"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), _tap_the_button),
             ],
             SALARY_NOTE: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), salary_note_receive)

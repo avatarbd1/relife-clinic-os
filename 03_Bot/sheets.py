@@ -15,6 +15,7 @@ import time
 import threading
 
 import config
+import department_access
 from department_access import AccessAction, authorize_record
 from tenant_runtime import current_tenant
 from gspread.http_client import HTTPClient
@@ -1964,8 +1965,23 @@ def _next_salary_payment_id(ws) -> str:
     return f"SP{next_num:04d}"
 
 
+def _staff_primary_department(staff_id: str) -> str:
+    """08_Staff-এর Primary_Department থেকে বেতনের বিভাগ নেয়; অস্পষ্ট হলে ফাঁকা।"""
+    for record in safe_get_all_records(_worksheet(config.SHEET_STAFF)):
+        if str(record.get("Staff_ID", "")).strip() != str(staff_id).strip():
+            continue
+        value = str(record.get("Primary_Department", "")).strip()
+        return value if value in _FINANCE_DEPARTMENTS else ""
+    return ""
+
+
 def add_salary_payment_checked(
-    staff_id: str, month: str, amount: float, paid_by: str, note: str = ""
+    staff_id: str,
+    month: str,
+    amount: float,
+    paid_by: str,
+    note: str = "",
+    paid_from: str = config.CASH_CUSTODIAN_HOME_TREASURY,
 ) -> dict:
     """Re-read the current due immediately before appending one salary payment."""
     amount = _positive_amount(amount)
@@ -1978,7 +1994,9 @@ def add_salary_payment_checked(
     if amount > due:
         return {"ok": False, "reason": "amount_exceeds_due", "due": due}
     payment_id = add_salary_payment(
-        staff_id, month, amount, paid_by=paid_by, note=note
+        staff_id, month, amount, paid_by=paid_by, note=note,
+        paid_from=paid_from,
+        department=_staff_primary_department(staff_id),
     )
     return {
         "ok": True,
@@ -1987,11 +2005,32 @@ def add_salary_payment_checked(
     }
 
 
-def add_salary_payment(staff_id: str, month: str, amount: float, paid_by: str, note: str = "") -> str:
-    """13_Salary শীটে একটা কিস্তি সেভ করে।"""
+def add_salary_payment(
+    staff_id: str,
+    month: str,
+    amount: float,
+    paid_by: str,
+    note: str = "",
+    paid_from: str = config.CASH_CUSTODIAN_HOME_TREASURY,
+    department: str = "",
+) -> str:
+    """13_Salary শীটে একটা কিস্তি সেভ করে, কোন ভান্ডার থেকে গেল সেটাসহ।"""
+    if paid_from not in config.CASH_CUSTODIANS:
+        raise ValueError(f"Invalid cash custodian: {paid_from}")
+    if department and department not in _FINANCE_DEPARTMENTS:
+        raise ValueError(f"Invalid finance department: {department}")
     ws = _worksheet(config.SHEET_SALARY)
+    headers = ws.row_values(1)
+    missing = sorted(
+        {"Paid_From", "Status", "Paid_At"}.difference(headers)
+    )
+    if missing:
+        raise RuntimeError(
+            "13_Salary is missing required custody columns: " + ", ".join(missing)
+        )
     payment_id = _next_salary_payment_id(ws)
     now = bd_now()
+    timestamp = now.strftime("%Y-%m-%d %I:%M %p")
     row = [
         payment_id,
         now.strftime("%Y-%m-%d"),
@@ -1999,9 +2038,20 @@ def add_salary_payment(staff_id: str, month: str, amount: float, paid_by: str, n
         staff_id,
         amount,
         paid_by,
-        now.strftime("%Y-%m-%d %I:%M %p"),
+        timestamp,
         note,
     ]
+    if len(row) < len(headers):
+        row.extend([""] * (len(headers) - len(row)))
+    custody_values = {
+        "Department": department,
+        "Paid_From": paid_from,
+        "Status": "Paid",
+        "Paid_At": timestamp,
+    }
+    for header, value in custody_values.items():
+        if header in headers:
+            row[headers.index(header)] = value
     _append_unified_row(
         ws, row, "salary_payment", payment_id,
         provider_id=paid_by,
@@ -2300,88 +2350,180 @@ def get_expense_total_for_month(month: str) -> float:
     return round(total, 2)
 
 
+def _in_range(value: str, start_date: str, end_date: str) -> bool:
+    text = str(value or "").strip()[:10]
+    return bool(text) and start_date <= text <= end_date
+
+
+def _cash_effective_date(row: dict) -> str:
+    """টাকা আসলে কবে বেরিয়েছে — Paid_At, না থাকলে Date."""
+    return str(row.get("Paid_At", "") or row.get("Date", "") or "").strip()[:10]
+
+
+def _is_unclassified(row: dict) -> bool:
+    return department_access.normalize_department(row.get("Department")) is None
+
+
+def _sum_where(rows, predicate, amount_key="Amount") -> float:
+    return sum(_money(row, amount_key) for row in rows if predicate(row))
+
+
 def get_cash_custody_summary(
     date_str: str | None = None, end_date: str | None = None, departments=None
 ) -> dict:
-    """Cash reconciliation over an inclusive range, defaulting to today."""
+    """Cash reconciliation over an inclusive range, defaulting to today.
+
+    এটি নির্বাচিত সময়ের movement — opening balance এতে ধরা নেই।
+    """
     start_date = date_str or bd_now().strftime("%Y-%m-%d")
     end_date = end_date or start_date
     if end_date < start_date:
         raise ValueError("end_date must be on or after start_date")
-    payment_rows = _finance_scoped_records(
-        safe_get_all_records(_worksheet(config.SHEET_PAYMENTS)), departments
-    )
-    expense_rows = _finance_scoped_records(
-        safe_get_all_records(_worksheet(config.SHEET_EXPENSES)), departments
-    )
-    movement_rows = _finance_scoped_records(
-        safe_get_all_records(_worksheet(config.SHEET_CASH_MOVEMENT)), departments
+
+    raw_payments = safe_get_all_records(_worksheet(config.SHEET_PAYMENTS))
+    raw_expenses = safe_get_all_records(_worksheet(config.SHEET_EXPENSES))
+    raw_movements = safe_get_all_records(_worksheet(config.SHEET_CASH_MOVEMENT))
+    try:
+        raw_salaries = safe_get_all_records(_worksheet(config.SHEET_SALARY))
+    except Exception:  # শীট না থাকলে বাকি রিপোর্ট বন্ধ হবে না
+        raw_salaries = []
+
+    payment_rows = _finance_scoped_records(raw_payments, departments)
+    expense_rows = _finance_scoped_records(raw_expenses, departments)
+    movement_rows = _finance_scoped_records(raw_movements, departments)
+    salary_rows = _finance_scoped_records(raw_salaries, departments)
+
+    cash_collected = _sum_where(
+        payment_rows,
+        lambda row: _in_range(row.get("Date"), start_date, end_date)
+        and str(row.get("Payment_Method", "")).strip().lower() == "cash",
     )
 
-    cash_collected = sum(
-        float(row.get("Amount", 0) or 0)
-        for row in payment_rows
-        if start_date <= str(row.get("Date", "")).strip() <= end_date
-        and str(row.get("Payment_Method", "")).strip().lower() == "cash"
-    )
     paid_expenses = [
         row for row in expense_rows
-        if start_date <= str(row.get("Date", "")).strip() <= end_date
+        if _in_range(_cash_effective_date(row), start_date, end_date)
         and _expense_is_paid(row)
     ]
-    reception_expense = sum(
-        float(row.get("Amount", 0) or 0)
-        for row in paid_expenses
-        if str(row.get("Paid_From", "")).strip() == config.CASH_CUSTODIAN_RECEPTION
-    )
-    home_clinic_expense = sum(
-        float(row.get("Amount", 0) or 0)
-        for row in paid_expenses
-        if str(row.get("Paid_From", "")).strip() == config.CASH_CUSTODIAN_HOME_TREASURY
-        and str(row.get("Type", "")).strip() == config.EXPENSE_TYPE_CLINIC
-    )
-    household_withdrawal = sum(
-        float(row.get("Amount", 0) or 0)
-        for row in paid_expenses
-        if str(row.get("Paid_From", "")).strip() == config.CASH_CUSTODIAN_HOME_TREASURY
-        and str(row.get("Type", "")).strip() == config.EXPENSE_TYPE_HOUSEHOLD
-    )
-    accepted = [
-        row for row in movement_rows
-        if start_date <= str(row.get("Date", "")).strip() <= end_date
-        and str(row.get("Status", "")).strip() == "Accepted"
+    paid_salaries = [
+        row for row in salary_rows
+        if _in_range(_cash_effective_date(row), start_date, end_date)
+        and str(row.get("Status", "")).strip() in ("", "Paid")
     ]
-    reception_out = sum(
-        float(row.get("Amount", 0) or 0)
-        for row in accepted
-        if str(row.get("From_Custodian", "")).strip() == config.CASH_CUSTODIAN_RECEPTION
+
+    def _from(rows, custodian, extra=None):
+        return _sum_where(
+            rows,
+            lambda row: str(row.get("Paid_From", "")).strip() == custodian
+            and (extra is None or extra(row)),
+        )
+
+    def _type_is(expense_type):
+        return lambda row: str(row.get("Type", "")).strip() == expense_type
+
+    reception_expense = _from(paid_expenses, config.CASH_CUSTODIAN_RECEPTION)
+    reception_salary = _from(paid_salaries, config.CASH_CUSTODIAN_RECEPTION)
+    home_clinic_expense = _from(
+        paid_expenses, config.CASH_CUSTODIAN_HOME_TREASURY,
+        _type_is(config.EXPENSE_TYPE_CLINIC),
     )
-    home_in = sum(
-        float(row.get("Amount", 0) or 0)
-        for row in accepted
-        if str(row.get("To_Custodian", "")).strip() == config.CASH_CUSTODIAN_HOME_TREASURY
+    household_withdrawal = _from(
+        paid_expenses, config.CASH_CUSTODIAN_HOME_TREASURY,
+        _type_is(config.EXPENSE_TYPE_HOUSEHOLD),
     )
-    home_out = sum(
-        float(row.get("Amount", 0) or 0)
-        for row in accepted
-        if str(row.get("From_Custodian", "")).strip() == config.CASH_CUSTODIAN_HOME_TREASURY
+    home_salary = _from(paid_salaries, config.CASH_CUSTODIAN_HOME_TREASURY)
+    bank_expense = _from(paid_expenses, config.CASH_CUSTODIAN_BANK)
+    bank_salary = _from(paid_salaries, config.CASH_CUSTODIAN_BANK)
+
+    in_range_movements = [
+        row for row in movement_rows
+        if _in_range(row.get("Date"), start_date, end_date)
+    ]
+
+    def _moved(rows, side, custodian):
+        key = "From_Custodian" if side == "from" else "To_Custodian"
+        return sum(
+            _movement_amount(row) for row in rows
+            if str(row.get(key, "")).strip() == custodian
+        )
+
+    accepted = [
+        row for row in in_range_movements
+        if str(row.get("Status", "")).strip() == "Accepted"
+    ]
+    pending = [
+        row for row in in_range_movements
+        if str(row.get("Status", "")).strip() == "Pending"
+    ]
+
+    reception_out = _moved(accepted, "from", config.CASH_CUSTODIAN_RECEPTION)
+    reception_pending = _moved(pending, "from", config.CASH_CUSTODIAN_RECEPTION)
+    home_in = _moved(accepted, "to", config.CASH_CUSTODIAN_HOME_TREASURY)
+    home_out = _moved(accepted, "from", config.CASH_CUSTODIAN_HOME_TREASURY)
+    home_pending = _moved(pending, "from", config.CASH_CUSTODIAN_HOME_TREASURY)
+    bank_in = _moved(accepted, "to", config.CASH_CUSTODIAN_BANK)
+    bank_out = _moved(accepted, "from", config.CASH_CUSTODIAN_BANK)
+
+    # Department ছাড়া সারিগুলো fail-closed নিয়মে রিপোর্ট থেকে বাদ পড়ে —
+    # নীরবে হারানোর বদলে আলাদা করে দেখানো হয়।
+    unclassified_expense = _sum_where(
+        raw_expenses,
+        lambda row: _is_unclassified(row)
+        and _in_range(_cash_effective_date(row), start_date, end_date)
+        and _expense_is_paid(row),
     )
+    unclassified_salary = _sum_where(
+        raw_salaries,
+        lambda row: _is_unclassified(row)
+        and _in_range(_cash_effective_date(row), start_date, end_date)
+        and str(row.get("Status", "")).strip() in ("", "Paid"),
+    )
+    unclassified_payment = _sum_where(
+        raw_payments,
+        lambda row: _is_unclassified(row)
+        and _in_range(row.get("Date"), start_date, end_date)
+        and str(row.get("Payment_Method", "")).strip().lower() == "cash",
+    )
+    unclassified_movement = sum(
+        _movement_amount(row) for row in raw_movements
+        if _is_unclassified(row)
+        and _in_range(row.get("Date"), start_date, end_date)
+        and str(row.get("Status", "")).strip() == "Accepted"
+    )
+
     return {
         "Date": start_date if start_date == end_date else f"{start_date} — {end_date}",
         "Start_Date": start_date,
         "End_Date": end_date,
         "Cash_Collected": round(cash_collected, 2),
         "Reception_Expense": round(reception_expense, 2),
+        "Reception_Salary": round(reception_salary, 2),
         "Reception_Handover": round(reception_out, 2),
+        "Reception_In_Transit": round(reception_pending, 2),
         "Reception_Balance": round(
-            cash_collected - reception_expense - reception_out, 2
+            cash_collected - reception_expense - reception_salary - reception_out, 2
         ),
         "Home_Received": round(home_in, 2),
         "Home_Clinic_Expense": round(home_clinic_expense, 2),
+        "Home_Salary": round(home_salary, 2),
         "Household_Withdrawal": round(household_withdrawal, 2),
         "Home_Transfer_Out": round(home_out, 2),
+        "Home_In_Transit": round(home_pending, 2),
         "Home_Balance": round(
-            home_in - home_clinic_expense - household_withdrawal - home_out, 2
+            home_in - home_clinic_expense - home_salary
+            - household_withdrawal - home_out,
+            2,
+        ),
+        "Bank_Received": round(bank_in, 2),
+        "Bank_Expense": round(bank_expense, 2),
+        "Bank_Salary": round(bank_salary, 2),
+        "Bank_Transfer_Out": round(bank_out, 2),
+        "Bank_Balance": round(
+            bank_in - bank_expense - bank_salary - bank_out, 2
+        ),
+        "Unclassified_Total": round(
+            unclassified_payment + unclassified_expense
+            + unclassified_salary + unclassified_movement,
+            2,
         ),
     }
 
