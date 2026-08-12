@@ -1009,6 +1009,7 @@ def add_package(patient_id: str, patient_name: str, total_sessions: int, package
         package_amount, paid_amount, due_amount,
         bd_now().strftime("%Y-%m-%d"), status,
     ]
+    _set_department_by_header(ws, row, _patient_department(patient_id))
     _append_unified_row(ws, row, "package", package_id)
     return package_id
 
@@ -1493,6 +1494,25 @@ def _next_assessment_id(ws) -> str:
     return f"AS{next_num:04d}"
 
 
+def _patient_department(patient_id: str) -> str:
+    """রোগীর নিজের Department রেকর্ড থেকে খুঁজে আনে; না পেলে ফাঁকা।"""
+    patient = get_patient_by_id(patient_id)
+    if not patient:
+        return ""
+    return str(patient.get("Department", "")).strip()
+
+
+def _set_department_by_header(ws, row: list, department: str) -> None:
+    """headers-এ Department কলাম থাকলে, সঠিক পজিশনে বসিয়ে দেয় (কলাম অর্ডার বদলালেও নিরাপদ)।"""
+    headers = ws.row_values(1)
+    if "Department" not in headers:
+        return
+    idx = headers.index("Department")
+    if len(row) <= idx:
+        row.extend([""] * (idx + 1 - len(row)))
+    row[idx] = department
+
+
 def add_assessment(patient_id: str, category: str, test_data: dict, created_by: str) -> str:
     """10_Assessments শীটে প্রাথমিক মূল্যায়নের ফলাফল সেভ করে (টেস্ট-রেছাল্ট JSON আকারে,
     কারণ প্রতিটা category-র টেস্ট আলাদা — আলাদা কলাম বানালে শীট এলোমেলো হয়ে যেত)."""
@@ -1507,6 +1527,7 @@ def add_assessment(patient_id: str, category: str, test_data: dict, created_by: 
         created_by,
         now.strftime("%Y-%m-%d %I:%M %p"),
     ]
+    _set_department_by_header(ws, row, _patient_department(patient_id))
     _append_unified_row(
         ws, row, "assessment", assessment_id,
         provider_id=created_by,
@@ -1551,6 +1572,7 @@ def add_treatment_plan(data: dict, created_by: str) -> str:
         bd_now().strftime("%Y-%m-%d"),
         "Active",
     ]
+    _set_department_by_header(ws, row, _patient_department(data.get("Patient_ID", "")))
     _append_unified_row(
         ws, row, "treatment_plan", plan_id,
         provider_id=created_by,
@@ -1689,6 +1711,7 @@ def add_report(data: dict, uploaded_by: str) -> str:
         uploaded_by,
         data.get("File_Drive_Link", ""),
     ]
+    _set_department_by_header(ws, row, _patient_department(data.get("Patient_ID", "")))
     _append_unified_row(
         ws, row, "report", report_id,
         provider_id=uploaded_by,
