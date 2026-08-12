@@ -49,6 +49,26 @@ class FinanceDepartmentIsolationTests(unittest.TestCase):
         self.assertIn("department_forbidden", source(path, "_finalize_expense_status"))
         self.assertIn("department_forbidden", source(path, "finalize_cash_movement"))
 
+    def test_expense_public_finalizers_forward_department_scope(self):
+        path = BOT_DIR / "sheets.py"
+        for name in ["finalize_expense_request", "mark_expense_paid"]:
+            with self.subTest(name=name):
+                fn_source = source(path, name)
+                self.assertIn("departments", fn_source)
+                self.assertIn("_finalize_expense_status", fn_source)
+                call = next(
+                    node for node in ast.walk(function(path, name))
+                    if isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Name)
+                    and node.func.id == "_finalize_expense_status"
+                )
+                self.assertTrue(
+                    any(
+                        isinstance(arg, ast.Name) and arg.id == "departments"
+                        for arg in call.args
+                    )
+                )
+
     def test_bot_lists_and_reports_pass_current_scope(self):
         path = BOT_DIR / "bot.py"
         for name in [
