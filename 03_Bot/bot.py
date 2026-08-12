@@ -7578,15 +7578,37 @@ def main():
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_HOME}$"), go_home))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), unknown_menu))
 
+    def _owner_error_detail(context) -> str:
+        """Owner হলে কারিগরি কারণটা দেখায়; অন্য role-এর জন্য কিছুই না।
+
+        staff আগেই `_require_staff` থেকে user_data-তে ক্যাশ করা থাকে, তাই
+        এখানে বাড়তি Sheets কল লাগে না।
+        """
+        try:
+            role = str(
+                (getattr(context, "user_data", None) or {})
+                .get("staff", {})
+                .get("Role", "")
+            ).strip()
+            if role != "Owner":
+                return ""
+            error = context.error
+            reason = str(error).strip().splitlines()[0][:200] if error else ""
+            return f"\n\n🔧 কারিগরি কারণ: {type(error).__name__}: {reason}"
+        except Exception:
+            return ""
+
     async def _global_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
         logger.exception("Unhandled error", exc_info=context.error)
         capture_exception(context.error)
         try:
             if isinstance(update, Update) and update.effective_message:
-                await update.effective_message.reply_text(
+                message = (
                     "⚠️ কাজটি সম্পন্ন হয়নি—এটি সব সময় Google Sheets busy বোঝায় না। "
                     "একবার আবার চেষ্টা করো; একই button-এ আবার হলে Admin-কে জানাও।"
                 )
+                message += _owner_error_detail(context)
+                await update.effective_message.reply_text(message)
         except Exception:
             logger.exception("error handler নিজেই ব্যর্থ হয়েছে")
 
