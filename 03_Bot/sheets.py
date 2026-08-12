@@ -408,7 +408,7 @@ def _find_inventory_row(item_name: str, department: str):
     return None, header, ws
 
 
-def get_all_inventory(departments=()) -> list:
+def get_all_inventory(departments=None) -> list:
     """Return inventory inside explicit scope; missing Department fails closed."""
     rows = safe_get_all_records(_worksheet(config.SHEET_INVENTORY))
     return filter_records_by_departments(rows, departments)
@@ -1607,7 +1607,7 @@ def increment_plan_session(patient_id: str) -> bool:
     return True
 
 
-def get_daily_register(date_str: str | None = None, departments=()) -> dict:
+def get_daily_register(date_str: str | None = None, departments=None) -> dict:
     """
     ০৬_Payments শীট থেকে আজকের সব এন্ট্রি নিয়ে Sl/Patient/Session/Bill/Paid/Due/Status
     সহ রেজিস্টার বানায়, দিনশেষের টোটাল হিসাব করে।
@@ -1766,8 +1766,8 @@ def get_month_running_total(year: int, month: int, up_to_day: int) -> dict:
     }
 
 
-def get_daily_patient_list(date_str: str, departments=()) -> list[dict]:
-    payments = filter_records_by_departments(
+def get_daily_patient_list(date_str: str, departments=None) -> list[dict]:
+    payments = _finance_scoped_records(
         safe_get_all_records(_worksheet(config.SHEET_PAYMENTS)), departments
     )
     day_payments = [p for p in payments if str(p.get("Date", "")).strip() == date_str]
@@ -2135,13 +2135,22 @@ def create_expense_request(
     )
 
 
-def get_expense_requests(status: str) -> list[dict]:
+def _finance_scoped_records(records: list[dict], departments) -> list[dict]:
+    """Legacy internal callers may omit scope; production bot always supplies it."""
+    if departments is None:
+        return records
+    return filter_records_by_departments(records, departments)
+
+
+def get_expense_requests(status: str, departments=None) -> list[dict]:
     if status not in EXPENSE_STATUSES:
         raise ValueError(f"Invalid expense status: {status}")
     ws = _worksheet(config.SHEET_EXPENSES)
     rows = [
         _normalized_expense(row)
-        for row in safe_get_all_records(ws)
+        for row in _finance_scoped_records(
+            safe_get_all_records(ws), departments
+        )
         if str(row.get("Status", "")).strip() == status
     ]
     rows.sort(key=lambda row: str(row.get("Timestamp", "")), reverse=True)
@@ -2152,6 +2161,7 @@ def _finalize_expense_status(
     expense_id: str,
     expected_status: str,
     updates: dict[str, str],
+    departments=None,
 ) -> dict:
     ws = _worksheet(config.SHEET_EXPENSES)
     values = ws.get_all_values()
@@ -2161,11 +2171,19 @@ def _finalize_expense_status(
     _require_expense_workflow_headers(headers)
     id_index = headers.index("Expense_ID")
     status_index = headers.index("Status")
+    department_index = headers.index("Department") if "Department" in headers else -1
+    allowed = None if departments is None else _department_scope_values(departments)
 
     for row_number, row in enumerate(values[1:], start=2):
         current_id = row[id_index].strip() if len(row) > id_index else ""
         if current_id != expense_id.strip():
             continue
+        current_department = (
+            _inventory_department(row[department_index])
+            if department_index >= 0 and len(row) > department_index else ""
+        )
+        if allowed is not None and current_department not in allowed:
+            return {"ok": False, "reason": "department_forbidden"}
         current_status = row[status_index].strip() if len(row) > status_index else ""
         if current_status != expected_status:
             return {
@@ -2190,6 +2208,7 @@ def finalize_expense_request(
     expense_id: str,
     approved_by: str,
     decision: str,
+    departments=None,
 ) -> dict:
     """Owner approves or rejects a pending expense exactly once."""
     if decision not in {"Approved", "Rejected"}:
@@ -2221,7 +2240,7 @@ def mark_expense_paid(expense_id: str, paid_by: str) -> dict:
 
 
 def get_expenses_for_date(
-    date_str: str | None = None, end_date: str | None = None
+    date_str: str | None = None, end_date: str | None = None, departments=None
 ) -> list[dict]:
     """Return expense rows in an inclusive range, defaulting to today."""
     start_date = date_str or bd_now().strftime("%Y-%m-%d")
@@ -2231,7 +2250,9 @@ def get_expenses_for_date(
     ws = _worksheet(config.SHEET_EXPENSES)
     rows = [
         _normalized_expense(row)
-        for row in safe_get_all_records(ws)
+        for row in _finance_scoped_records(
+            safe_get_all_records(ws), departments
+        )
         if start_date <= str(row.get("Date", "")).strip() <= end_date
     ]
     rows.sort(key=lambda row: str(row.get("Timestamp", "")), reverse=True)
@@ -2253,16 +2274,22 @@ def get_expense_total_for_month(month: str) -> float:
 
 
 def get_cash_custody_summary(
-    date_str: str | None = None, end_date: str | None = None
+    date_str: str | None = None, end_date: str | None = None, departments=None
 ) -> dict:
     """Cash reconciliation over an inclusive range, defaulting to today."""
     start_date = date_str or bd_now().strftime("%Y-%m-%d")
     end_date = end_date or start_date
     if end_date < start_date:
         raise ValueError("end_date must be on or after start_date")
-    payment_rows = safe_get_all_records(_worksheet(config.SHEET_PAYMENTS))
-    expense_rows = safe_get_all_records(_worksheet(config.SHEET_EXPENSES))
-    movement_rows = safe_get_all_records(_worksheet(config.SHEET_CASH_MOVEMENT))
+    payment_rows = _finance_scoped_records(
+        safe_get_all_records(_worksheet(config.SHEET_PAYMENTS)), departments
+    )
+    expense_rows = _finance_scoped_records(
+        safe_get_all_records(_worksheet(config.SHEET_EXPENSES)), departments
+    )
+    movement_rows = _finance_scoped_records(
+        safe_get_all_records(_worksheet(config.SHEET_CASH_MOVEMENT)), departments
+    )
 
     cash_collected = sum(
         float(row.get("Amount", 0) or 0)
@@ -2563,10 +2590,12 @@ def add_cash_movement(
     return movement_id
 
 
-def get_cash_movements_for_date(date_str: str) -> list[dict]:
+def get_cash_movements_for_date(date_str: str, departments=None) -> list[dict]:
     """Return one tenant's cash movements for YYYY-MM-DD, newest first."""
     ws = _worksheet(config.SHEET_CASH_MOVEMENT)
-    records = safe_get_all_records(ws)
+    records = _finance_scoped_records(
+        safe_get_all_records(ws), departments
+    )
     rows = [
         row for row in records
         if str(row.get("Date", "")).strip() == date_str.strip()
@@ -2575,11 +2604,13 @@ def get_cash_movements_for_date(date_str: str) -> list[dict]:
     return rows
 
 
-def get_pending_cash_movements() -> list[dict]:
+def get_pending_cash_movements(departments=None) -> list[dict]:
     """Return pending handovers for the bound clinic, newest first."""
     ws = _worksheet(config.SHEET_CASH_MOVEMENT)
     rows = [
-        row for row in safe_get_all_records(ws)
+        row for row in _finance_scoped_records(
+            safe_get_all_records(ws), departments
+        )
         if str(row.get("Status", "")).strip() == "Pending"
     ]
     rows.sort(key=lambda row: str(row.get("Timestamp", "")), reverse=True)
@@ -2590,6 +2621,7 @@ def finalize_cash_movement(
     movement_id: str,
     confirmed_by: str,
     decision: str = "Accepted",
+    departments=None,
 ) -> dict:
     """Accept or reject one pending handover exactly once."""
     if decision not in {"Accepted", "Rejected"}:
@@ -2611,10 +2643,18 @@ def finalize_cash_movement(
 
     id_index = headers.index("Movement_ID")
     status_index = headers.index("Status")
+    department_index = headers.index("Department") if "Department" in headers else -1
+    allowed = None if departments is None else _department_scope_values(departments)
     for row_number, row in enumerate(values[1:], start=2):
         current_id = row[id_index].strip() if len(row) > id_index else ""
         if current_id != movement_id.strip():
             continue
+        current_department = (
+            _inventory_department(row[department_index])
+            if department_index >= 0 and len(row) > department_index else ""
+        )
+        if allowed is not None and current_department not in allowed:
+            return {"ok": False, "reason": "department_forbidden"}
         current_status = row[status_index].strip() if len(row) > status_index else ""
         if current_status != "Pending":
             return {

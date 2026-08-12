@@ -2040,6 +2040,37 @@ async def ai_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _generic_submenu(update, context, roles.ROLE_AI_TOOLS_ITEMS, "🤖 AI টুলস — কী করতে চাও?")
 
 
+def _finance_departments(staff: dict) -> frozenset[str]:
+    return _report_departments(staff)
+
+
+def _staff_has_finance_department(staff: dict, department: str) -> bool:
+    target = department_access.normalize_department(department)
+    if target not in {
+        department_access.Department.PHYSIO,
+        department_access.Department.DENTAL,
+    }:
+        return False
+    for value in _finance_departments(staff):
+        current = department_access.normalize_department(value)
+        if current is department_access.Department.ALL or current is target:
+            return True
+    return False
+
+
+def _finance_department_keyboard(prefix: str, staff: dict) -> InlineKeyboardMarkup:
+    rows = []
+    if _staff_has_finance_department(staff, config.DEPARTMENT_PHYSIO):
+        rows.append([InlineKeyboardButton(
+            "🩺 Physio", callback_data=f"{prefix}_Physio"
+        )])
+    if _staff_has_finance_department(staff, config.DEPARTMENT_DENTAL):
+        rows.append([InlineKeyboardButton(
+            "🦷 Dental", callback_data=f"{prefix}_Dental"
+        )])
+    return InlineKeyboardMarkup(rows)
+
+
 async def finance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _generic_submenu(update, context, roles.ROLE_FINANCE_ITEMS, "💰 চলতি হিসাব — কী করতে চাও?")
 
@@ -5791,10 +5822,7 @@ async def cash_handover_start(update: Update, context: ContextTypes.DEFAULT_TYPE
     context.user_data["cash_handover"] = {}
     await update.message.reply_text(
         "কোন বিভাগের Reception cash হ্যান্ডওভার করবে?",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🩺 Physio", callback_data="cashdept_Physio")],
-            [InlineKeyboardButton("🦷 Dental", callback_data="cashdept_Dental")],
-        ]),
+        reply_markup=_finance_department_keyboard("cashdept", staff),
     )
     return CASH_DEPARTMENT
 
@@ -5803,6 +5831,12 @@ async def cash_department_callback(update: Update, context: ContextTypes.DEFAULT
     query = update.callback_query
     await query.answer()
     department = query.data.replace("cashdept_", "", 1)
+    staff = await _require_staff(update, context)
+    if staff is None or not _staff_can_access_menu(staff, roles.MENU_CASH_HANDOVER):
+        return ConversationHandler.END
+    if not _staff_has_finance_department(staff, department):
+        await query.edit_message_text("⛔ এই Department-এর cash access নেই।")
+        return ConversationHandler.END
     if department not in (config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL):
         await query.edit_message_text("❌ বিভাগ সঠিক নয়।")
         return ConversationHandler.END
@@ -5851,9 +5885,17 @@ async def cash_note_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cash_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    staff = context.user_data.get("staff", {})
+    staff = await _require_staff(update, context)
+    if staff is None or not _staff_can_access_menu(staff, roles.MENU_CASH_HANDOVER):
+        return ConversationHandler.END
     handover = context.user_data.get("cash_handover", {})
     text = update.message.text.strip().lower()
+    if not _staff_has_finance_department(
+        staff, handover.get("Department", "")
+    ):
+        context.user_data.pop("cash_handover", None)
+        await update.message.reply_text("⛔ এই Department-এর cash handover অনুমতি নেই।")
+        return ConversationHandler.END
     if text not in ("হ্যাঁ", "yes", "y", "হা", "ha"):
         context.user_data.pop("cash_handover", None)
         await update.message.reply_text(
@@ -5964,7 +6006,7 @@ async def cash_receive_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not _staff_can_access_menu(staff, roles.MENU_CASH_RECEIVE):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
-    rows = await async_runtime.run_sheets_read(sheets.get_pending_cash_movements)
+    rows = await async_runtime.run_sheets_read(sheets.get_pending_cash_movements, _finance_departments(staff))
     if not rows:
         await update.message.reply_text("✅ কোনো pending cash handover নেই।")
         return
@@ -6004,6 +6046,7 @@ async def cash_finalize_callback(update: Update, context: ContextTypes.DEFAULT_T
         movement_id,
         confirmed_by,
         decision,
+        _finance_departments(staff),
     )
     if result.get("ok"):
         label = "গ্রহণ করা হয়েছে" if decision == "Accepted" else "প্রত্যাখ্যান করা হয়েছে"
@@ -6029,7 +6072,7 @@ async def cash_movements_start(update: Update, context: ContextTypes.DEFAULT_TYP
         return
     today = bd_now().strftime("%Y-%m-%d")
     rows = await async_runtime.run_sheets_read(
-        sheets.get_cash_movements_for_date, today
+        sheets.get_cash_movements_for_date, today, _finance_departments(staff)
     )
     if not rows:
         await update.message.reply_text("🔄 আজ কোনো cash movement নেই।")
@@ -6061,10 +6104,7 @@ async def _expense_form_start(
     context.user_data["cost"] = {"Mode": mode}
     await update.message.reply_text(
         "খরচ কোন বিভাগের?",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🩺 Physio", callback_data="costdept_Physio")],
-            [InlineKeyboardButton("🦷 Dental", callback_data="costdept_Dental")],
-        ]),
+        reply_markup=_finance_department_keyboard("costdept", staff),
     )
     return COST_DEPARTMENT
 
@@ -6084,6 +6124,10 @@ async def cost_department_callback(update: Update, context: ContextTypes.DEFAULT
     query = update.callback_query
     await query.answer()
     department = query.data.replace("costdept_", "", 1)
+    staff = await _require_staff(update, context)
+    if staff is None or not _staff_has_finance_department(staff, department):
+        await query.edit_message_text("⛔ এই Department-এর finance access নেই।")
+        return ConversationHandler.END
     if department not in (config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL):
         await query.edit_message_text("❌ বিভাগ সঠিক নয়।")
         return ConversationHandler.END
@@ -6239,6 +6283,12 @@ async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
     if staff is None:
         return ConversationHandler.END
     expense = context.user_data.get("cost", {})
+    if not _staff_has_finance_department(
+        staff, expense.get("Department", "")
+    ):
+        context.user_data.pop("cost", None)
+        await update.message.reply_text("⛔ এই Department-এর expense save অনুমতি নেই।")
+        return ConversationHandler.END
     answer = update.message.text.strip().lower()
     if answer not in ("হ্যাঁ", "yes", "y", "হা", "ha"):
         context.user_data.pop("cost", None)
@@ -6359,7 +6409,7 @@ async def expense_approval_start(
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
     rows = await async_runtime.run_sheets_read(
-        sheets.get_expense_requests, "Pending Approval"
+        sheets.get_expense_requests, "Pending Approval", _finance_departments(staff)
     )
     if not rows:
         await update.message.reply_text("✅ কোনো pending খরচের request নেই।")
@@ -6397,7 +6447,8 @@ async def expense_approval_callback(
         or str(staff.get("Staff_ID", ""))
     )
     result = await async_runtime.run_sheets_write(
-        sheets.finalize_expense_request, expense_id, actor, decision
+        sheets.finalize_expense_request, expense_id, actor, decision,
+        _finance_departments(staff)
     )
     if result.get("ok"):
         message = (
@@ -6426,7 +6477,7 @@ async def approved_expenses_start(
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
     rows = await async_runtime.run_sheets_read(
-        sheets.get_expense_requests, "Approved"
+        sheets.get_expense_requests, "Approved", _finance_departments(staff)
     )
     if not rows:
         await update.message.reply_text("✅ টাকা দেওয়ার মতো approved খরচ নেই।")
@@ -6469,7 +6520,7 @@ async def expense_paid_callback(
         or str(staff.get("Staff_ID", ""))
     )
     result = await async_runtime.run_sheets_write(
-        sheets.mark_expense_paid, expense_id, actor
+        sheets.mark_expense_paid, expense_id, actor, _finance_departments(staff)
     )
     if result.get("ok"):
         await query.edit_message_text(
@@ -6614,12 +6665,14 @@ async def _show_financial_report(update, context, report, start_date, end_date):
         return
     if report == "cash":
         summary = await async_runtime.run_sheets_read(
-            sheets.get_cash_custody_summary, start_date, end_date
+            sheets.get_cash_custody_summary, start_date, end_date,
+            _finance_departments(staff)
         )
         text = _cash_custody_summary_text(summary, staff.get("Role", ""))
     else:
         rows = await async_runtime.run_sheets_read(
-            sheets.get_expenses_for_date, start_date, end_date
+            sheets.get_expenses_for_date, start_date, end_date,
+            _finance_departments(staff)
         )
         text = _expense_report_text(
             rows, start_date, end_date, staff.get("Role", "")
