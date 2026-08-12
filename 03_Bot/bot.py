@@ -2044,15 +2044,20 @@ def _finance_departments(staff: dict) -> frozenset[str]:
     return _report_departments(staff)
 
 
-def _display_sheet_amount(value) -> str:
-    """Format Sheets money safely, including formatted strings such as ৳5,000."""
+def _sheet_amount_value(value) -> float:
+    """Normalize numeric or formatted Sheets money without crashing a handler."""
     text = str(value if value is not None else "").strip()
     normalized = text.replace("৳", "").replace(",", "").strip()
     try:
-        return f"{float(normalized or 0):.0f}"
+        return float(normalized or 0)
     except (TypeError, ValueError):
         logger.warning("Invalid money value returned by Google Sheets: %r", value)
-        return text or "0"
+        return 0.0
+
+
+def _display_sheet_amount(value) -> str:
+    """Format Sheets money safely, including formatted strings such as ৳5,000."""
+    return f"{_sheet_amount_value(value):.0f}"
 
 
 def _staff_has_finance_department(staff: dict, department: str) -> bool:
@@ -3954,12 +3959,12 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     today_payments = [
         p for p in payments if str(p.get("Date", "")).strip() == today_str
     ]
-    today_collection = sum(float(p.get("Amount", 0) or 0) for p in today_payments)
+    today_collection = sum(_sheet_amount_value(p.get("Amount", 0) or 0) for p in today_payments)
     this_month_payments = [
         p for p in payments
         if str(p.get("Date", "")).strip().startswith(this_month_str)
     ]
-    this_month_collection = sum(float(p.get("Amount", 0) or 0) for p in this_month_payments)
+    this_month_collection = sum(_sheet_amount_value(p.get("Amount", 0) or 0) for p in this_month_payments)
 
     lines = [
         "\U0001F4CA রিপোর্ট ও অ্যানালিটিক্স", "",
@@ -3990,7 +3995,7 @@ async def rpt_totals_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     )
     patients = report_data[config.SHEET_PATIENTS]
     payments = report_data[config.SHEET_PAYMENTS]
-    total_collection = sum(float(p.get("Amount", 0) or 0) for p in payments)
+    total_collection = sum(_sheet_amount_value(p.get("Amount", 0) or 0) for p in payments)
     await query.message.reply_text(
         "\U0001F465 মোট রোগী ও সর্বমোট আদায়\n\n"
         f"\U0001F465 মোট রোগী (সর্বমোট): {len(patients)}\n"
@@ -4013,7 +4018,7 @@ async def rpt_lastmonth_callback(update: Update, context: ContextTypes.DEFAULT_T
         p for p in report_data[config.SHEET_PAYMENTS]
         if str(p.get("Date", "")).strip().startswith(last_month_str)
     ]
-    amount = sum(float(p.get("Amount", 0) or 0) for p in payments)
+    amount = sum(_sheet_amount_value(p.get("Amount", 0) or 0) for p in payments)
     await query.message.reply_text(
         f"\U0001F4B0 গত মাসের ({last_month_str}) আদায়: {amount:.0f} টাকা"
     )
@@ -4312,7 +4317,7 @@ def _build_full_history_text(patient_id: str) -> str | None:
         last_due = 0.0
         for p in payments:
             date_str = p.get("Date", "")
-            amount = float(p.get("Amount", 0) or 0)
+            amount = _sheet_amount_value(p.get("Amount", 0) or 0)
             due = float(p.get("Due", 0) or 0)
             method = p.get("Payment_Method", "")
             total_paid += amount
@@ -5814,7 +5819,7 @@ async def mypayments_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lines = [f"🧾 তুমি ({my_name}) যা দিয়েছো —\n"]
     total = 0.0
     for r in rows:
-        amt = float(r.get("Amount", 0) or 0)
+        amt = _sheet_amount_value(r.get("Amount", 0) or 0)
         total += amt
         lines.append(
             f"• {r.get('Date', '')} | {r.get('Staff_Full_Name', '')} | ৳{amt:.0f} | মাস: {r.get('Month', '')}"
@@ -6429,7 +6434,7 @@ async def expense_approval_start(
     for row in rows[:20]:
         lines.append(
             f"• {row.get('Expense_ID', '')} | {row.get('Category', '')} | "
-            f"৳{float(row.get('Amount', 0) or 0):.0f} | "
+            f"৳{_sheet_amount_value(row.get('Amount', 0) or 0):.0f} | "
             f"{row.get('Requested_By', '')}"
         )
     await update.message.reply_text(
@@ -6499,7 +6504,7 @@ async def approved_expenses_start(
         expense_id = str(row.get("Expense_ID", "")).strip()
         lines.append(
             f"• {expense_id} | {row.get('Category', '')} | "
-            f"৳{float(row.get('Amount', 0) or 0):.0f}"
+            f"৳{_sheet_amount_value(row.get('Amount', 0) or 0):.0f}"
         )
         buttons.append([InlineKeyboardButton(
             f"💵 {expense_id} টাকা দেওয়া হয়েছে",
@@ -6609,13 +6614,13 @@ def _expense_report_text(rows, start_date: str, end_date: str, role_str: str) ->
         != config.CASH_CUSTODIAN_HOME_TREASURY
     ]
     paid_clinic = sum(
-        float(row.get("Amount", 0) or 0)
+        _sheet_amount_value(row.get("Amount", 0) or 0)
         for row in visible_rows
         if row.get("Type") == config.EXPENSE_TYPE_CLINIC
         and row.get("Status") in ("Paid", "Legacy Paid")
     )
     household = sum(
-        float(row.get("Amount", 0) or 0)
+        _sheet_amount_value(row.get("Amount", 0) or 0)
         for row in visible_rows
         if row.get("Type") == config.EXPENSE_TYPE_HOUSEHOLD
         and row.get("Status") in ("Paid", "Legacy Paid")
@@ -6627,7 +6632,7 @@ def _expense_report_text(rows, start_date: str, end_date: str, role_str: str) ->
     for row in visible_rows:
         lines.append(
             f"• {row.get('Expense_ID', '')} | {row.get('Category', '')} | "
-            f"৳{float(row.get('Amount', 0) or 0):.0f} | "
+            f"৳{_sheet_amount_value(row.get('Amount', 0) or 0):.0f} | "
             f"{row.get('Status', '')} | {row.get('Paid_From', '')}"
         )
     lines.append(f"\nPaid clinic expense: ৳{paid_clinic:.0f}")
