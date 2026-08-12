@@ -339,6 +339,7 @@ def _append_unified_row(
     ai_generated: bool = False,
     human_verified: bool = True,
     value_input_option: str = "RAW",
+    extra_values: dict[str, object] | None = None,
 ) -> None:
     """Append a legacy-compatible row plus Unified Data Architecture metadata."""
     headers = ws.row_values(1)
@@ -351,10 +352,11 @@ def _append_unified_row(
         ai_generated=ai_generated,
         human_verified=human_verified,
     )
-    ws.append_row(
-        apply_to_headers(headers, row, envelope) if headers else row,
-        value_input_option=value_input_option,
-    )
+    output_row = apply_to_headers(headers, row, envelope) if headers else list(row)
+    for header, value in (extra_values or {}).items():
+        if header in headers:
+            output_row[headers.index(header)] = value
+    ws.append_row(output_row, value_input_option=value_input_option)
     _invalidate_cache(ws)
 
 
@@ -370,45 +372,77 @@ def _batch_update_cells(ws, row_number: int, updates: dict[int, object]) -> None
     _invalidate_cache(ws)
 
 
-def _find_inventory_row(item_name: str):
+def _inventory_department(value: object) -> str:
+    department = department_access.normalize_department(value)
+    if department in {
+        department_access.Department.PHYSIO,
+        department_access.Department.DENTAL,
+    }:
+        return department.value
+    return ""
+
+
+def _find_inventory_row(item_name: str, department: str):
+    """Find an item only inside one explicit department."""
+    target_department = _inventory_department(department)
+    if not target_department:
+        return None, None, None
     ws = _worksheet(config.SHEET_INVENTORY)
     values = ws.get_all_values()
     if not values:
         return None, None, None
     header = values[0]
-    if "Item_Name" not in header:
+    if "Item_Name" not in header or "Department" not in header:
         return None, header, ws
     name_idx = header.index("Item_Name")
-    target = item_name.strip().lower()
-    for i, row in enumerate(values[1:], start=2):
-        if len(row) > name_idx and row[name_idx].strip().lower() == target:
-            return i, header, ws
+    department_idx = header.index("Department")
+    target = item_name.strip().casefold()
+    for row_number, row in enumerate(values[1:], start=2):
+        row_name = row[name_idx].strip().casefold() if len(row) > name_idx else ""
+        row_department = (
+            _inventory_department(row[department_idx])
+            if len(row) > department_idx else ""
+        )
+        if row_name == target and row_department == target_department:
+            return row_number, header, ws
     return None, header, ws
 
 
-def get_all_inventory() -> list:
-    ws = _worksheet(config.SHEET_INVENTORY)
-    return safe_get_all_records(ws)
+def get_all_inventory(departments=()) -> list:
+    """Return inventory inside explicit scope; missing Department fails closed."""
+    rows = safe_get_all_records(_worksheet(config.SHEET_INVENTORY))
+    return filter_records_by_departments(rows, departments)
 
 
-def adjust_inventory_stock(item_name: str, change: float, reason: str, staff: str) -> dict:
-    """09_Inventory-এ item_name খুঁজে Current_Stock-এ change যোগ/বিয়োগ করে (change ঋণাত্মক
-    হলে কমবে), 17_Inventory_Log-এ একটা লগ এন্ট্রি রাখে। item না পাওয়া গেলে বা কোনো সমস্যা
-    হলে {"ok": False, "error": ...} রিটার্ন করে — কখনো exception raise করে caller-কে থামায়
-    না, কারণ inventory ট্র্যাকিং ব্যর্থ হলেও মূল ট্রিটমেন্ট/রেজিস্ট্রেশন ফ্লো থেমে যাওয়া উচিত না।"""
+def adjust_inventory_stock(
+    item_name: str,
+    change: float,
+    reason: str,
+    staff: str,
+    department: str,
+) -> dict:
+    """Adjust one item inside one department and persist a scoped audit log."""
+    target_department = _inventory_department(department)
+    if not target_department:
+        return {"ok": False, "error": "সঠিক Department পাওয়া যায়নি"}
     try:
-        row_num, header, ws = _find_inventory_row(item_name)
+        row_num, header, ws = _find_inventory_row(item_name, target_department)
         if row_num is None:
-            return {"ok": False, "error": f"'{item_name}' নামে item 09_Inventory-এ পাওয়া যায়নি"}
+            return {
+                "ok": False,
+                "error": (
+                    f"'{item_name}' নামে item {target_department} inventory-তে "
+                    "পাওয়া যায়নি"
+                ),
+            }
         stock_idx = header.index("Current_Stock") + 1
         id_idx = header.index("Item_ID") + 1 if "Item_ID" in header else None
         lastupd_idx = header.index("Last_Updated") + 1 if "Last_Updated" in header else None
-        minimum_idx = header.index("Minimum") + 1 if "Minimum" in header else None
+        minimum_header = "Minimum_Stock" if "Minimum_Stock" in header else "Minimum"
+        minimum_idx = header.index(minimum_header) + 1 if minimum_header in header else None
 
         current = _safe_float(ws.cell(row_num, stock_idx).value)
-        new_balance = current + change
-        if new_balance < 0:
-            new_balance = 0
+        new_balance = max(0, current + change)
         now = bd_now()
         updates = {stock_idx: new_balance}
         if lastupd_idx:
@@ -420,22 +454,36 @@ def adjust_inventory_stock(item_name: str, change: float, reason: str, staff: st
             log_ws = _worksheet(config.SHEET_INVENTORY_LOG)
             _append_unified_row(
                 log_ws,
-                [now.strftime("%Y-%m-%d %I:%M %p"), item_id, item_name, change, reason, staff, new_balance],
+                [
+                    now.strftime("%Y-%m-%d %I:%M %p"),
+                    item_id,
+                    item_name,
+                    change,
+                    reason,
+                    staff,
+                    new_balance,
+                ],
                 "inventory_log",
                 new_record_id("inventory_log"),
                 provider_id=staff,
+                extra_values={"Department": target_department},
             )
-        except Exception as e:
-            print(f"⚠️ Inventory log লিখতে সমস্যা হয়েছে: {e}")
+        except Exception as error:
+            print(f"⚠️ Inventory log লিখতে সমস্যা হয়েছে: {error}")
 
         low_stock = False
         if minimum_idx:
-            min_val = _safe_float(ws.cell(row_num, minimum_idx).value)
-            low_stock = min_val > 0 and new_balance <= min_val
-
-        return {"ok": True, "new_balance": new_balance, "item_id": item_id, "low_stock": low_stock}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
+            minimum = _safe_float(ws.cell(row_num, minimum_idx).value)
+            low_stock = minimum > 0 and new_balance <= minimum
+        return {
+            "ok": True,
+            "new_balance": new_balance,
+            "item_id": item_id,
+            "department": target_department,
+            "low_stock": low_stock,
+        }
+    except Exception as error:
+        return {"ok": False, "error": str(error)}
 
 
 def get_active_therapist_names() -> list[str]:
