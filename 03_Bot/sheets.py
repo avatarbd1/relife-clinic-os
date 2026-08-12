@@ -1174,6 +1174,55 @@ def get_all_payments() -> list[dict]:
     return safe_get_all_records(ws)
 
 
+def _department_scope_values(departments) -> frozenset[str]:
+    """Normalize an explicit report scope; an empty/unknown scope grants nothing."""
+    values = set()
+    for value in departments or ():
+        normalized = department_access.normalize_department(value)
+        if normalized is department_access.Department.ALL:
+            values.update({
+                department_access.Department.PHYSIO.value,
+                department_access.Department.DENTAL.value,
+            })
+        elif normalized in {
+            department_access.Department.PHYSIO,
+            department_access.Department.DENTAL,
+        }:
+            values.add(normalized.value)
+    return frozenset(values)
+
+
+def filter_records_by_departments(
+    records: list[dict], departments
+) -> list[dict]:
+    """Fail closed: rows missing a recognized Department never enter reports."""
+    scope = _department_scope_values(departments)
+    if not scope:
+        return []
+    return [
+        row for row in records
+        if (
+            (normalized := department_access.normalize_department(
+                row.get("Department")
+            )) is not None
+            and normalized.value in scope
+        )
+    ]
+
+
+def get_scoped_report_records(departments) -> dict[str, list[dict]]:
+    """Read and scope report inputs before returning them to presentation code."""
+    data = batch_get_records([config.SHEET_PATIENTS, config.SHEET_PAYMENTS])
+    return {
+        config.SHEET_PATIENTS: filter_records_by_departments(
+            data.get(config.SHEET_PATIENTS, []), departments
+        ),
+        config.SHEET_PAYMENTS: filter_records_by_departments(
+            data.get(config.SHEET_PAYMENTS, []), departments
+        ),
+    }
+
+
 def get_payments_for_patient(patient_id: str) -> list[dict]:
     all_payments = get_all_payments()
     return [p for p in all_payments if str(p.get("Patient_ID", "")).strip() == str(patient_id).strip()]
@@ -1469,7 +1518,7 @@ def increment_plan_session(patient_id: str) -> bool:
     return True
 
 
-def get_daily_register(date_str: str | None = None) -> dict:
+def get_daily_register(date_str: str | None = None, departments=()) -> dict:
     """
     ০৬_Payments শীট থেকে আজকের সব এন্ট্রি নিয়ে Sl/Patient/Session/Bill/Paid/Due/Status
     সহ রেজিস্টার বানায়, দিনশেষের টোটাল হিসাব করে।
@@ -1477,7 +1526,8 @@ def get_daily_register(date_str: str | None = None) -> dict:
     if date_str is None:
         date_str = bd_now().strftime("%Y-%m-%d")
     payments_today = [
-        p for p in get_all_payments() if str(p.get("Date", "")).strip() == date_str
+        p for p in filter_records_by_departments(get_all_payments(), departments)
+        if str(p.get("Date", "")).strip() == date_str
     ]
     rows = []
     total_bill = total_paid = total_due = total_sessions = 0.0
@@ -1627,8 +1677,10 @@ def get_month_running_total(year: int, month: int, up_to_day: int) -> dict:
     }
 
 
-def get_daily_patient_list(date_str: str) -> list[dict]:
-    payments = safe_get_all_records(_worksheet(config.SHEET_PAYMENTS))
+def get_daily_patient_list(date_str: str, departments=()) -> list[dict]:
+    payments = filter_records_by_departments(
+        safe_get_all_records(_worksheet(config.SHEET_PAYMENTS)), departments
+    )
     day_payments = [p for p in payments if str(p.get("Date", "")).strip() == date_str]
     day_payments.sort(key=lambda p: str(p.get("SL", "")))
     return [
