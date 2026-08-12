@@ -2044,6 +2044,17 @@ def _finance_departments(staff: dict) -> frozenset[str]:
     return _report_departments(staff)
 
 
+def _display_sheet_amount(value) -> str:
+    """Format Sheets money safely, including formatted strings such as ৳5,000."""
+    text = str(value if value is not None else "").strip()
+    normalized = text.replace("৳", "").replace(",", "").strip()
+    try:
+        return f"{float(normalized or 0):.0f}"
+    except (TypeError, ValueError):
+        logger.warning("Invalid money value returned by Google Sheets: %r", value)
+        return text or "0"
+
+
 def _staff_has_finance_department(staff: dict, department: str) -> bool:
     target = department_access.normalize_department(department)
     if target not in {
@@ -6013,7 +6024,7 @@ async def cash_receive_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
     lines = ["💵 Pending cash handover:\n"]
     for row in rows[:20]:
         lines.append(
-            f"• {row.get('Movement_ID', '')} | ৳{float(row.get('Amount', 0) or 0):.0f} "
+            f"• {row.get('Movement_ID', '')} | ৳{_display_sheet_amount(row.get('Amount', 0))} "
             f"| {row.get('Moved_By', '')} | {row.get('Timestamp', '')}"
         )
     await update.message.reply_text(
@@ -6082,7 +6093,7 @@ async def cash_movements_start(update: Update, context: ContextTypes.DEFAULT_TYP
         lines.append(
             f"• {row.get('Movement_ID', '')} | "
             f"{row.get('From_Custodian', '')} → {row.get('To_Custodian', '')} | "
-            f"৳{float(row.get('Amount', 0) or 0):.0f} | "
+            f"৳{_display_sheet_amount(row.get('Amount', 0))} | "
             f"{row.get('Status', 'Pending')}"
         )
     await update.message.reply_text("\n".join(lines))
@@ -7480,8 +7491,8 @@ def main():
         try:
             if isinstance(update, Update) and update.effective_message:
                 await update.effective_message.reply_text(
-                    "⚠️ সাময়িক সমস্যা হয়েছে (সম্ভবত Google Sheets সাময়িক ব্যস্ত)। "
-                    "কয়েক সেকেন্ড পর আবার চেষ্টা করো।"
+                    "⚠️ কাজটি সম্পন্ন হয়নি—এটি সব সময় Google Sheets busy বোঝায় না। "
+                    "একবার আবার চেষ্টা করো; একই button-এ আবার হলে Admin-কে জানাও।"
                 )
         except Exception:
             logger.exception("error handler নিজেই ব্যর্থ হয়েছে")
