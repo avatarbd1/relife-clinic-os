@@ -2100,6 +2100,18 @@ def _staff_has_finance_department(staff: dict, department: str) -> bool:
     return False
 
 
+_NO_DEPARTMENT_ACCESS_TEXT = (
+    "⛔ তোমার কোনো Department access সেট করা নেই।\n"
+    "Owner-কে Staff_Department_Access ঠিক করতে বলো।"
+)
+
+
+async def _tap_the_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback-only ধাপে টেক্সট এলে চুপচাপ পড়ে না গিয়ে বুঝিয়ে দেয়।"""
+    await update.message.reply_text("👆 উপরের বাটনগুলো থেকে বেছে নাও।")
+    return None
+
+
 def _finance_department_keyboard(prefix: str, staff: dict) -> InlineKeyboardMarkup:
     rows = []
     if _staff_has_finance_department(staff, config.DEPARTMENT_PHYSIO):
@@ -2110,6 +2122,8 @@ def _finance_department_keyboard(prefix: str, staff: dict) -> InlineKeyboardMark
         rows.append([InlineKeyboardButton(
             "🦷 Dental", callback_data=f"{prefix}_Dental"
         )])
+    if not rows:
+        return None
     return InlineKeyboardMarkup(rows)
 
 
@@ -4474,7 +4488,7 @@ async def unknown_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     await update.message.reply_text(
-        "এই সুবিধাটি এখনো সক্রিয় করা হয়নি।",
+        "🤔 এই লেখাটা বুঝতে পারিনি। নিচের মেনু থেকে বেছে নাও।",
         reply_markup=_menu_keyboard(staff),
     )
 
@@ -5886,10 +5900,13 @@ async def cash_handover_start(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not _staff_can_access_menu(staff, roles.MENU_CASH_HANDOVER):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
+    keyboard = _finance_department_keyboard("cashdept", staff)
+    if keyboard is None:
+        await update.message.reply_text(_NO_DEPARTMENT_ACCESS_TEXT)
+        return ConversationHandler.END
     context.user_data["cash_handover"] = {}
     await update.message.reply_text(
-        "কোন বিভাগের Reception cash হ্যান্ডওভার করবে?",
-        reply_markup=_finance_department_keyboard("cashdept", staff),
+        "কোন বিভাগের Reception cash হ্যান্ডওভার করবে?", reply_markup=keyboard
     )
     return CASH_DEPARTMENT
 
@@ -6127,6 +6144,11 @@ async def cash_finalize_callback(update: Update, context: ContextTypes.DEFAULT_T
             f"ℹ️ {movement_id} আগেই {result.get('status', 'finalized')} হয়েছে।"
         )
         return
+    if result.get("reason") == "department_forbidden":
+        await query.edit_message_text(
+            f"⛔ {movement_id} — এই Department-এর অনুমতি নেই।"
+        )
+        return
     await query.edit_message_text(f"❌ {movement_id} পাওয়া যায়নি।")
 
 
@@ -6168,10 +6190,14 @@ async def _expense_form_start(
     if not _staff_can_access_menu(staff, menu_item):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
+    keyboard = _finance_department_keyboard("costdept", staff)
+    if keyboard is None:
+        await update.message.reply_text(_NO_DEPARTMENT_ACCESS_TEXT)
+        context.user_data.pop("cost", None)
+        return ConversationHandler.END
     context.user_data["cost"] = {"Mode": mode}
     await update.message.reply_text(
-        "খরচ কোন বিভাগের?",
-        reply_markup=_finance_department_keyboard("costdept", staff),
+        "খরচ কোন বিভাগের?", reply_markup=keyboard
     )
     return COST_DEPARTMENT
 
@@ -6528,6 +6554,10 @@ async def expense_approval_callback(
         await query.edit_message_text(
             f"ℹ️ {expense_id} আগেই {result.get('status', 'finalized')} হয়েছে।"
         )
+    elif result.get("reason") == "department_forbidden":
+        await query.edit_message_text(
+            f"⛔ {expense_id} — এই Department-এর অনুমতি নেই।"
+        )
     else:
         await query.edit_message_text(f"❌ {expense_id} পাওয়া যায়নি।")
 
@@ -6596,6 +6626,10 @@ async def expense_paid_callback(
     elif result.get("reason") == "invalid_status":
         await query.edit_message_text(
             f"ℹ️ {expense_id} এখন {result.get('status', 'finalized')} অবস্থায় আছে।"
+        )
+    elif result.get("reason") == "department_forbidden":
+        await query.edit_message_text(
+            f"⛔ {expense_id} — এই Department-এর অনুমতি নেই।"
         )
     else:
         await query.edit_message_text(f"❌ {expense_id} পাওয়া যায়নি।")
@@ -6947,7 +6981,8 @@ def main():
         ],
         states={
             CASH_DEPARTMENT: [
-                CallbackQueryHandler(cash_department_callback, pattern="^cashdept_")
+                CallbackQueryHandler(cash_department_callback, pattern="^cashdept_"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), _tap_the_button),
             ],
             CASH_AMOUNT: [
                 MessageHandler(
@@ -7012,10 +7047,12 @@ def main():
         ],
         states={
             COST_DEPARTMENT: [
-                CallbackQueryHandler(cost_department_callback, pattern="^costdept_")
+                CallbackQueryHandler(cost_department_callback, pattern="^costdept_"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), _tap_the_button),
             ],
             COST_CATEGORY: [
-                CallbackQueryHandler(cost_category_callback, pattern="^costcat_")
+                CallbackQueryHandler(cost_category_callback, pattern="^costcat_"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), _tap_the_button),
             ],
             COST_AMOUNT: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), cost_amount_receive)

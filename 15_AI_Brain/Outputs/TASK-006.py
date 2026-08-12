@@ -1,0 +1,2 @@
+I’d be happy to help you fix the bug!  
+Could you please share the piece of code (or a minimal reproducible example) that is causing the issue? Once I have the code, I’ll be able to identify the problem and provide a corrected version along with explanatory comments.

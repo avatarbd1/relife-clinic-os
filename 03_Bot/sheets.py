@@ -2052,7 +2052,7 @@ EXPENSE_STATUSES = {"Pending Approval", "Approved", "Rejected", "Paid"}
 
 
 def _require_expense_workflow_headers(headers: list[str]) -> None:
-    required = {"Type", *EXPENSE_WORKFLOW_COLUMNS}
+    required = {"Expense_ID", "Type", *EXPENSE_WORKFLOW_COLUMNS}
     missing = sorted(required.difference(headers))
     if missing:
         raise RuntimeError(

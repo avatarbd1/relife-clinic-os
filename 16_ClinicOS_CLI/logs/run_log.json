@@ -1,0 +1,16 @@
+[
+  {
+    "file": "test.py",
+    "lang": "python",
+    "status": "Success",
+    "output_file": "/data/data/com.termux/files/home/Relife-Clinic-OS/workspace/outputs/test_20260723_133511.log",
+    "timestamp": "2026-07-23T13:35:11.784555"
+  },
+  {
+    "file": "cli_smoke_run.py",
+    "lang": "python",
+    "status": "Success",
+    "output_file": "/data/data/com.termux/files/home/relife-clinic-os/16_ClinicOS_CLI/workspace/outputs/cli_smoke_run_20260809_082403.log",
+    "timestamp": "2026-08-09T08:24:03.811548"
+  }
+]

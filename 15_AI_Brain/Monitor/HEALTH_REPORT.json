@@ -1,0 +1,99 @@
+{
+  "generated_at": "2026-08-09T14:30:12.415554",
+  "required": [
+    {
+      "path": "15_BrainOS/BRAIN_STATE.md",
+      "exists": true
+    },
+    {
+      "path": "15_BrainOS/BRAIN_QUEUE.md",
+      "exists": true
+    },
+    {
+      "path": "15_BrainOS/BRAIN_REGISTRY.md",
+      "exists": true
+    },
+    {
+      "path": "15_BrainOS/BRAIN_DISPATCHER.md",
+      "exists": true
+    },
+    {
+      "path": "15_BrainOS/BRAIN_MEMORY.md",
+      "exists": true
+    },
+    {
+      "path": "11_AIOS/MASTER_PROMPT.md",
+      "exists": true
+    },
+    {
+      "path": "11_AIOS/AI_CONSTITUTION.md",
+      "exists": true
+    },
+    {
+      "path": "11_AIOS/AI_REGISTRY.md",
+      "exists": true
+    },
+    {
+      "path": "11_AIOS/ONBOARDING_MESSAGE.md",
+      "exists": true
+    },
+    {
+      "path": "12_Handover/HANDOVER.md",
+      "exists": true
+    },
+    {
+      "path": "15_AI_Brain/Control/dispatcher_bridge.py",
+      "exists": true
+    },
+    {
+      "path": "15_AI_Brain/Control/task_router_bridge.py",
+      "exists": true
+    },
+    {
+      "path": "15_AI_Brain/Core/registry_provider_bridge.py",
+      "exists": true
+    }
+  ],
+  "optional": [
+    {
+      "path": "13_AI_Tasks",
+      "exists": true
+    },
+    {
+      "path": "14_Proposals",
+      "exists": true
+    },
+    {
+      "path": "AI_BRAIN.md",
+      "exists": true
+    },
+    {
+      "path": "AI_CONTEXT.md",
+      "exists": true
+    }
+  ],
+  "live_bot": [
+    {
+      "path": "03_Bot/bot.py",
+      "exists": true
+    }
+  ],
+  "env_keys": [
+    {
+      "key": "GROQ_API_KEY",
+      "status": "set"
+    },
+    {
+      "key": "OPENROUTER_API_KEY",
+      "status": "set"
+    },
+    {
+      "key": "GEMINI_API_KEY",
+      "status": "set"
+    }
+  ],
+  "provider_router": {
+    "status": "importable",
+    "reason": "registry_provider_bridge imported successfully"
+  }
+}
