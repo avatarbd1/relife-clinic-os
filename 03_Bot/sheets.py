@@ -657,6 +657,19 @@ def get_appointments_for_date(date_str: str) -> list[dict]:
     return [a for a in all_appts if str(a.get("Date", "")).strip() == date_str.strip()]
 
 
+def get_appointments_for_date_for_staff(
+    date_str: str, staff: dict, mappings: list[dict]
+) -> list[dict]:
+    """Return only appointments readable through current explicit assignments."""
+    return [
+        appointment
+        for appointment in get_appointments_for_date(date_str)
+        if authorize_record(
+            staff, appointment, AccessAction.READ, mappings
+        ).allowed
+    ]
+
+
 def get_appointments_for_therapist(therapist_name: str) -> list[dict]:
     all_appts = get_all_appointments()
     return [
@@ -882,6 +895,34 @@ def get_appointment_by_id(appointment_id: str) -> dict | None:
         if str(a.get("Appointment_ID", "")).strip() == str(appointment_id).strip():
             return a
     return None
+
+
+def get_appointment_by_id_for_staff(
+    appointment_id: str,
+    staff: dict,
+    mappings: list[dict],
+    action: AccessAction = AccessAction.READ,
+) -> dict | None:
+    """Resolve the target record and authorize its Department; fail closed."""
+    appointment = get_appointment_by_id(appointment_id)
+    if appointment is None:
+        return None
+    decision = authorize_record(staff, appointment, action, mappings)
+    return appointment if decision.allowed else None
+
+
+def update_appointment_status_for_staff(
+    appointment_id: str,
+    status: str,
+    staff: dict,
+    mappings: list[dict],
+) -> bool:
+    """Authorize immediately before the final appointment status write."""
+    if get_appointment_by_id_for_staff(
+        appointment_id, staff, mappings, AccessAction.WRITE
+    ) is None:
+        return False
+    return update_appointment_status(appointment_id, status)
 
 
 def has_payment_for_appointment(appointment_id: str, date_str: str) -> bool:
