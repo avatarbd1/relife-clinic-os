@@ -73,16 +73,27 @@ class FinanceDepartmentIsolationTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertIn("_require_staff", source(path, name))
 
-    def test_cash_views_tolerate_formatted_sheet_amounts(self):
+    def test_finance_views_tolerate_formatted_sheet_amounts(self):
         path = BOT_DIR / "bot.py"
-        helper = source(path, "_display_sheet_amount")
+        helper = source(path, "_sheet_amount_value")
         self.assertIn('replace("৳", "")', helper)
         self.assertIn('replace(",", "")', helper)
-        for name in ["cash_receive_start", "cash_movements_start"]:
+        self.assertIn("except (TypeError, ValueError)", helper)
+        for name in [
+            "reports_menu",
+            "rpt_totals_callback",
+            "rpt_lastmonth_callback",
+            "cash_receive_start",
+            "cash_movements_start",
+            "expense_approval_start",
+            "approved_expenses_start",
+            "_expense_report_text",
+        ]:
             with self.subTest(name=name):
                 body = source(path, name)
-                self.assertIn("_display_sheet_amount", body)
                 self.assertNotIn("float(row.get('Amount'", body)
+                self.assertNotIn('float(row.get("Amount"', body)
+                self.assertNotIn('float(p.get("Amount"', body)
 
     def test_final_expense_and_cash_creation_recheck_selected_department(self):
         path = BOT_DIR / "bot.py"
