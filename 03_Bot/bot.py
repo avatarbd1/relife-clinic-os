@@ -3613,8 +3613,8 @@ def _register_amount_prompt_text(patient_name: str, patient_id: str, sessions: i
     )
 
 
-def _register_view_text_and_keyboard():
-    reg = sheets.get_daily_register()
+def _register_view_text_and_keyboard(departments=()):
+    reg = sheets.get_daily_register(departments=departments)
     lines = [f"📋 আজকের রেজিস্টার ({reg['date']})", ""]
     if not reg["rows"]:
         lines.append("আজ এখনো কোনো এন্ট্রি হয়নি।")
@@ -3635,7 +3635,7 @@ async def register_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
     text, keyboard = await async_runtime.run_sheets_read(
-        _register_view_text_and_keyboard
+        _register_view_text_and_keyboard, _report_departments(staff)
     )
     await update.message.reply_text(text, reply_markup=keyboard)
 
@@ -3704,17 +3704,22 @@ def _month_bounds(now):
     return this_month_str, last_month_str
 
 
-def _reports_summary_keyboard(role_str: str = "") -> InlineKeyboardMarkup:
+def _report_departments(staff: dict) -> frozenset[str]:
+    """Return the current explicit report scope loaded by _require_staff."""
+    assignments = staff.get("_Department_Role_Assignments", ())
+    return frozenset(assignment.department.value for assignment in assignments)
+
+
+def _reports_summary_keyboard(staff: dict) -> InlineKeyboardMarkup:
     rows = [
         [InlineKeyboardButton("\U0001F465 মোট রোগী ও সর্বমোট আদায়", callback_data="rpt_totals")],
         [InlineKeyboardButton("\U0001F4B0 গত মাসের আদায়", callback_data="rpt_lastmonth")],
         [InlineKeyboardButton("\U0001F4C5 তারিখ ভিত্তিক রিপোর্ট", callback_data="rpt_daterep")],
     ]
-    try:
-        role = roles.Role(role_str.strip())
-    except ValueError:
-        role = None
-    if role and roles.MENU_DAILY_REGISTER in roles.ROLE_REPORTS_EXTRA_ITEMS.get(role, []):
+    extras = roles.get_items_for_roles(
+        roles.ROLE_REPORTS_EXTRA_ITEMS, _effective_role_strings(staff)
+    )
+    if roles.MENU_DAILY_REGISTER in extras:
         rows.append([InlineKeyboardButton("\U0001F4CB আজকের রেজিস্টার", callback_data="rpt_todayregister")])
     return InlineKeyboardMarkup(rows)
 
@@ -3724,14 +3729,15 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if staff is None:
         return
     if not _staff_can_access_menu(staff, roles.MENU_REPORTS):
+        await update.effective_message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
+    departments = _report_departments(staff)
     now = bd_now()
     today_str = now.strftime("%Y-%m-%d")
     this_month_str, _ = _month_bounds(now)
 
     report_data = await async_runtime.run_sheets_read(
-        sheets.batch_get_records,
-        [config.SHEET_PATIENTS, config.SHEET_PAYMENTS],
+        sheets.get_scoped_report_records, departments
     )
     patients = report_data[config.SHEET_PATIENTS]
     payments = report_data[config.SHEET_PAYMENTS]
@@ -3743,10 +3749,10 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         1 for p in patients
         if str(p.get("Registration_Date", "")).strip().startswith(this_month_str)
     )
-
-    today_payments = [p for p in payments if str(p.get("Date", "")).strip() == today_str]
+    today_payments = [
+        p for p in payments if str(p.get("Date", "")).strip() == today_str
+    ]
     today_collection = sum(float(p.get("Amount", 0) or 0) for p in today_payments)
-
     this_month_payments = [
         p for p in payments
         if str(p.get("Date", "")).strip().startswith(this_month_str)
@@ -3754,18 +3760,15 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     this_month_collection = sum(float(p.get("Amount", 0) or 0) for p in this_month_payments)
 
     lines = [
-        "\U0001F4CA রিপোর্ট ও অ্যানালিটিক্স",
-        "",
+        "\U0001F4CA রিপোর্ট ও অ্যানালিটিক্স", "",
         f"\U0001F195 আজকের নতুন রোগী: {today_new_patients}",
         f"\U0001F4C8 এই মাসের ({this_month_str}) নতুন রোগী: {this_month_patients}",
         f"\U0001F4B0 আজকের আদায়: {today_collection:.0f} টাকা",
         f"\U0001F4B0 এই মাসের ({this_month_str}) আদায়: {this_month_collection:.0f} টাকা",
-        "",
-        "\U0001F447 আরও বিস্তারিত দেখতে নিচের বাটন চাপো:",
+        "", "\U0001F447 আরও বিস্তারিত দেখতে নিচের বাটন চাপো:",
     ]
     await update.effective_message.reply_text(
-        "\n".join(lines),
-        reply_markup=_reports_summary_keyboard(staff.get("Role", "")),
+        "\n".join(lines), reply_markup=_reports_summary_keyboard(staff)
     )
     await update.effective_message.reply_text(
         "মেনুতে ফিরতে নিচের কীবোর্ড ব্যবহার করো:",
@@ -3776,40 +3779,51 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def rpt_totals_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    staff = await _require_staff(update, context)
+    if staff is None or not _staff_can_access_menu(staff, roles.MENU_REPORTS):
+        await query.message.reply_text("⛔ এই রিপোর্ট দেখার অনুমতি তোমার নেই।")
+        return
     report_data = await async_runtime.run_sheets_read(
-        sheets.batch_get_records,
-        [config.SHEET_PATIENTS, config.SHEET_PAYMENTS],
+        sheets.get_scoped_report_records, _report_departments(staff)
     )
     patients = report_data[config.SHEET_PATIENTS]
     payments = report_data[config.SHEET_PAYMENTS]
-    total_patients = len(patients)
     total_collection = sum(float(p.get("Amount", 0) or 0) for p in payments)
-    text = (
+    await query.message.reply_text(
         "\U0001F465 মোট রোগী ও সর্বমোট আদায়\n\n"
-        f"\U0001F465 মোট রোগী (সর্বমোট): {total_patients}\n"
+        f"\U0001F465 মোট রোগী (সর্বমোট): {len(patients)}\n"
         f"\U0001F4B0 সর্বমোট আদায়: {total_collection:.0f} টাকা"
     )
-    await query.message.reply_text(text)
 
 
 async def rpt_lastmonth_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    now = bd_now()
-    _, last_month_str = _month_bounds(now)
-    payments = await async_runtime.run_sheets_read(sheets.get_all_payments)
-    last_month_payments = [
-        p for p in payments
+    staff = await _require_staff(update, context)
+    if staff is None or not _staff_can_access_menu(staff, roles.MENU_REPORTS):
+        await query.message.reply_text("⛔ এই রিপোর্ট দেখার অনুমতি তোমার নেই।")
+        return
+    _, last_month_str = _month_bounds(bd_now())
+    report_data = await async_runtime.run_sheets_read(
+        sheets.get_scoped_report_records, _report_departments(staff)
+    )
+    payments = [
+        p for p in report_data[config.SHEET_PAYMENTS]
         if str(p.get("Date", "")).strip().startswith(last_month_str)
     ]
-    last_month_collection = sum(float(p.get("Amount", 0) or 0) for p in last_month_payments)
-    text = f"\U0001F4B0 গত মাসের ({last_month_str}) আদায়: {last_month_collection:.0f} টাকা"
-    await query.message.reply_text(text)
+    amount = sum(float(p.get("Amount", 0) or 0) for p in payments)
+    await query.message.reply_text(
+        f"\U0001F4B0 গত মাসের ({last_month_str}) আদায়: {amount:.0f} টাকা"
+    )
 
 
 async def rpt_daterep_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    staff = await _require_staff(update, context)
+    if staff is None or not _staff_can_access_menu(staff, roles.MENU_REPORTS):
+        await query.message.reply_text("⛔ এই রিপোর্ট দেখার অনুমতি তোমার নেই।")
+        return
     today = bd_now().date()
     await query.message.reply_text(
         "\U0001F4C5 তারিখ সিলেক্ট করুন:",
@@ -3820,19 +3834,18 @@ async def rpt_daterep_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 async def rpt_todayregister_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    staff = await _require_staff(update, context)
+    extras = roles.get_items_for_roles(
+        roles.ROLE_REPORTS_EXTRA_ITEMS,
+        _effective_role_strings(staff or {}),
+    )
+    if staff is None or roles.MENU_DAILY_REGISTER not in extras:
+        await query.message.reply_text("⛔ আজকের রেজিস্টার দেখার অনুমতি তোমার নেই।")
+        return
     text, keyboard = await async_runtime.run_sheets_read(
-        _register_view_text_and_keyboard
+        _register_view_text_and_keyboard, _report_departments(staff)
     )
     await query.message.reply_text(text, reply_markup=keyboard)
-
-def _pain_bar(score) -> str:
-    """0-10 Pain Score-কে ইমোজি ব্লক বার আকারে দেখায় (সহজে চোখে স্ক্যান করা যায়)।"""
-    try:
-        n = int(float(score))
-    except (TypeError, ValueError):
-        return "?"
-    n = max(0, min(10, n))
-    return ("🟥" * n) + ("⬜" * (10 - n))
 
 
 async def thist_progress_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4764,26 +4777,41 @@ async def plist_action_getfile(update: Update, context: ContextTypes.DEFAULT_TYP
 
 
 async def date_report_menu(update, context):
+    staff = await _require_staff(update, context)
+    if staff is None or not _staff_can_access_menu(staff, roles.MENU_REPORTS):
+        await update.effective_message.reply_text("⛔ এই রিপোর্ট দেখার অনুমতি তোমার নেই।")
+        return
     today = bd_now().date()
-    await update.message.reply_text(
+    await update.effective_message.reply_text(
         "📅 তারিখ সিলেক্ট করুন:",
         reply_markup=calendar_helper.build_calendar(today.year, today.month)
     )
 
+
 async def date_report_calendar_navigate(update, context):
     query = update.callback_query
     await query.answer()
+    staff = await _require_staff(update, context)
+    if staff is None or not _staff_can_access_menu(staff, roles.MENU_REPORTS):
+        await query.message.reply_text("⛔ এই রিপোর্ট দেখার অনুমতি তোমার নেই।")
+        return
     year, month = map(int, query.data.split("_", 1)[1].split("-"))
-    await query.edit_message_reply_markup(reply_markup=calendar_helper.build_calendar(year, month))
+    await query.edit_message_reply_markup(
+        reply_markup=calendar_helper.build_calendar(year, month)
+    )
+
 
 async def date_report_day_selected(update, context):
     query = update.callback_query
     await query.answer()
+    staff = await _require_staff(update, context)
+    if staff is None or not _staff_can_access_menu(staff, roles.MENU_REPORTS):
+        await query.message.reply_text("⛔ এই রিপোর্ট দেখার অনুমতি তোমার নেই।")
+        return
     date_str = query.data.split("_", 1)[1]
     year, month, day = map(int, date_str.split("-"))
-
     patient_list = await async_runtime.run_sheets_read(
-        sheets.get_daily_patient_list, date_str
+        sheets.get_daily_patient_list, date_str, _report_departments(staff)
     )
     if patient_list:
         list_lines = "\n".join(
@@ -4793,8 +4821,9 @@ async def date_report_day_selected(update, context):
         text = f"📋 {date_str} — রোগীর তালিকা:\n{list_lines}"
     else:
         text = f"📋 {date_str} — এই তারিখে কোনো রোগীর এন্ট্রি পাওয়া যায়নি।"
-
-    await query.edit_message_text(text, reply_markup=calendar_helper.build_calendar(year, month))
+    await query.edit_message_text(
+        text, reply_markup=calendar_helper.build_calendar(year, month)
+    )
 
 
 async def staffai_start(update, context):
