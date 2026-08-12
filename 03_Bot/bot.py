@@ -1570,7 +1570,7 @@ async def reg_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if new_patient_row:
             await update.message.reply_text(
                 _patient_card_text(new_patient_row),
-                reply_markup=_patient_card_keyboard(patient_id),
+                reply_markup=_patient_card_keyboard(patient_id, context.user_data.get("staff", {})),
             )
     else:
         await update.message.reply_text(
@@ -2297,6 +2297,7 @@ async def apt_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
                 f"✅ {appointment_id} — উপস্থিত হয়েছে।\n\n" + _patient_card_text(patient),
                 reply_markup=_patient_card_keyboard(
                     patient_id,
+                    staff,
                     back_callback_data=f"apttodayback_{appointment_id}",
                     back_label="🔙 অ্যাপয়েন্টমেন্ট তালিকায় ফিরুন",
                 ),
@@ -4072,6 +4073,7 @@ async def _thist_render_note(query, context: ContextTypes.DEFAULT_TYPE, tid: str
     if patient_id:
         card_kb = _patient_card_keyboard(
             patient_id,
+            context.user_data.get("staff", {}),
             back_callback_data=f"thistback_{patient_id}",
             back_label="🔙 তারিখের তালিকায় ফিরুন",
         )
@@ -4513,7 +4515,7 @@ async def patient_list_select_callback(update: Update, context: ContextTypes.DEF
     context.user_data["plist_last_page"] = int(page)
     await query.edit_message_text(
         _patient_card_text(patient),
-        reply_markup=_patient_card_keyboard(patient_id),
+        reply_markup=_patient_card_keyboard(patient_id, context.user_data.get("staff", {})),
     )
 
 
