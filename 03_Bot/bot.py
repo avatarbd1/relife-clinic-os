@@ -3952,7 +3952,9 @@ def _month_bounds(now):
 
 
 def _report_departments(staff: dict) -> frozenset[str]:
-    """Return the current explicit report scope loaded by _require_staff."""
+    """Return explicit scope, or legacy all-department scope when enforcement is off."""
+    if not config.DEPARTMENT_ENFORCEMENT_ENABLED:
+        return frozenset({config.DEPARTMENT_ALL})
     assignments = staff.get("_Department_Role_Assignments", ())
     return frozenset(assignment.department.value for assignment in assignments)
 
