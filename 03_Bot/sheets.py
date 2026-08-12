@@ -2222,10 +2222,13 @@ def finalize_expense_request(
             "Approved_By": approved_by,
             "Approved_At": now,
         },
+        departments,
     )
 
 
-def mark_expense_paid(expense_id: str, paid_by: str) -> dict:
+def mark_expense_paid(
+    expense_id: str, paid_by: str, departments=None
+) -> dict:
     """Reception confirms actual payment after owner approval."""
     now = bd_now().strftime("%Y-%m-%d %I:%M %p")
     return _finalize_expense_status(
@@ -2236,6 +2239,7 @@ def mark_expense_paid(expense_id: str, paid_by: str) -> dict:
             "Paid_By": paid_by,
             "Paid_At": now,
         },
+        departments,
     )
 
 
