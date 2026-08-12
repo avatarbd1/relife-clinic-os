@@ -1148,6 +1148,35 @@ async def _patient_by_id_for_request(update, context, patient_id: str):
     )
 
 
+async def _authorized_patient_action(
+    update,
+    context,
+    patient_id: str,
+    action: department_access.AccessAction,
+    menu_item: str | None = None,
+):
+    """Reload staff and patient, then authorize the requested action live."""
+    staff = await _require_staff(update, context)
+    if staff is None:
+        return None, None
+    if menu_item and not _staff_can_access_menu(staff, menu_item):
+        return staff, None
+    mappings = await _patient_department_mappings(staff)
+    patient = await async_runtime.run_sheets_read(
+        sheets.get_patient_by_id_for_staff, patient_id, staff, mappings
+    )
+    if patient is None:
+        return staff, None
+    decision = department_access.authorize_record(
+        staff,
+        patient,
+        action,
+        mappings,
+        assigned_or_cross_cover=True,
+    )
+    return (staff, patient) if decision.allowed else (staff, None)
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
@@ -1541,7 +1570,7 @@ async def reg_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if new_patient_row:
             await update.message.reply_text(
                 _patient_card_text(new_patient_row),
-                reply_markup=_patient_card_keyboard(patient_id),
+                reply_markup=_patient_card_keyboard(patient_id, context.user_data.get("staff", {})),
             )
     else:
         await update.message.reply_text(
@@ -2268,6 +2297,7 @@ async def apt_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
                 f"✅ {appointment_id} — উপস্থিত হয়েছে।\n\n" + _patient_card_text(patient),
                 reply_markup=_patient_card_keyboard(
                     patient_id,
+                    staff,
                     back_callback_data=f"apttodayback_{appointment_id}",
                     back_label="🔙 অ্যাপয়েন্টমেন্ট তালিকায় ফিরুন",
                 ),
@@ -2506,8 +2536,8 @@ async def pay_method(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip().lower()
-    staff = context.user_data.get("staff", {})
     p = context.user_data.get("payment", {})
+    staff = context.user_data.get("staff", {})
 
     if text not in ("হ্যাঁ", "yes", "y", "হা", "ha"):
         context.user_data.pop("payment", None)
@@ -2517,6 +2547,21 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
 
     patient_id = p.get("Patient_ID", "")
+    staff, patient = await _authorized_patient_action(
+        update, context, patient_id,
+        department_access.AccessAction.WRITE,
+        roles.MENU_PAYMENT,
+    )
+    if not patient:
+        context.user_data.pop("payment", None)
+        await update.message.reply_text(
+            "⛔ বর্তমান Department/Role অনুযায়ী এই পেমেন্ট সেভ করার অনুমতি নেই।",
+            reply_markup=_menu_keyboard(staff or {}),
+        )
+        return ConversationHandler.END
+    # Never trust stale cached patient identity/department at the final write.
+    p["Patient_Name"] = patient.get("Full_Name", "")
+    p["Department"] = patient.get("Department", "")
     amount = p.get("Amount", 0)
     sessions = p.get("Sessions", 0)
 
@@ -2559,7 +2604,7 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "\n".join(lines), reply_markup=_menu_keyboard(staff)
         )
         reg_text, reg_kb = await async_runtime.run_sheets_read(
-            _register_view_text_and_keyboard
+            _register_view_text_and_keyboard, _report_departments(staff)
         )
         await update.message.reply_text(reg_text, reply_markup=reg_kb)
     except Exception as e:
@@ -4028,6 +4073,7 @@ async def _thist_render_note(query, context: ContextTypes.DEFAULT_TYPE, tid: str
     if patient_id:
         card_kb = _patient_card_keyboard(
             patient_id,
+            context.user_data.get("staff", {}),
             back_callback_data=f"thistback_{patient_id}",
             back_label="🔙 তারিখের তালিকায় ফিরুন",
         )
@@ -4319,26 +4365,41 @@ def _therapist_patient_action_keyboard(patient_id: str) -> InlineKeyboardMarkup:
 
 def _patient_card_keyboard(
     patient_id: str,
+    staff: dict | None = None,
     back_callback_data: str = "plistact_back",
     back_label: str = "🔙 তালিকায় ফিরুন",
 ) -> InlineKeyboardMarkup:
-    """রোগীর প্রোফাইল/নোট কার্ডের নিচের অ্যাকশন বাটন।
-    সাধারণত '🔙 তালিকায় ফিরুন' বাটন 📋 রোগীর তালিকায় ফিরিয়ে দেয়, কিন্তু Treatment History
-    থেকে খোলা নোট কার্ডে back_callback_data/back_label override করে সেই রোগীর
-    তারিখের তালিকায় ফেরত পাঠানো হয় (patch26)।"""
-    buttons = [
-        [
-            InlineKeyboardButton("💰 পেমেন্ট নিন", callback_data=f"plistact_pay_{patient_id}"),
-            InlineKeyboardButton("📅 অ্যাপয়েন্টমেন্ট", callback_data=f"plistact_apt_{patient_id}"),
-        ],
-        [
-            InlineKeyboardButton("📝 ট্রিটমেন্ট নোট", callback_data=f"plistact_treat_{patient_id}"),
-            InlineKeyboardButton("📜 সম্পূর্ণ ইতিহাস", callback_data=f"plistact_hist_{patient_id}"),
-        ],
-        [InlineKeyboardButton("📎 রিপোর্ট", callback_data=f"plistact_report_{patient_id}")],
-        [InlineKeyboardButton("👁️ ফাইল দেখুন", callback_data=f"plistact_viewfiles_{patient_id}")],
-        [InlineKeyboardButton(back_label, callback_data=back_callback_data)],
-    ]
+    """Build actions from current effective roles; handlers still reauthorize."""
+    buttons = []
+    top = []
+    if staff and _staff_can_access_menu(staff, roles.MENU_PAYMENT):
+        top.append(InlineKeyboardButton(
+            "💰 পেমেন্ট নিন", callback_data=f"plistact_pay_{patient_id}"
+        ))
+    if staff and _staff_can_access_menu(staff, roles.MENU_APPOINTMENT):
+        top.append(InlineKeyboardButton(
+            "📅 অ্যাপয়েন্টমেন্ট", callback_data=f"plistact_apt_{patient_id}"
+        ))
+    if top:
+        buttons.append(top)
+    clinical = []
+    if staff and _staff_can_access_menu(staff, roles.MENU_TREATMENT_NOTE):
+        clinical.append(InlineKeyboardButton(
+            "📝 ট্রিটমেন্ট নোট", callback_data=f"plistact_treat_{patient_id}"
+        ))
+    clinical.append(InlineKeyboardButton(
+        "📜 সম্পূর্ণ ইতিহাস", callback_data=f"plistact_hist_{patient_id}"
+    ))
+    buttons.append(clinical)
+    clinical_roles = {"Owner", "Manager", "Therapist", "Dentist"}
+    if staff and clinical_roles.intersection(_effective_role_strings(staff)):
+        buttons.append([InlineKeyboardButton(
+            "📎 রিপোর্ট", callback_data=f"plistact_report_{patient_id}"
+        )])
+    buttons.append([InlineKeyboardButton(
+        "👁️ ফাইল দেখুন", callback_data=f"plistact_viewfiles_{patient_id}"
+    )])
+    buttons.append([InlineKeyboardButton(back_label, callback_data=back_callback_data)])
     return InlineKeyboardMarkup(buttons)
 
 
@@ -4454,7 +4515,7 @@ async def patient_list_select_callback(update: Update, context: ContextTypes.DEF
     context.user_data["plist_last_page"] = int(page)
     await query.edit_message_text(
         _patient_card_text(patient),
-        reply_markup=_patient_card_keyboard(patient_id),
+        reply_markup=_patient_card_keyboard(patient_id, context.user_data.get("staff", {})),
     )
 
 
@@ -4489,7 +4550,11 @@ async def plist_action_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     patient_id = query.data.replace("plistact_pay_", "")
-    patient = await _patient_by_id_for_request(update, context, patient_id)
+    staff, patient = await _authorized_patient_action(
+        update, context, patient_id,
+        department_access.AccessAction.WRITE,
+        roles.MENU_PAYMENT,
+    )
     if not patient:
         await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
         return ConversationHandler.END
@@ -4510,7 +4575,11 @@ async def plist_action_apt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     patient_id = query.data.replace("plistact_apt_", "")
-    patient = await _patient_by_id_for_request(update, context, patient_id)
+    staff, patient = await _authorized_patient_action(
+        update, context, patient_id,
+        department_access.AccessAction.WRITE,
+        roles.MENU_APPOINTMENT,
+    )
     if not patient:
         await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
         return ConversationHandler.END
@@ -4534,7 +4603,11 @@ async def plist_action_treat(update: Update, context: ContextTypes.DEFAULT_TYPE)
     query = update.callback_query
     await query.answer()
     patient_id = query.data.replace("plistact_treat_", "")
-    patient = await _patient_by_id_for_request(update, context, patient_id)
+    staff, patient = await _authorized_patient_action(
+        update, context, patient_id,
+        department_access.AccessAction.CLINICAL_WRITE,
+        roles.MENU_TREATMENT_NOTE,
+    )
     if not patient:
         await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
         return ConversationHandler.END
@@ -4576,7 +4649,10 @@ async def plist_action_report(update: Update, context: ContextTypes.DEFAULT_TYPE
     query = update.callback_query
     await query.answer()
     patient_id = query.data.replace("plistact_report_", "")
-    patient = await _patient_by_id_for_request(update, context, patient_id)
+    staff, patient = await _authorized_patient_action(
+        update, context, patient_id,
+        department_access.AccessAction.CLINICAL_WRITE,
+    )
     if not patient:
         await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
         return ConversationHandler.END
