@@ -2178,15 +2178,19 @@ async def today_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if staff is None:
         return
     if not _staff_can_access_menu(staff, roles.MENU_TODAY_APPOINTMENTS):
-        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        await update.effective_message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
+    mappings = await _patient_department_mappings(staff)
     date_str = bd_now().strftime("%Y-%m-%d")
     all_appts = await async_runtime.run_sheets_read(
-        sheets.get_appointments_for_date, date_str
+        sheets.get_appointments_for_date_for_staff,
+        date_str,
+        staff,
+        mappings,
     )
     appts = [
         a for a in all_appts
-        if a.get("Status", "").strip() == "Scheduled"
+        if str(a.get("Status", "")).strip() == "Scheduled"
     ]
     if not appts:
         await update.effective_message.reply_text("আজ কোনো পেন্ডিং অ্যাপয়েন্টমেন্ট নেই।")
@@ -2197,8 +2201,14 @@ async def today_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE)
             f"Department: {a.get('Department')} | থেরাপিস্ট: {a.get('Therapist')}"
         )
         buttons = InlineKeyboardMarkup([[
-            InlineKeyboardButton("✅ উপস্থিত", callback_data=f"aptstatus_{a.get('Appointment_ID')}_Completed_{a.get('Patient_ID')}"),
-            InlineKeyboardButton("❌ আসেনি", callback_data=f"aptstatus_{a.get('Appointment_ID')}_NoShow_{a.get('Patient_ID')}"),
+            InlineKeyboardButton(
+                "✅ উপস্থিত",
+                callback_data=f"aptstatus_{a.get('Appointment_ID')}_Completed",
+            ),
+            InlineKeyboardButton(
+                "❌ আসেনি",
+                callback_data=f"aptstatus_{a.get('Appointment_ID')}_NoShow",
+            ),
         ]])
         await update.effective_message.reply_text(text, reply_markup=buttons)
 
@@ -2207,20 +2217,51 @@ async def apt_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     query = update.callback_query
     await query.answer()
     parts = query.data.split("_", 3)
-    appointment_id = parts[1]
-    status_code = parts[2]
-    patient_id = parts[3] if len(parts) > 3 else ""
+    if len(parts) < 3:
+        await query.edit_message_text("❌ অবৈধ অ্যাপয়েন্টমেন্ট অনুরোধ।")
+        return
+    appointment_id, status_code = parts[1], parts[2]
     status_map = {"Completed": "Completed", "NoShow": "No-show"}
-    status = status_map.get(status_code, status_code)
-    ok = await async_runtime.run_sheets_write(
-        sheets.update_appointment_status, appointment_id, status
-    )
-    if not ok:
-        await query.edit_message_text("❌ আপডেট করা যায়নি।")
+    status = status_map.get(status_code)
+    if status is None:
+        await query.edit_message_text("❌ অবৈধ অ্যাপয়েন্টমেন্ট স্ট্যাটাস।")
         return
 
+    staff = await _require_staff(update, context)
+    if staff is None or not _staff_can_access_menu(
+        staff, roles.MENU_TODAY_APPOINTMENTS
+    ):
+        await query.message.reply_text("⛔ এই অ্যাপয়েন্টমেন্ট বদলানোর অনুমতি তোমার নেই।")
+        return
+    mappings = await _patient_department_mappings(staff)
+    appointment = await async_runtime.run_sheets_read(
+        sheets.get_appointment_by_id_for_staff,
+        appointment_id,
+        staff,
+        mappings,
+        department_access.AccessAction.WRITE,
+    )
+    if appointment is None:
+        await query.edit_message_text(
+            "⛔ অ্যাপয়েন্টমেন্ট পাওয়া যায়নি অথবা বর্তমান অনুমতি নেই।"
+        )
+        return
+
+    ok = await async_runtime.run_sheets_write(
+        sheets.update_appointment_status_for_staff,
+        appointment_id,
+        status,
+        staff,
+        mappings,
+    )
+    if not ok:
+        await query.edit_message_text(
+            "⛔ বর্তমান অনুমতি আবার যাচাই করে স্ট্যাটাস আপডেট করা যায়নি।"
+        )
+        return
+
+    patient_id = str(appointment.get("Patient_ID", "")).strip()
     if status_code == "Completed" and patient_id:
-        # Present চাপার পরপরই Patient Action Panel — Payment/Note এখন ১ ট্যাপ দূরে।
         patient = await _patient_by_id_for_request(update, context, patient_id)
         if patient:
             await query.edit_message_text(
@@ -2232,36 +2273,49 @@ async def apt_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
                 ),
             )
             return
-
     await query.edit_message_text(f"✅ {appointment_id} — স্ট্যাটাস: {status}")
 
 
 async def apt_today_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """আজকের অ্যাপয়েন্টমেন্টে 'উপস্থিত' মার্ক করার পর Patient Action Panel থেকে
-    '🔙 অ্যাপয়েন্টমেন্ট তালিকায় ফিরুন' চাপলে সেই নির্দিষ্ট অ্যাপয়েন্টমেন্টের মূল
-    সময়/রোগীর নাম + উপস্থিত/আসেনি বাটন-ওয়ালা বার্তাটাই আবার দেখায় (patch27 —
-    আগে এটা ভুল করে সাধারণ 📋 রোগীর তালিকায় নিয়ে যেত)।"""
+    """Reload and reauthorize an appointment before rebuilding its action card."""
     query = update.callback_query
     await query.answer()
     appointment_id = query.data.replace("apttodayback_", "", 1)
+    staff = await _require_staff(update, context)
+    if staff is None or not _staff_can_access_menu(
+        staff, roles.MENU_TODAY_APPOINTMENTS
+    ):
+        await query.message.reply_text("⛔ এই অ্যাপয়েন্টমেন্ট দেখার অনুমতি তোমার নেই।")
+        return
+    mappings = await _patient_department_mappings(staff)
     a = await async_runtime.run_sheets_read(
-        sheets.get_appointment_by_id, appointment_id
+        sheets.get_appointment_by_id_for_staff,
+        appointment_id,
+        staff,
+        mappings,
+        department_access.AccessAction.READ,
     )
     if not a:
-        await query.edit_message_text("❌ এই অ্যাপয়েন্টমেন্টটা আর পাওয়া যাচ্ছে না।")
+        await query.edit_message_text(
+            "⛔ অ্যাপয়েন্টমেন্ট পাওয়া যায়নি অথবা বর্তমান অনুমতি নেই।"
+        )
         return
     text = (
         f"🕐 {a.get('Time')} — {a.get('Patient_Name')} ({a.get('Patient_ID')})\n"
         f"Department: {a.get('Department')} | থেরাপিস্ট: {a.get('Therapist')}"
     )
     buttons = InlineKeyboardMarkup([[
-        InlineKeyboardButton("✅ উপস্থিত", callback_data=f"aptstatus_{a.get('Appointment_ID')}_Completed_{a.get('Patient_ID')}"),
-        InlineKeyboardButton("❌ আসেনি", callback_data=f"aptstatus_{a.get('Appointment_ID')}_NoShow_{a.get('Patient_ID')}"),
+        InlineKeyboardButton(
+            "✅ উপস্থিত",
+            callback_data=f"aptstatus_{a.get('Appointment_ID')}_Completed",
+        ),
+        InlineKeyboardButton(
+            "❌ আসেনি",
+            callback_data=f"aptstatus_{a.get('Appointment_ID')}_NoShow",
+        ),
     ]])
     await query.edit_message_text(text, reply_markup=buttons)
 
-
-# ---------- পেমেন্ট / বিল এন্ট্রি ----------
 
 async def pay_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
