@@ -17,6 +17,7 @@ on:
       - '05_GoogleSheets/migrate_department_schema.py'
       - '05_GoogleSheets/migrate_cash_custody_correctness.py'
       - '07_Testing/test_cash_custody_schema_migration.py'
+      - '07_Testing/test_enforcement_off_finance_fallback.py'
       - '.github/workflows/production-bot-ci.yml'
   pull_request:
     paths:
@@ -62,4 +63,5 @@ jobs:
             07_Testing/test_department_schema_audit.py \
             07_Testing/test_department_schema_migration.py \
             07_Testing/test_cash_custody_schema_migration.py \
+            07_Testing/test_enforcement_off_finance_fallback.py \
             07_Testing/test_sentry_policy.py
