@@ -49,6 +49,7 @@ from telegram.ext import (
 import config
 from config import bd_now
 import sheets
+import sheet_scope
 import department_access
 from attendance_location import validate_location
 from observability import capture_exception, init_sentry
@@ -1343,6 +1344,16 @@ async def _require_staff(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return None
         staff["_Department_Mappings"] = mappings
         staff["_Department_Role_Assignments"] = assignments
+        departments = {assignment.department for assignment in assignments}
+        if departments == {department_access.Department.DENTAL}:
+            if not config.DENTAL_GOOGLE_SHEET_ID:
+                await update.effective_message.reply_text(
+                    "⛔ Dental Sheet ID সেট করা নেই। Owner-কে জানাও।"
+                )
+                return None
+            sheet_scope.bind_sheet(config.DENTAL_GOOGLE_SHEET_ID)
+        else:
+            sheet_scope.bind_sheet(config.GOOGLE_SHEET_ID)
 
     context.user_data["staff"] = staff
     return staff

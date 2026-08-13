@@ -16,6 +16,7 @@ import threading
 
 import config
 import department_access
+import sheet_scope
 from department_access import AccessAction, authorize_record
 from tenant_runtime import current_tenant
 from gspread.http_client import HTTPClient
@@ -53,6 +54,9 @@ _RECORDS_CACHE_TTL = max(
 
 
 def _active_sheet_id() -> str:
+    override = sheet_scope.current_sheet_override()
+    if override:
+        return override
     if config.MULTITENANT_ENABLED:
         return current_tenant().sheet_id
     return config.GOOGLE_SHEET_ID
@@ -501,8 +505,10 @@ def get_active_therapist_names() -> list[str]:
 
 
 def get_staff_by_telegram_id(telegram_id: int) -> dict | None:
-    ws = _worksheet(config.SHEET_STAFF)
-    records = safe_get_all_records(ws)
+    # 08_Staff on the Physio workbook is the common staff registry.
+    with sheet_scope.use_sheet(config.GOOGLE_SHEET_ID):
+        ws = _worksheet(config.SHEET_STAFF)
+        records = safe_get_all_records(ws)
     for row in records:
         if str(row.get("Telegram_ID", "")).strip() == str(telegram_id):
             if str(row.get("Status", "")).strip().lower() == "inactive":
@@ -519,7 +525,8 @@ def get_staff_department_access(staff_id: str | None = None) -> list[dict]:
     Primary_Department on the active 08_Staff row are the single source of
     truth. Invalid or blank values fail closed.
     """
-    records = safe_get_all_records(_worksheet(config.SHEET_STAFF))
+    with sheet_scope.use_sheet(config.GOOGLE_SHEET_ID):
+        records = safe_get_all_records(_worksheet(config.SHEET_STAFF))
     target = str(staff_id or "").strip()
     assignments = []
     for row in records:

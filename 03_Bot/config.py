@@ -18,6 +18,7 @@ if not BOT_TOKEN:
 
 # ---- Google Sheets ----
 GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
+DENTAL_GOOGLE_SHEET_ID = os.getenv("DENTAL_GOOGLE_SHEET_ID")
 MASTER_SHEET_ID = os.getenv("MASTER_SHEET_ID")
 MULTITENANT_ENABLED = os.getenv("MULTITENANT_ENABLED", "false").strip().lower() in {
     "1", "true", "yes", "on"
