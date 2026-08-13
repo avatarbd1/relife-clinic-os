@@ -576,17 +576,29 @@ def filter_patients_for_staff(
     ]
 
 
+def _patient_id_prefix() -> str:
+    """Patient namespace follows the active department workbook."""
+    if (
+        config.DENTAL_GOOGLE_SHEET_ID
+        and str(_active_sheet_id()) == str(config.DENTAL_GOOGLE_SHEET_ID)
+    ):
+        return "DT"
+    return "PT"
+
+
 def _next_patient_id(ws) -> str:
+    prefix = _patient_id_prefix()
     ids = ws.col_values(1)[1:]
     numbers = []
-    for v in ids:
-        if v.startswith("PT"):
+    for value in ids:
+        value = str(value or "").strip().upper()
+        if value.startswith(prefix):
             try:
-                numbers.append(int(v[2:]))
+                numbers.append(int(value[len(prefix):]))
             except ValueError:
                 pass
     next_num = (max(numbers) + 1) if numbers else 1
-    return f"PT{next_num:04d}"
+    return f"{prefix}{next_num:04d}"
 
 
 def add_patient(data: dict, created_by: str) -> str:

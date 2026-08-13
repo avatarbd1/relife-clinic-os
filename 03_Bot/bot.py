@@ -1959,7 +1959,7 @@ async def apt_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
     patient = results.get(text)
     if not patient:
         await update.message.reply_text(
-            "❌ তালিকা থেকে সঠিক Patient ID লেখো (উদাহরণ: PT0001), অথবা /cancel দাও।"
+            "❌ তালিকা থেকে সঠিক Patient ID লেখো (যেমন: PT0001 অথবা DT0001), অথবা /cancel দাও।"
         )
         return APT_SELECT
     context.user_data["new_appointment"]["Patient_ID"] = patient.get("Patient_ID", "")
