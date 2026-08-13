@@ -938,6 +938,24 @@ def update_appointment_status(appointment_id: str, status: str) -> bool:
     return True
 
 
+def set_appointment_received_by(appointment_id: str, staff_name: str) -> bool:
+    """Received_By কলাম থাকলে কে রোগী receive করল সেটা লেখে।
+
+    কলামটা না থাকলে চুপচাপ False — Stage 0 কোনো schema বদলায় না, আর
+    এই তথ্য না লেখা গেলেও double-receive guard status দিয়েই কাজ করে।
+    """
+    ws = _worksheet(config.SHEET_APPOINTMENTS)
+    headers = ws.row_values(1)
+    if "Received_By" not in headers:
+        return False
+    cell = ws.find(str(appointment_id).strip(), in_column=1)
+    if cell is None:
+        return False
+    ws.update_cell(cell.row, headers.index("Received_By") + 1, staff_name)
+    _invalidate_cache(ws)
+    return True
+
+
 def get_appointment_by_id(appointment_id: str) -> dict | None:
     """Appointment_ID দিয়ে একটা নির্দিষ্ট অ্যাপয়েন্টমেন্ট খুঁজে বের করে।"""
     for a in get_all_appointments():

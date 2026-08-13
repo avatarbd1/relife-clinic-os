@@ -423,8 +423,42 @@ def _patient_last_visit(notes: list[dict], patient: dict) -> str:
     return str(patient.get("Registration_Date", "") or "-")
 
 
-def _therapist_today_queue(staff: dict) -> list[dict]:
+def _is_therapist_only(staff: dict) -> bool:
+    """Therapist যার Manager/Owner অধিকার নেই — তার queue নিজের রোগীতে সীমিত থাকবে।"""
+    role_values = set(_effective_role_strings(staff))
+    if not role_values:
+        return False
+    supervising = {
+        roles.Role.OWNER.value,
+        roles.Role.MANAGER.value,
+        roles.Role.RECEPTIONIST.value,
+    }
+    clinical = {roles.Role.THERAPIST.value, roles.Role.DENTIST.value}
+    return bool(role_values & clinical) and not (role_values & supervising)
+
+
+def _queue_belongs_to(staff: dict, appointment: dict, patient: dict) -> bool:
+    """অ্যাপয়েন্টমেন্ট বা রোগীর Therapist এই স্টাফ কিনা।
+
+    কোথাও therapist লেখা না থাকলে unassigned ধরা হয় এবং সবাইকে দেখানো হয়,
+    যাতে কেউ queue থেকে নীরবে হারিয়ে না যায়।
+    """
+    name = str(staff.get("Full_Name", "")).strip().casefold()
+    if not name:
+        return True
+    owners = {
+        str(appointment.get("Therapist", "")).strip().casefold(),
+        str(patient.get("Therapist", "")).strip().casefold(),
+    }
+    owners.discard("")
+    if not owners:
+        return True
+    return name in owners
+
+
+def _therapist_today_queue(staff: dict, show_all: bool = False) -> list[dict]:
     therapist_name = str(staff.get("Full_Name", "")).strip()
+    own_only = _is_therapist_only(staff) and not show_all
     today_str = bd_now().strftime("%Y-%m-%d")
     appointments = sheets.get_appointments_for_date(today_str)
     mappings = (
@@ -446,6 +480,8 @@ def _therapist_today_queue(staff: dict) -> list[dict]:
                 "Full_Name": appt.get("Patient_Name", ""),
             }
         patient_therapist = str(patient.get("Therapist", "")).strip()
+        if own_only and not _queue_belongs_to(staff, appt, patient):
+            continue
         notes = sheets.get_treatment_notes_for_patient(patient_id)
         plan = sheets.get_active_plan_for_patient(patient_id) or sheets.get_last_plan_for_patient(patient_id)
         last_note = notes[-1] if notes else {}
@@ -467,8 +503,8 @@ def _therapist_today_queue(staff: dict) -> list[dict]:
     return items
 
 
-def _pt_dashboard_text(staff: dict) -> str:
-    queue = _therapist_today_queue(staff)
+def _pt_dashboard_text(staff: dict, queue: list[dict] | None = None) -> str:
+    queue = _therapist_today_queue(staff) if queue is None else queue
     waiting = sum(1 for item in queue if item["status"] == "Waiting")
     in_treatment = sum(1 for item in queue if item["status"] == "In Treatment")
     completed = sum(1 for item in queue if item["status"] == "Completed")
@@ -508,10 +544,14 @@ def _pt_dashboard_text(staff: dict) -> str:
     return "\n".join(lines).strip()
 
 
-def _pt_dashboard_keyboard(staff: dict) -> InlineKeyboardMarkup:
+def _pt_dashboard_keyboard(
+    staff: dict, queue: list[dict] | None = None, show_all: bool = False
+) -> InlineKeyboardMarkup:
+    if queue is None:
+        queue = _therapist_today_queue(staff, show_all)
     buttons = []
     seen_history_patient_ids = set()
-    for item in _therapist_today_queue(staff)[:12]:
+    for item in queue[:12]:
         if item["status"] in ("Completed", "Missed Appointment"):
             if item["patient_id"] in seen_history_patient_ids:
                 continue
@@ -529,8 +569,24 @@ def _pt_dashboard_keyboard(staff: dict) -> InlineKeyboardMarkup:
                     callback_data=f"ptrecv_{item['appointment_id']}_{item['patient_id']}",
                 )
             ])
-    buttons.append([InlineKeyboardButton("🔄 Refresh Dashboard", callback_data="ptdash_refresh")])
+    if _is_therapist_only(staff):
+        buttons.append([InlineKeyboardButton(
+            "🧑\u200d⚕️ শুধু আমার রোগী" if show_all else "👥 সব রোগী দেখাও",
+            callback_data="ptdash_mine" if show_all else "ptdash_all",
+        )])
+    buttons.append([InlineKeyboardButton(
+        "🔄 Refresh Dashboard",
+        callback_data="ptdash_refreshall" if show_all else "ptdash_refresh",
+    )])
     return InlineKeyboardMarkup(buttons)
+
+
+def _pt_dashboard_view(staff: dict, show_all: bool = False):
+    """Queue একবারই তৈরি করে text আর keyboard দুটোতেই ব্যবহার করে।"""
+    queue = _therapist_today_queue(staff, show_all)
+    return _pt_dashboard_text(staff, queue), _pt_dashboard_keyboard(
+        staff, queue, show_all
+    )
 
 
 def _pt_workspace_keyboard(patient_id: str) -> InlineKeyboardMarkup:
@@ -632,10 +688,8 @@ async def pt_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not _staff_can_access_menu(staff, roles.MENU_MY_PATIENTS):
         await update.effective_message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
-    await update.effective_message.reply_text(
-        await async_runtime.run_sheets_read(_pt_dashboard_text, staff),
-        reply_markup=_pt_dashboard_keyboard(staff),
-    )
+    text, keyboard = await async_runtime.run_sheets_read(_pt_dashboard_view, staff)
+    await update.effective_message.reply_text(text, reply_markup=keyboard)
 
 
 async def pt_dashboard_refresh_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -645,10 +699,11 @@ async def pt_dashboard_refresh_callback(update: Update, context: ContextTypes.DE
     if staff is None:
         await query.edit_message_text("❌ স্টাফ প্রোফাইল পাওয়া যায়নি। /start দাও।")
         return
-    await query.edit_message_text(
-        await async_runtime.run_sheets_read(_pt_dashboard_text, staff),
-        reply_markup=_pt_dashboard_keyboard(staff),
+    show_all = query.data in ("ptdash_all", "ptdash_refreshall")
+    text, keyboard = await async_runtime.run_sheets_read(
+        _pt_dashboard_view, staff, show_all
     )
+    await query.edit_message_text(text, reply_markup=keyboard)
 
 
 async def pt_dashboard_history_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -664,6 +719,33 @@ async def pt_dashboard_history_callback(update: Update, context: ContextTypes.DE
     await query.message.reply_text(history, reply_markup=_therapist_patient_action_keyboard(patient_id))
 
 
+def _same_staff(staff: dict, name: str) -> bool:
+    return str(staff.get("Full_Name", "")).strip().casefold() == str(name).strip().casefold()
+
+
+async def _active_session_holder(appointment_id: str, patient: dict) -> str | None:
+    """অ্যাপয়েন্টমেন্ট ইতিমধ্যে In Treatment হলে কার সেশনে আছে সেটা ফেরত দেয়।
+
+    কেউ ধরে না থাকলে None। Appointment না পাওয়া গেলেও None — তখন
+    পুরোনো আচরণই বহাল থাকে, নতুন করে কাউকে আটকানো হয় না।
+    """
+    if not appointment_id:
+        return None
+    appointment = await async_runtime.run_sheets_read(
+        sheets.get_appointment_by_id, appointment_id
+    )
+    if not appointment:
+        return None
+    if str(appointment.get("Status", "")).strip() != "In Treatment":
+        return None
+    holder = (
+        str(appointment.get("Received_By", "")).strip()
+        or str(appointment.get("Therapist", "")).strip()
+        or str(patient.get("Therapist", "")).strip()
+    )
+    return holder or None
+
+
 async def pt_dashboard_receive_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -672,6 +754,20 @@ async def pt_dashboard_receive_callback(update: Update, context: ContextTypes.DE
     if not patient:
         await query.edit_message_text("❌ রোগী পাওয়া যায়নি।")
         return ConversationHandler.END
+
+    staff = await _require_staff(update, context)
+    if staff is None:
+        await query.edit_message_text("❌ স্টাফ প্রোফাইল পাওয়া যায়নি। /start দাও।")
+        return ConversationHandler.END
+    holder = await _active_session_holder(appointment_id, patient)
+    if holder is not None and not _same_staff(staff, holder):
+        await query.edit_message_text(
+            f"⛔ {patient.get('Full_Name', patient_id)} এখন {holder}-এর সেশনে আছে।\n"
+            "দুইজন একসাথে একই রোগী receive করতে পারবে না। "
+            "ভুল হলে আগে ওই সেশনটি Complete করাও।"
+        )
+        return ConversationHandler.END
+
     plan = await async_runtime.run_sheets_read(
         sheets.get_active_plan_for_patient, patient_id
     )
@@ -716,12 +812,40 @@ async def pt_dashboard_receive_callback(update: Update, context: ContextTypes.DE
         await async_runtime.run_sheets_write(
             sheets.update_appointment_status, appointment_id, "In Treatment"
         )
+        await async_runtime.run_sheets_write(
+            sheets.set_appointment_received_by,
+            appointment_id,
+            staff.get("Full_Name", ""),
+        )
 
     await query.edit_message_text(
         _pt_workspace_text(patient, plan, notes, treatment),
         reply_markup=_pt_workspace_keyboard(patient_id),
     )
     return "PT_DASH_WORKSPACE"
+
+
+def _clear_session_context(context) -> None:
+    for key in ("pt_treatment", "pt_patient_id", "pt_appointment_id"):
+        context.user_data.pop(key, None)
+
+
+def _existing_session_note(notes: list[dict], plan_id, session_no):
+    """একই Plan-এর একই Session আগেই সেভ হয়েছে কিনা দেখে।
+
+    দুইবার চাপ বা retry-তে ডুপ্লিকেট নোট ও ডবল session count ঠেকায়।
+    """
+    plan_id = str(plan_id or "").strip()
+    session_no = str(session_no or "").strip()
+    if not plan_id or not session_no:
+        return None
+    for note in notes or []:
+        if (
+            str(note.get("Plan_ID", "")).strip() == plan_id
+            and str(note.get("Session_No", "")).strip() == session_no
+        ):
+            return note
+    return None
 
 
 async def pt_dashboard_done_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -732,6 +856,10 @@ async def pt_dashboard_done_callback(update: Update, context: ContextTypes.DEFAU
     if not treatment or not patient_id:
         await query.edit_message_text("❌ Session context পাওয়া যায়নি। আবার dashboard থেকে শুরু করো।")
         return ConversationHandler.END
+    if context.user_data.get("pt_saving"):
+        await query.answer("⏳ সেভ হচ্ছে — একবারই চাপো।", show_alert=True)
+        return "PT_DASH_WORKSPACE"
+    context.user_data["pt_saving"] = True
     staff, patient = await _authorized_patient_action(
         update,
         context,
@@ -783,13 +911,46 @@ async def pt_dashboard_done_callback(update: Update, context: ContextTypes.DEFAU
     ]
     treatment["Remarks"] = " | ".join(x for x in remarks if x)
 
+    duplicate = _existing_session_note(
+        notes, treatment.get("Plan_ID", ""), treatment.get("Session_No", "")
+    )
+    if duplicate is not None:
+        context.user_data.pop("pt_saving", None)
+        _clear_session_context(context)
+        await query.edit_message_text(
+            f"ℹ️ এই সেশনটি আগেই সেভ হয়েছে "
+            f"(Treatment ID: {duplicate.get('Treatment_ID', '-')}).\n"
+            "নতুন করে কিছু লেখা হয়নি।"
+        )
+        return ConversationHandler.END
+
     try:
         treatment_id = await async_runtime.run_sheets_write(
             sheets.add_treatment_note,
             treatment,
             created_by=staff.get("Full_Name", "Unknown"),
         )
+    except Exception:
+        logger.exception("treatment note সেভ ব্যর্থ")
+        context.user_data.pop("pt_saving", None)
+        await query.edit_message_text(
+            "❌ নোট সেভ হয়নি — কিছুই লেখা হয়নি। আবার চেষ্টা করো।"
+        )
+        return "PT_DASH_WORKSPACE"
+
+    try:
         await async_runtime.run_sheets_write(sheets.increment_plan_session, patient_id)
+    except Exception:
+        logger.exception("increment_plan_session ব্যর্থ (নোট সেভ হয়ে গেছে)")
+        context.user_data.pop("pt_saving", None)
+        _clear_session_context(context)
+        await query.edit_message_text(
+            f"⚠️ নোট সেভ হয়েছে (ID: {treatment_id}), কিন্তু session count বাড়েনি।\n"
+            "একই সেশন আবার সেভ কোরো না — Owner-কে জানাও।"
+        )
+        return ConversationHandler.END
+
+    try:
         appointment_id = context.user_data.get("pt_appointment_id", "")
         if appointment_id:
             mappings = await _patient_department_mappings(staff)
@@ -816,18 +977,21 @@ async def pt_dashboard_done_callback(update: Update, context: ContextTypes.DEFAU
             "Dashboard updated — next patient ready."
         )
     except Exception:
-        logger.exception("pt_dashboard_done_callback ব্যর্থ হয়েছে")
+        logger.exception("appointment status update ব্যর্থ (নোট ও session সেভ হয়েছে)")
+        context.user_data.pop("pt_saving", None)
+        _clear_session_context(context)
         await query.edit_message_text(
-            "❌ Session সেভ করা যায়নি। আবার চেষ্টা করো; একই সমস্যা হলে Admin-কে জানাও।"
+            f"⚠️ সেশন সেভ হয়েছে (ID: {treatment_id}), কিন্তু appointment status "
+            "আপডেট হয়নি। রোগী dashboard-এ 'In Treatment' দেখাতে পারে।"
         )
         return ConversationHandler.END
 
-    context.user_data.pop("pt_treatment", None)
-    context.user_data.pop("pt_patient_id", None)
-    context.user_data.pop("pt_appointment_id", None)
+    context.user_data.pop("pt_saving", None)
+    _clear_session_context(context)
+    text, keyboard = await async_runtime.run_sheets_read(_pt_dashboard_view, staff)
     await query.message.reply_text(
-        await async_runtime.run_sheets_read(_pt_dashboard_text, staff),
-        reply_markup=_pt_dashboard_keyboard(staff),
+        text,
+        reply_markup=keyboard,
     )
     return ConversationHandler.END
 
@@ -7283,7 +7447,7 @@ def main():
     app.add_handler(CallbackQueryHandler(plist_report_files_page_callback, pattern="^plistfiles_"))
     app.add_handler(CallbackQueryHandler(plist_action_getfile, pattern="^plistact_getfile_"))
     app.add_handler(CallbackQueryHandler(plist_action_hist, pattern="^plistact_hist_"))
-    app.add_handler(CallbackQueryHandler(pt_dashboard_refresh_callback, pattern="^ptdash_refresh$"))
+    app.add_handler(CallbackQueryHandler(pt_dashboard_refresh_callback, pattern="^ptdash_(refresh|refreshall|all|mine)$"))
     app.add_handler(CallbackQueryHandler(pt_dashboard_history_callback, pattern="^ptdashhist_"))
     ptdash_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(pt_dashboard_receive_callback, pattern="^ptrecv_")],
