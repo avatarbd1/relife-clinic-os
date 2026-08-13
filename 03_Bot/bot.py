@@ -205,6 +205,9 @@ _ALL_MENU_ITEMS = [
     roles.MENU_PHYSIO_FINANCE_DASHBOARD,
     roles.MENU_DENTAL_FINANCE_DASHBOARD,
     roles.MENU_COMBINED_BUSINESS_SUMMARY,
+    roles.MENU_FINANCE_DASHBOARDS,
+    roles.MENU_FINANCE_ACCOUNTS,
+    roles.MENU_REJECTED_EXPENSES,
     roles.MENU_FINANCE,
 ]
 _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
@@ -2368,6 +2371,18 @@ def _finance_department_keyboard(prefix: str, staff: dict) -> InlineKeyboardMark
 
 async def finance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _generic_submenu(update, context, roles.ROLE_FINANCE_ITEMS, "💰 চলতি হিসাব — কী করতে চাও?")
+
+
+async def finance_dashboard_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _generic_submenu(
+        update, context, roles.ROLE_FINANCE_DASHBOARD_ITEMS, "📊 Dashboard — কী দেখতে চাও?"
+    )
+
+
+async def finance_accounts_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _generic_submenu(
+        update, context, roles.ROLE_FINANCE_ACCOUNTS_ITEMS, "🧾 হিসাব ও খরচ — কী করতে চাও?"
+    )
 
 
 async def back_to_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -6922,6 +6937,7 @@ async def expense_paid_callback(
 _FINANCIAL_REPORT_MENUS = {
     "expense": roles.MENU_EXPENSE_TRACKER,
     "cash": roles.MENU_CUSTODY_BALANCE,
+    "rejected": roles.MENU_REJECTED_EXPENSES,
 }
 
 
@@ -6990,8 +7006,12 @@ async def _financial_report_start(update, context, report: str):
 
 def _expense_report_text(rows, start_date: str, end_date: str, role_str: str) -> str:
     owner = role_str.strip() == roles.Role.OWNER.value
-    visible_rows = rows if owner else [
+    non_rejected = [
         row for row in rows
+        if str(row.get("Status", "")).strip() != "Rejected"
+    ]
+    visible_rows = non_rejected if owner else [
+        row for row in non_rejected
         if str(row.get("Paid_From", "")).strip()
         != config.CASH_CUSTODIAN_HOME_TREASURY
     ]
@@ -7023,8 +7043,26 @@ def _expense_report_text(rows, start_date: str, end_date: str, role_str: str) ->
     return "\n".join(lines)
 
 
+def _rejected_expense_report_text(rows, start_date: str, end_date: str) -> str:
+    label = start_date if start_date == end_date else f"{start_date} — {end_date}"
+    lines = [f"❌ প্রত্যাখ্যাত খরচ — {label}\n"]
+    if not rows:
+        lines.append("এই সময়ে কোনো প্রত্যাখ্যাত খরচ নেই।")
+    for row in rows:
+        lines.append(
+            f"• {row.get('Expense_ID', '')} | {row.get('Category', '')} | "
+            f"৳{_sheet_amount_value(row.get('Amount', 0) or 0):.0f} | "
+            f"{row.get('Paid_From', '')} | {row.get('Approved_By', '')}"
+        )
+    return "\n".join(lines)
+
+
 async def costtracker_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _financial_report_start(update, context, "expense")
+
+
+async def rejectedexpense_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _financial_report_start(update, context, "rejected")
 
 
 def _cash_custody_summary_text(summary: dict, role_str: str) -> str:
@@ -7119,6 +7157,16 @@ async def _show_financial_report(update, context, report, start_date, end_date):
             _finance_departments(staff)
         )
         text = _cash_custody_summary_text(summary, staff.get("Role", ""))
+    elif report == "rejected":
+        rows = await async_runtime.run_sheets_read(
+            sheets.get_expenses_for_date, start_date, end_date,
+            _finance_departments(staff)
+        )
+        rejected_rows = [
+            row for row in rows
+            if str(row.get("Status", "")).strip() == "Rejected"
+        ]
+        text = _rejected_expense_report_text(rejected_rows, start_date, end_date)
     else:
         rows = await async_runtime.run_sheets_read(
             sheets.get_expenses_for_date, start_date, end_date,
@@ -7451,12 +7499,30 @@ def main():
     )
     app.add_handler(
         MessageHandler(
+            filters.Regex(f"^{roles.MENU_REJECTED_EXPENSES}$"),
+            rejectedexpense_start,
+        )
+    )
+    app.add_handler(
+        MessageHandler(
             filters.Regex(f"^{roles.MENU_CUSTODY_BALANCE}$"),
             custody_balance_start,
         )
     )
+    app.add_handler(
+        MessageHandler(
+            filters.Regex(f"^{roles.MENU_FINANCE_DASHBOARDS}$"),
+            finance_dashboard_menu,
+        )
+    )
+    app.add_handler(
+        MessageHandler(
+            filters.Regex(f"^{roles.MENU_FINANCE_ACCOUNTS}$"),
+            finance_accounts_menu,
+        )
+    )
     app.add_handler(CallbackQueryHandler(
-        financial_report_range_callback, pattern="^finrange_(expense|cash)_"
+        financial_report_range_callback, pattern="^finrange_(expense|cash|rejected)_"
     ))
     app.add_handler(CallbackQueryHandler(
         financial_report_calendar_navigate, pattern="^fin(start|end)nav_"

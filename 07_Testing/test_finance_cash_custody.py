@@ -554,13 +554,15 @@ class CashHandoverRoleTests(unittest.TestCase):
                 self.assertIn(handler, source)
 
     def test_owner_alone_receives_three_financial_dashboard_views(self):
-        owner_items = roles.ROLE_FINANCE_ITEMS[roles.Role.OWNER]
+        # Owner's চলতি হিসাব top level is now 4 grouped tabs; the three
+        # dashboard views live one level down, under the Dashboard group.
+        dashboard_items = roles.ROLE_FINANCE_DASHBOARD_ITEMS[roles.Role.OWNER]
         for item in (
             roles.MENU_PHYSIO_FINANCE_DASHBOARD,
             roles.MENU_DENTAL_FINANCE_DASHBOARD,
             roles.MENU_COMBINED_BUSINESS_SUMMARY,
         ):
-            self.assertIn(item, owner_items)
+            self.assertIn(item, dashboard_items)
             self.assertTrue(roles.can_access("Owner", item))
             self.assertNotIn(item, roles.ROLE_FINANCE_ITEMS[roles.Role.RECEPTIONIST])
             self.assertNotIn(item, roles.ROLE_FINANCE_ITEMS[roles.Role.MANAGER])
