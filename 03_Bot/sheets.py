@@ -348,9 +348,16 @@ def _append_unified_row(
 ) -> None:
     """Append a legacy-compatible row plus Unified Data Architecture metadata."""
     headers = ws.row_values(1)
+    active_clinic_id = (
+        "RELIFE-DENTAL"
+        if config.DENTAL_GOOGLE_SHEET_ID
+        and str(_active_sheet_id()) == str(config.DENTAL_GOOGLE_SHEET_ID)
+        else "RELIFE-PHYSIO"
+    )
     envelope = metadata(
         record_type,
         legacy_record_id=record_id,
+        clinic_id=active_clinic_id,
         encounter_id=encounter_id,
         provider_id=provider_id,
         source_type=source_type,
@@ -2384,6 +2391,107 @@ def mark_expense_paid(
             "Paid_At": now,
         },
         departments,
+    )
+
+
+
+
+def _expense_action_for_department(
+    department: str,
+    function,
+    *args,
+    **kwargs,
+):
+    """Run one expense action against its explicit department workbook."""
+    with sheet_scope.use_sheet(config.sheet_id_for_department(department)):
+        return function(*args, **kwargs)
+
+
+def finalize_expense_request_for_department(
+    department: str,
+    expense_id: str,
+    approved_by: str,
+    decision: str,
+    departments=None,
+) -> dict:
+    return _expense_action_for_department(
+        department,
+        finalize_expense_request,
+        expense_id,
+        approved_by,
+        decision,
+        departments,
+    )
+
+
+def mark_expense_paid_for_department(
+    department: str,
+    expense_id: str,
+    paid_by: str,
+    departments=None,
+) -> dict:
+    return _expense_action_for_department(
+        department,
+        mark_expense_paid,
+        expense_id,
+        paid_by,
+        departments,
+    )
+
+
+def _legacy_expense_action_across_departments(
+    function,
+    expense_id: str,
+    *args,
+    departments=None,
+) -> dict:
+    """Compatibility for buttons sent before department was encoded.
+
+    Never updates when the same Expense_ID exists in more than one workbook.
+    """
+    allowed = _department_scope_values(departments)
+    candidates = [
+        department for department in _FINANCE_DEPARTMENTS
+        if allowed is None or department in allowed
+    ]
+    matches = []
+    for department in candidates:
+        with sheet_scope.use_sheet(config.sheet_id_for_department(department)):
+            rows = safe_get_all_records(_worksheet(config.SHEET_EXPENSES))
+        if any(
+            str(row.get("Expense_ID", "")).strip() == str(expense_id).strip()
+            for row in rows
+        ):
+            matches.append(department)
+    if not matches:
+        return {"ok": False, "reason": "not_found"}
+    if len(matches) != 1:
+        return {"ok": False, "reason": "ambiguous_department"}
+    return _expense_action_for_department(
+        matches[0], function, expense_id, *args, departments
+    )
+
+
+def finalize_expense_request_legacy(
+    expense_id: str, approved_by: str, decision: str, departments=None
+) -> dict:
+    return _legacy_expense_action_across_departments(
+        finalize_expense_request,
+        expense_id,
+        approved_by,
+        decision,
+        departments=departments,
+    )
+
+
+def mark_expense_paid_legacy(
+    expense_id: str, paid_by: str, departments=None
+) -> dict:
+    return _legacy_expense_action_across_departments(
+        mark_expense_paid,
+        expense_id,
+        paid_by,
+        departments=departments,
     )
 
 

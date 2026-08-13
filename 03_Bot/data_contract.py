@@ -59,6 +59,7 @@ def metadata(
     record_type,
     *,
     legacy_record_id="",
+    clinic_id="",
     encounter_id="",
     provider_id="",
     source_system="telegram_bot",
@@ -66,14 +67,15 @@ def metadata(
     ai_generated=False,
     human_verified=True,
 ):
+    active_clinic_id = str(clinic_id or CLINIC_ID).strip()
     if legacy_record_id:
-        record_id = f"{CLINIC_ID}:{legacy_record_id}"
+        record_id = f"{active_clinic_id}:{legacy_record_id}"
     else:
         record_id = new_record_id(record_type)
 
     return {
         "Organization_ID": ORGANIZATION_ID,
-        "Clinic_ID": CLINIC_ID,
+        "Clinic_ID": active_clinic_id,
         "Branch_ID": BRANCH_ID,
         "Record_ID": record_id,
         "Encounter_ID": encounter_id,

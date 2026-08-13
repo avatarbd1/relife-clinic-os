@@ -19,6 +19,19 @@ if not BOT_TOKEN:
 # ---- Google Sheets ----
 GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
 DENTAL_GOOGLE_SHEET_ID = os.getenv("DENTAL_GOOGLE_SHEET_ID")
+
+
+def sheet_id_for_department(department: str) -> str:
+    department = str(department or "").strip()
+    if department == "Dental":
+        if not DENTAL_GOOGLE_SHEET_ID:
+            raise RuntimeError("DENTAL_GOOGLE_SHEET_ID is missing")
+        return DENTAL_GOOGLE_SHEET_ID
+    if department == "Physio":
+        if not GOOGLE_SHEET_ID:
+            raise RuntimeError("GOOGLE_SHEET_ID is missing")
+        return GOOGLE_SHEET_ID
+    raise ValueError(f"Invalid department: {department}")
 MASTER_SHEET_ID = os.getenv("MASTER_SHEET_ID")
 MULTITENANT_ENABLED = os.getenv("MULTITENANT_ENABLED", "false").strip().lower() in {
     "1", "true", "yes", "on"

@@ -6653,10 +6653,14 @@ async def _notify_expense_approvers(
     recipients = await async_runtime.run_sheets_read(sheets.get_all_staff)
     markup = InlineKeyboardMarkup([[
         InlineKeyboardButton(
-            "✅ অনুমোদন", callback_data=f"expact_approve_{expense_id}"
+            "✅ অনুমোদন", callback_data=(
+                f"expact_{expense.get('Department', '')}_approve_{expense_id}"
+            )
         ),
         InlineKeyboardButton(
-            "❌ বাতিল", callback_data=f"expact_reject_{expense_id}"
+            "❌ বাতিল", callback_data=(
+                f"expact_{expense.get('Department', '')}_reject_{expense_id}"
+            )
         ),
     ]])
     for recipient in recipients:
@@ -6789,14 +6793,15 @@ def _expense_approval_keyboard(rows: list[dict]) -> InlineKeyboardMarkup:
     buttons = []
     for row in rows[:20]:
         expense_id = str(row.get("Expense_ID", "")).strip()
+        department = str(row.get("Department", "")).strip()
         buttons.append([
             InlineKeyboardButton(
                 f"✅ {expense_id} অনুমোদন",
-                callback_data=f"expact_approve_{expense_id}",
+                callback_data=f"expact_{department}_approve_{expense_id}",
             ),
             InlineKeyboardButton(
                 "❌ বাতিল",
-                callback_data=f"expact_reject_{expense_id}",
+                callback_data=f"expact_{department}_reject_{expense_id}",
             ),
         ])
     return InlineKeyboardMarkup(buttons)
@@ -6842,17 +6847,31 @@ async def expense_approval_callback(
         await query.edit_message_text("⛔ এই কাজের অনুমতি তোমার নেই।")
         return
     payload = query.data.replace("expact_", "", 1)
-    action, expense_id = payload.split("_", 1)
+    parts = payload.split("_", 2)
+    if len(parts) == 3 and parts[0] in (
+        config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL
+    ):
+        department, action, expense_id = parts
+    else:
+        department = ""
+        action, expense_id = payload.split("_", 1)
     decision = "Approved" if action == "approve" else "Rejected"
     actor = (
         staff.get("Full_Name")
         or staff.get("Name")
         or str(staff.get("Staff_ID", ""))
     )
-    result = await async_runtime.run_sheets_write(
-        sheets.finalize_expense_request, expense_id, actor, decision,
-        _finance_departments(staff)
-    )
+    if department:
+        result = await async_runtime.run_sheets_write(
+            sheets.finalize_expense_request_for_department,
+            department, expense_id, actor, decision,
+            _finance_departments(staff),
+        )
+    else:
+        result = await async_runtime.run_sheets_write(
+            sheets.finalize_expense_request_legacy,
+            expense_id, actor, decision, _finance_departments(staff),
+        )
     if result.get("ok"):
         message = (
             "✅ অনুমোদন হয়েছে। Receptionist এখন টাকা দিতে পারবে।"
@@ -6867,6 +6886,10 @@ async def expense_approval_callback(
     elif result.get("reason") == "department_forbidden":
         await query.edit_message_text(
             f"⛔ {expense_id} — এই Department-এর অনুমতি নেই।"
+        )
+    elif result.get("reason") == "ambiguous_department":
+        await query.edit_message_text(
+            f"⛔ {expense_id} দুই Department-এ আছে; নতুন request list থেকে button চাপো।"
         )
     else:
         await query.edit_message_text(f"❌ {expense_id} পাওয়া যায়নি।")
@@ -6893,13 +6916,14 @@ async def approved_expenses_start(
     lines = ["✅ Approved—টাকা দেওয়ার অপেক্ষায়:\n"]
     for row in rows[:20]:
         expense_id = str(row.get("Expense_ID", "")).strip()
+        department = str(row.get("Department", "")).strip()
         lines.append(
             f"• {expense_id} | {row.get('Category', '')} | "
             f"৳{_sheet_amount_value(row.get('Amount', 0) or 0):.0f}"
         )
         buttons.append([InlineKeyboardButton(
             f"💵 {expense_id} টাকা দেওয়া হয়েছে",
-            callback_data=f"exppaid_{expense_id}",
+            callback_data=f"exppaid_{department}_{expense_id}",
         )])
     await update.message.reply_text(
         "\n".join(lines), reply_markup=InlineKeyboardMarkup(buttons)
@@ -6920,15 +6944,29 @@ async def expense_paid_callback(
     ):
         await query.edit_message_text("⛔ এই কাজের অনুমতি তোমার নেই।")
         return
-    expense_id = query.data.replace("exppaid_", "", 1)
+    payload = query.data.replace("exppaid_", "", 1)
+    parts = payload.split("_", 1)
+    if len(parts) == 2 and parts[0] in (
+        config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL
+    ):
+        department, expense_id = parts
+    else:
+        department, expense_id = "", payload
     actor = (
         staff.get("Full_Name")
         or staff.get("Name")
         or str(staff.get("Staff_ID", ""))
     )
-    result = await async_runtime.run_sheets_write(
-        sheets.mark_expense_paid, expense_id, actor, _finance_departments(staff)
-    )
+    if department:
+        result = await async_runtime.run_sheets_write(
+            sheets.mark_expense_paid_for_department,
+            department, expense_id, actor, _finance_departments(staff),
+        )
+    else:
+        result = await async_runtime.run_sheets_write(
+            sheets.mark_expense_paid_legacy,
+            expense_id, actor, _finance_departments(staff),
+        )
     if result.get("ok"):
         await query.edit_message_text(
             f"✅ {expense_id} Paid হয়েছে। Reception cash থেকে টাকা কমেছে।"
@@ -6940,6 +6978,10 @@ async def expense_paid_callback(
     elif result.get("reason") == "department_forbidden":
         await query.edit_message_text(
             f"⛔ {expense_id} — এই Department-এর অনুমতি নেই।"
+        )
+    elif result.get("reason") == "ambiguous_department":
+        await query.edit_message_text(
+            f"⛔ {expense_id} দুই Department-এ আছে; approved list থেকে নতুন button চাপো।"
         )
     else:
         await query.edit_message_text(f"❌ {expense_id} পাওয়া যায়নি।")
