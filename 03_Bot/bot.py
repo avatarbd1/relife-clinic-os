@@ -6925,6 +6925,9 @@ _FINANCIAL_REPORT_MENUS = {
 }
 
 
+_LIVE_BALANCE_START_DATE = "2000-01-01"  # রেকর্ডের শুরুর অনেক আগে, নিরাপদ lower bound
+
+
 def _financial_report_date_range(shortcut: str, today=None) -> tuple[str, str]:
     today = today or bd_now().date()
     if shortcut == "today":
@@ -6936,13 +6939,22 @@ def _financial_report_date_range(shortcut: str, today=None) -> tuple[str, str]:
         start = today - timedelta(days=(today.weekday() + 1) % 7)
     elif shortcut == "month":
         start = today.replace(day=1)
+    elif shortcut == "live":
+        return _LIVE_BALANCE_START_DATE, today.isoformat()
     else:
         raise ValueError("Unknown financial report shortcut")
     return start.isoformat(), today.isoformat()
 
 
 def _financial_report_keyboard(report: str) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([
+    rows = []
+    if report == "cash":
+        rows.append([
+            InlineKeyboardButton(
+                "💰 এখন কত আছে (Live)", callback_data=f"finrange_{report}_live"
+            ),
+        ])
+    rows += [
         [
             InlineKeyboardButton("আজ", callback_data=f"finrange_{report}_today"),
             InlineKeyboardButton("গতকাল", callback_data=f"finrange_{report}_yesterday"),
@@ -6952,7 +6964,8 @@ def _financial_report_keyboard(report: str) -> InlineKeyboardMarkup:
             InlineKeyboardButton("এই মাস", callback_data=f"finrange_{report}_month"),
         ],
         [InlineKeyboardButton("কাস্টম তারিখ", callback_data=f"finrange_{report}_custom")],
-    ])
+    ]
+    return InlineKeyboardMarkup(rows)
 
 
 async def _authorized_financial_report_staff(update, context, report: str):
@@ -7016,8 +7029,14 @@ async def costtracker_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def _cash_custody_summary_text(summary: dict, role_str: str) -> str:
     is_owner = role_str.strip() == roles.Role.OWNER.value
+    is_live = summary.get("Start_Date") == _LIVE_BALANCE_START_DATE
+    balance_label = "বর্তমান ব্যালেন্স" if is_live else "নির্বাচিত সময়ের net balance"
+    header = (
+        "💰 এখন কত আছে (Live)" if is_live
+        else f"⚖️ Cash reconciliation — {summary['Date']}"
+    )
     lines = [
-        f"⚖️ Cash reconciliation — {summary['Date']}",
+        header,
         "",
         "Reception",
         f"Cash collection: ৳{summary['Cash_Collected']:.0f}",
@@ -7035,9 +7054,7 @@ def _cash_custody_summary_text(summary: dict, role_str: str) -> str:
         lines.append(
             f"⏳ পাঠানো হয়েছে, গ্রহণ বাকি: ৳{in_transit:.0f}"
         )
-    lines.append(
-        f"নির্বাচিত সময়ের net balance: ৳{summary['Reception_Balance']:.0f}"
-    )
+    lines.append(f"{balance_label}: ৳{summary['Reception_Balance']:.0f}")
 
     if is_owner:
         lines += [
@@ -7052,9 +7069,7 @@ def _cash_custody_summary_text(summary: dict, role_str: str) -> str:
         home_transit = summary.get("Home_In_Transit", 0)
         if home_transit:
             lines.append(f"⏳ পাঠানো হয়েছে, গ্রহণ বাকি: ৳{home_transit:.0f}")
-        lines.append(
-            f"নির্বাচিত সময়ের net balance: ৳{summary['Home_Balance']:.0f}"
-        )
+        lines.append(f"{balance_label}: ৳{summary['Home_Balance']:.0f}")
 
         lines += [
             "",
@@ -7063,7 +7078,7 @@ def _cash_custody_summary_text(summary: dict, role_str: str) -> str:
             f"খরচ: ৳{summary.get('Bank_Expense', 0):.0f}",
             f"বেতন পরিশোধ: ৳{summary.get('Bank_Salary', 0):.0f}",
             f"Transfer out: ৳{summary.get('Bank_Transfer_Out', 0):.0f}",
-            f"নির্বাচিত সময়ের net balance: ৳{summary.get('Bank_Balance', 0):.0f}",
+            f"{balance_label}: ৳{summary.get('Bank_Balance', 0):.0f}",
         ]
 
         unclassified = summary.get("Unclassified_Total", 0)
@@ -7074,10 +7089,17 @@ def _cash_custody_summary_text(summary: dict, role_str: str) -> str:
                 "এগুলো উপরের কোনো হিসাবে ধরা হয়নি। Sheet-এ Department বসালে যোগ হবে।",
             ]
 
-    lines += [
-        "",
-        "ℹ️ এটি নির্বাচিত সময়ের movement balance; আগের opening cash এতে নেই।",
-    ]
+    if is_live:
+        lines += [
+            "",
+            "✅ এটি এখন পর্যন্ত সব হিসাব যোগ করে বের করা লাইভ ব্যালেন্স — "
+            "আগের সব দিনের residual-ও এতে ধরা আছে।",
+        ]
+    else:
+        lines += [
+            "",
+            "ℹ️ এটি নির্বাচিত সময়ের movement balance; আগের opening cash এতে নেই।",
+        ]
     return "\n".join(lines)
 
 
