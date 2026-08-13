@@ -1459,6 +1459,38 @@ async def owner_department_daily_selected(update, context):
     await register_menu(update, context)
 
 
+async def owner_department_salary_selected(update, context):
+    if not await _select_owner_department(update, context):
+        return ConversationHandler.END
+    return await salary_start(update, context)
+
+
+async def owner_department_inventory_selected(update, context):
+    if not await _select_owner_department(update, context):
+        return ConversationHandler.END
+    return await inventory_menu(update, context)
+
+
+async def owner_department_finance_selected(update, context):
+    query = update.callback_query
+    action = query.data.split(":", 2)[1]
+    if not await _select_owner_department(update, context):
+        return
+    handlers = {
+        "salaryhist": salhist_start,
+        "cashreceive": cash_receive_start,
+        "cashmoves": cash_movements_start,
+        "expenseapproval": expense_approval_start,
+        "approved": approved_expenses_start,
+        "cashreport": custody_balance_start,
+        "expensereport": costtracker_start,
+        "rejected": rejectedexpense_start,
+    }
+    handler = handlers.get(action)
+    if handler:
+        await handler(update, context)
+
+
 async def _patient_department_mappings(staff: dict) -> list[dict]:
     if not config.DEPARTMENT_ENFORCEMENT_ENABLED:
         return []
@@ -3732,6 +3764,8 @@ async def inventory_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
     if not _staff_can_access_menu(staff, roles.MENU_INVENTORY):
         await update.effective_message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return ConversationHandler.END
+    if await _prompt_owner_department(update, context, staff, "inventory"):
         return ConversationHandler.END
     departments = _report_departments(staff)
     await update.effective_message.reply_text(
@@ -6082,17 +6116,32 @@ async def casestudy_cancel(update, context):
     return ConversationHandler.END
 
 
+def _staff_rows_for_department(staff_rows, staff):
+    selected = next(iter(_report_departments(staff)), "")
+    return [
+        s for s in staff_rows
+        if s.get("Staff_ID")
+        and (
+            selected in ("", config.DEPARTMENT_ALL)
+            or str(s.get("Primary_Department", "")).strip() == selected
+            or str(s.get("Role", "")).strip() == roles.Role.OWNER.value
+        )
+    ]
+
+
 async def salary_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
         return ConversationHandler.END
     if not _staff_can_access_menu(staff, roles.MENU_SALARY):
-        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        await update.effective_message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return ConversationHandler.END
+    if await _prompt_owner_department(update, context, staff, "salary"):
         return ConversationHandler.END
     staff_rows = await async_runtime.run_sheets_read(sheets.get_all_staff)
-    all_staff = [s for s in staff_rows if s.get("Staff_ID")]
+    all_staff = _staff_rows_for_department(staff_rows, staff)
     if not all_staff:
-        await update.message.reply_text("❌ কোনো স্টাফ পাওয়া যায়নি।")
+        await update.effective_message.reply_text("❌ এই বিভাগে কোনো স্টাফ পাওয়া যায়নি।")
         return ConversationHandler.END
     buttons = []
     for s in all_staff:
@@ -6101,7 +6150,7 @@ async def salary_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         sid = s.get("Staff_ID")
         label = f"{name} ({role})"
         buttons.append([InlineKeyboardButton(label, callback_data=f"salsel_{sid}")])
-    await update.message.reply_text("কোন স্টাফের বেতন দেবে?", reply_markup=InlineKeyboardMarkup(buttons))
+    await update.effective_message.reply_text("কোন স্টাফের বেতন দেবে?", reply_markup=InlineKeyboardMarkup(buttons))
     return SALARY_SELECT_STAFF
 
 
@@ -6362,12 +6411,14 @@ async def salhist_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if staff is None:
         return
     if not _staff_can_access_menu(staff, roles.MENU_SALARY_HISTORY):
-        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        await update.effective_message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    if await _prompt_owner_department(update, context, staff, "salaryhist"):
         return
     staff_rows = await async_runtime.run_sheets_read(sheets.get_all_staff)
-    all_staff = [s for s in staff_rows if s.get("Staff_ID")]
+    all_staff = _staff_rows_for_department(staff_rows, staff)
     if not all_staff:
-        await update.message.reply_text("❌ কোনো স্টাফ পাওয়া যায়নি।")
+        await update.effective_message.reply_text("❌ এই বিভাগে কোনো স্টাফ পাওয়া যায়নি।")
         return
     buttons = []
     for s in all_staff:
@@ -6375,7 +6426,7 @@ async def salhist_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         role = s.get("Role", "")
         sid = s.get("Staff_ID")
         buttons.append([InlineKeyboardButton(f"{name} ({role})", callback_data=f"salhist_{sid}")])
-    await update.message.reply_text(
+    await update.effective_message.reply_text(
         "কোন স্টাফের বেতন হিস্টোরি দেখবে?",
         reply_markup=InlineKeyboardMarkup(buttons),
     )
@@ -6471,6 +6522,9 @@ async def cash_department_callback(update: Update, context: ContextTypes.DEFAULT
     if department not in (config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL):
         await query.edit_message_text("❌ বিভাগ সঠিক নয়।")
         return ConversationHandler.END
+    if str(staff.get("Role", "")).strip() == roles.Role.OWNER.value:
+        context.user_data["_owner_department"] = department
+        sheet_scope.bind_sheet(config.sheet_id_for_department(department))
     context.user_data["cash_handover"] = {"Department": department}
     try:
         balance = await async_runtime.run_sheets_read(
@@ -6659,11 +6713,13 @@ async def cash_receive_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if staff is None:
         return
     if not _staff_can_access_menu(staff, roles.MENU_CASH_RECEIVE):
-        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        await update.effective_message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    if await _prompt_owner_department(update, context, staff, "cashreceive"):
         return
     rows = await async_runtime.run_sheets_read(sheets.get_pending_cash_movements_across_departments, _finance_departments(staff))
     if not rows:
-        await update.message.reply_text("✅ কোনো pending cash handover নেই।")
+        await update.effective_message.reply_text("✅ কোনো pending cash handover নেই।")
         return
     lines = ["💵 Pending cash handover:\n"]
     for row in rows[:20]:
@@ -6671,7 +6727,7 @@ async def cash_receive_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
             f"• {row.get('Department', '')} | {row.get('Movement_ID', '')} | ৳{_display_sheet_amount(row.get('Amount', 0))} "
             f"| {row.get('Moved_By', '')} | {row.get('Timestamp', '')}"
         )
-    await update.message.reply_text(
+    await update.effective_message.reply_text(
         "\n".join(lines),
         reply_markup=_cash_pending_keyboard(rows),
     )
@@ -6733,7 +6789,9 @@ async def cash_movements_start(update: Update, context: ContextTypes.DEFAULT_TYP
     if staff is None:
         return
     if not _staff_can_access_menu(staff, roles.MENU_CASH_MOVEMENTS):
-        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        await update.effective_message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    if await _prompt_owner_department(update, context, staff, "cashmoves"):
         return
     today = bd_now().strftime("%Y-%m-%d")
     rows = await async_runtime.run_sheets_read(
@@ -6741,7 +6799,7 @@ async def cash_movements_start(update: Update, context: ContextTypes.DEFAULT_TYP
         today, _finance_departments(staff)
     )
     if not rows:
-        await update.message.reply_text("🔄 আজ কোনো cash movement নেই।")
+        await update.effective_message.reply_text("🔄 আজ কোনো cash movement নেই।")
         return
     lines = [f"🔄 আজকের cash movement — {today}\n"]
     for row in rows[:30]:
@@ -6752,7 +6810,7 @@ async def cash_movements_start(update: Update, context: ContextTypes.DEFAULT_TYP
             f"৳{_display_sheet_amount(row.get('Amount', 0))} | "
             f"{row.get('Status', 'Pending')}"
         )
-    await update.message.reply_text("\n".join(lines))
+    await update.effective_message.reply_text("\n".join(lines))
 
 
 async def _expense_form_start(
@@ -6802,6 +6860,9 @@ async def cost_department_callback(update: Update, context: ContextTypes.DEFAULT
     if department not in (config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL):
         await query.edit_message_text("❌ বিভাগ সঠিক নয়।")
         return ConversationHandler.END
+    if str(staff.get("Role", "")).strip() == roles.Role.OWNER.value:
+        context.user_data["_owner_department"] = department
+        sheet_scope.bind_sheet(config.sheet_id_for_department(department))
     expense = context.user_data.get("cost", {})
     expense["Department"] = department
     context.user_data["cost"] = expense
@@ -7082,13 +7143,15 @@ async def expense_approval_start(
     if staff is None:
         return
     if not _staff_can_access_menu(staff, roles.MENU_EXPENSE_APPROVAL):
-        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        await update.effective_message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    if await _prompt_owner_department(update, context, staff, "expenseapproval"):
         return
     rows = await async_runtime.run_sheets_read(
         sheets.get_expense_requests, "Pending Approval", _finance_departments(staff)
     )
     if not rows:
-        await update.message.reply_text("✅ কোনো pending খরচের request নেই।")
+        await update.effective_message.reply_text("✅ কোনো pending খরচের request নেই।")
         return
     lines = ["📋 Pending ছোট খরচের request:\n"]
     for row in rows[:20]:
@@ -7097,7 +7160,7 @@ async def expense_approval_start(
             f"৳{_sheet_amount_value(row.get('Amount', 0) or 0):.0f} | "
             f"{row.get('Requested_By', '')}"
         )
-    await update.message.reply_text(
+    await update.effective_message.reply_text(
         "\n".join(lines), reply_markup=_expense_approval_keyboard(rows)
     )
 
@@ -7172,13 +7235,15 @@ async def approved_expenses_start(
     if not _staff_can_access_menu(
         staff, roles.MENU_APPROVED_EXPENSES
     ):
-        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        await update.effective_message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return
+    if await _prompt_owner_department(update, context, staff, "approved"):
         return
     rows = await async_runtime.run_sheets_read(
         sheets.get_expense_requests, "Approved", _finance_departments(staff)
     )
     if not rows:
-        await update.message.reply_text("✅ টাকা দেওয়ার মতো approved খরচ নেই।")
+        await update.effective_message.reply_text("✅ টাকা দেওয়ার মতো approved খরচ নেই।")
         return
     buttons = []
     lines = ["✅ Approved—টাকা দেওয়ার অপেক্ষায়:\n"]
@@ -7193,7 +7258,7 @@ async def approved_expenses_start(
             f"💵 {expense_id} টাকা দেওয়া হয়েছে",
             callback_data=f"exppaid_{department}_{expense_id}",
         )])
-    await update.message.reply_text(
+    await update.effective_message.reply_text(
         "\n".join(lines), reply_markup=InlineKeyboardMarkup(buttons)
     )
 
@@ -7317,7 +7382,13 @@ async def _authorized_financial_report_staff(update, context, report: str):
 
 
 async def _financial_report_start(update, context, report: str):
-    if await _authorized_financial_report_staff(update, context, report) is None:
+    staff = await _authorized_financial_report_staff(update, context, report)
+    if staff is None:
+        return
+    action = {
+        "cash": "cashreport", "expense": "expensereport", "rejected": "rejected"
+    }[report]
+    if await _prompt_owner_department(update, context, staff, action):
         return
     await update.effective_message.reply_text(
         "📅 রিপোর্টের সময় বেছে নিন:",
@@ -7703,7 +7774,8 @@ def main():
 
     salary_conv = ConversationHandler(
         entry_points=[
-            MessageHandler(filters.Regex(f"^{roles.MENU_SALARY}$"), salary_start)
+            MessageHandler(filters.Regex(f"^{roles.MENU_SALARY}$"), salary_start),
+            CallbackQueryHandler(owner_department_salary_selected, pattern="^ownerdept:salary:"),
         ],
         states={
             SALARY_SELECT_STAFF: [
@@ -7732,6 +7804,10 @@ def main():
     )
     app.add_handler(salary_conv)
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_SALARY_HISTORY}$"), salhist_start))
+    app.add_handler(CallbackQueryHandler(
+        owner_department_finance_selected,
+        pattern="^ownerdept:(salaryhist|cashreceive|cashmoves|expenseapproval|approved|cashreport|expensereport|rejected):",
+    ))
     app.add_handler(CallbackQueryHandler(salhist_select_callback, pattern="^salhist_"))
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_MY_PAYMENTS}$"), mypayments_start))
 
@@ -8144,6 +8220,7 @@ def main():
     inv_conv = ConversationHandler(
         entry_points=[
             MessageHandler(filters.Regex(f"^{roles.MENU_INVENTORY}$"), inventory_menu),
+            CallbackQueryHandler(owner_department_inventory_selected, pattern="^ownerdept:inventory:"),
         ],
         states={
             INV_UPDATE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), inventory_update)],
