@@ -2569,6 +2569,25 @@ def get_cash_custody_summary(
     }
 
 
+_RECEPTION_BALANCE_EPOCH = "2000-01-01"  # রেকর্ডের শুরুর অনেক আগে, নিরাপদ lower bound
+
+
+def get_reception_cash_balance(department: str) -> float:
+    """একটি বিভাগের Reception-এ এখন হাতে কত ক্যাশ আছে (all-time cumulative)।
+
+    get_cash_custody_summary()-এর টেস্ট-করা হিসাবই পুনরায় ব্যবহার করে —
+    রেকর্ডের শুরু থেকে আজ পর্যন্ত রেঞ্জ দিয়ে ডাকলে period net movement-ই
+    আসলে all-time running balance হয়ে যায় (opening cash = 0 ধরে)।
+    """
+    today = bd_now().strftime("%Y-%m-%d")
+    summary = get_cash_custody_summary(
+        date_str=_RECEPTION_BALANCE_EPOCH,
+        end_date=today,
+        departments={department},
+    )
+    return summary["Reception_Balance"]
+
+
 _FINANCE_DEPARTMENTS = {config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL}
 
 

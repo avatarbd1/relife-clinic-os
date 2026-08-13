@@ -6186,10 +6186,33 @@ async def cash_department_callback(update: Update, context: ContextTypes.DEFAULT
         await query.edit_message_text("❌ বিভাগ সঠিক নয়।")
         return ConversationHandler.END
     context.user_data["cash_handover"] = {"Department": department}
-    await query.edit_message_text(
-        f"{department} Reception থেকে Home Treasury-তে কত টাকা হ্যান্ডওভার করবে?\n"
-        "শুধু টাকার পরিমাণ লেখো (যেমন: 5000):"
-    )
+    try:
+        balance = await async_runtime.run_sheets_read(
+            sheets.get_reception_cash_balance, department
+        )
+    except Exception:
+        logger.exception("cash_department_callback: balance calc failed")
+        balance = None
+
+    if balance is not None:
+        suggested = max(0, round(balance))
+        await query.edit_message_text(
+            f"{department} Reception-এ হিসাব অনুযায়ী এখন ৳{balance:.0f} আছে।\n\n"
+            "পুরোটা handover করতে নিচের বাটনে চাপ দাও, "
+            "অথবা ভিন্ন পরিমাণ টাইপ করো:"
+        )
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="কত টাকা handover করবে?",
+            reply_markup=ReplyKeyboardMarkup(
+                [[str(suggested)]], resize_keyboard=True, one_time_keyboard=True
+            ),
+        )
+    else:
+        await query.edit_message_text(
+            f"{department} Reception থেকে Home Treasury-তে কত টাকা হ্যান্ডওভার করবে?\n"
+            "শুধু টাকার পরিমাণ লেখো (যেমন: 5000):"
+        )
     return CASH_AMOUNT
 
 
