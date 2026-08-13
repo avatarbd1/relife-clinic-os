@@ -498,17 +498,27 @@ def adjust_inventory_stock(
         return {"ok": False, "error": str(error)}
 
 
-def get_active_therapist_names() -> list[str]:
-    ws = _worksheet(config.SHEET_STAFF)
-    records = safe_get_all_records(ws)
+def get_active_provider_names(department: str) -> list[str]:
+    """Return active clinical providers from the common 08_Staff registry."""
+    with sheet_scope.use_sheet(config.GOOGLE_SHEET_ID):
+        records = safe_get_all_records(_worksheet(config.SHEET_STAFF))
     names = []
     for row in records:
         role = str(row.get("Role", "")).strip().lower()
         status = str(row.get("Status", "")).strip().lower()
+        primary = str(row.get("Primary_Department", "")).strip()
         name = str(row.get("Full_Name", "")).strip()
-        if role == "therapist" and status == "active" and name and name not in names:
+        allowed_roles = {"therapist"} if department == config.DEPARTMENT_PHYSIO else {
+            "dentist", "dental", "dental_assistant", "dental assistant"
+        }
+        if (role in allowed_roles and status == "active" and primary == department
+                and name and name not in names):
             names.append(name)
     return names
+
+
+def get_active_therapist_names() -> list[str]:
+    return get_active_provider_names(config.DEPARTMENT_PHYSIO)
 
 
 def get_staff_by_telegram_id(telegram_id: int) -> dict | None:
@@ -2852,15 +2862,34 @@ def _department_finance_summary(
 
 def get_owner_financial_dashboard(date_str: str) -> dict:
     """Return Physio, Dental and combined business-only finance views."""
-    payment_rows = safe_get_all_records(_worksheet(config.SHEET_PAYMENTS))
-    expense_rows = safe_get_all_records(_worksheet(config.SHEET_EXPENSES))
-    movement_rows = safe_get_all_records(_worksheet(config.SHEET_CASH_MOVEMENT))
-    summaries = {
-        department: _department_finance_summary(
-            department, date_str, payment_rows, expense_rows, movement_rows
-        )
-        for department in sorted(_FINANCE_DEPARTMENTS)
-    }
+    if not config.DENTAL_GOOGLE_SHEET_ID:
+        payment_rows = safe_get_all_records(_worksheet(config.SHEET_PAYMENTS))
+        expense_rows = safe_get_all_records(_worksheet(config.SHEET_EXPENSES))
+        movement_rows = safe_get_all_records(_worksheet(config.SHEET_CASH_MOVEMENT))
+        summaries = {
+            department: _department_finance_summary(
+                department, date_str, payment_rows, expense_rows, movement_rows
+            ) for department in sorted(_FINANCE_DEPARTMENTS)
+        }
+        unclassified = {
+            "Payments": sum(not _finance_department(r) for r in payment_rows),
+            "Expenses": sum(not _finance_department(r) for r in expense_rows),
+            "Cash_Movements": sum(not _finance_department(r) for r in movement_rows),
+        }
+    else:
+        summaries = {}
+        unclassified = {"Payments": 0, "Expenses": 0, "Cash_Movements": 0}
+        for department in sorted(_FINANCE_DEPARTMENTS):
+            with sheet_scope.use_sheet(config.sheet_id_for_department(department)):
+                payment_rows = safe_get_all_records(_worksheet(config.SHEET_PAYMENTS))
+                expense_rows = safe_get_all_records(_worksheet(config.SHEET_EXPENSES))
+                movement_rows = safe_get_all_records(_worksheet(config.SHEET_CASH_MOVEMENT))
+            summaries[department] = _department_finance_summary(
+                department, date_str, payment_rows, expense_rows, movement_rows
+            )
+            unclassified["Payments"] += sum(not _finance_department(r) for r in payment_rows)
+            unclassified["Expenses"] += sum(not _finance_department(r) for r in expense_rows)
+            unclassified["Cash_Movements"] += sum(not _finance_department(r) for r in movement_rows)
     combined = {
         key: round(sum(summary[key] for summary in summaries.values()), 2)
         for key in (
@@ -2876,11 +2905,7 @@ def get_owner_financial_dashboard(date_str: str) -> dict:
         custodian: round(sum(s["Closing"][custodian] for s in summaries.values()), 2)
         for custodian in ("Reception", "Home Treasury", "Digital/Bank")
     }
-    combined["Unclassified_Rows"] = {
-        "Payments": sum(not _finance_department(row) for row in payment_rows),
-        "Expenses": sum(not _finance_department(row) for row in expense_rows),
-        "Cash_Movements": sum(not _finance_department(row) for row in movement_rows),
-    }
+    combined["Unclassified_Rows"] = unclassified
     return {
         "Date": date_str,
         config.DEPARTMENT_PHYSIO: summaries[config.DEPARTMENT_PHYSIO],
@@ -2994,6 +3019,40 @@ def get_pending_cash_movements(departments=None) -> list[dict]:
     ]
     rows.sort(key=lambda row: str(row.get("Timestamp", "")), reverse=True)
     return rows
+
+
+def get_pending_cash_movements_across_departments(departments=None) -> list[dict]:
+    allowed = _department_scope_values(departments) or _FINANCE_DEPARTMENTS
+    rows = []
+    for department in sorted(allowed):
+        with sheet_scope.use_sheet(config.sheet_id_for_department(department)):
+            current = get_pending_cash_movements({department})
+        for row in current:
+            row = dict(row)
+            row["_Source_Department"] = department
+            rows.append(row)
+    rows.sort(key=lambda row: str(row.get("Timestamp", "")), reverse=True)
+    return rows
+
+
+def finalize_cash_movement_for_department(
+    department, movement_id, confirmed_by, decision="Accepted", departments=None
+):
+    with sheet_scope.use_sheet(config.sheet_id_for_department(department)):
+        return finalize_cash_movement(movement_id, confirmed_by, decision, departments)
+
+
+def get_cash_custody_summary_for_department(department, date_str=None, end_date=None):
+    with sheet_scope.use_sheet(config.sheet_id_for_department(department)):
+        return get_cash_custody_summary(date_str, end_date, {department})
+
+
+def get_cash_custody_summaries(date_str=None, end_date=None, departments=None):
+    allowed = _department_scope_values(departments) or _FINANCE_DEPARTMENTS
+    return {
+        department: get_cash_custody_summary_for_department(department, date_str, end_date)
+        for department in sorted(allowed)
+    }
 
 
 def finalize_cash_movement(

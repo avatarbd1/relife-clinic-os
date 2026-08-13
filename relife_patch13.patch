@@ -1,0 +1,399 @@
+diff --git a/03_Bot/bot.py b/03_Bot/bot.py
+index 61d5ef2..7ba5891 100644
+--- a/03_Bot/bot.py
++++ b/03_Bot/bot.py
+@@ -1279,13 +1279,13 @@ def _time_keyboard() -> InlineKeyboardMarkup:
+     return InlineKeyboardMarkup(buttons)
+ 
+ 
+-def _therapist_keyboard() -> InlineKeyboardMarkup:
++def _therapist_keyboard(department=config.DEPARTMENT_PHYSIO) -> InlineKeyboardMarkup:
+     try:
+-        names = sheets.get_active_therapist_names()
++        names = sheets.get_active_provider_names(department)
+     except Exception:
+         logger.exception("get_active_therapist_names ব্যর্থ হয়েছে, fallback ব্যবহার হচ্ছে")
+         names = []
+-    if not names:
++    if not names and department == config.DEPARTMENT_PHYSIO:
+         names = THERAPIST_NAMES_FALLBACK
+     buttons = [
+         [InlineKeyboardButton(name, callback_data=f"aptther_{name}")]
+@@ -2068,10 +2068,10 @@ async def apt_time_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+     time_str = query.data.replace("apttime_", "")
+     context.user_data.setdefault("new_appointment", {})["Time"] = time_str
+     await query.edit_message_text(f"✅ সময় নির্বাচন করা হয়েছে: {time_str}")
+-    await query.message.reply_text(
+-        "থেরাপিস্ট বেছে নাও (অথবা টাইপ করো):",
+-        reply_markup=await async_runtime.run_sheets_read(_therapist_keyboard),
+-    )
++    department = context.user_data["new_appointment"].get("Department", config.DEPARTMENT_PHYSIO)
++    label = "ডেন্টিস্ট" if department == config.DEPARTMENT_DENTAL else "থেরাপিস্ট"
++    await query.message.reply_text(f"{label} বেছে নাও (অথবা টাইপ করো):",
++        reply_markup=await async_runtime.run_sheets_read(_therapist_keyboard, department))
+     return APT_THERAPIST
+ 
+ 
+@@ -2079,10 +2079,10 @@ async def apt_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
+     raw = update.message.text.strip()
+     times = [p.strip() for p in raw.split(",") if p.strip()] or [raw]
+     context.user_data.setdefault("new_appointment", {})["Times"] = times
+-    await update.message.reply_text(
+-        "থেরাপিস্ট বেছে নাও (অথবা টাইপ করো):",
+-        reply_markup=await async_runtime.run_sheets_read(_therapist_keyboard),
+-    )
++    department = context.user_data["new_appointment"].get("Department", config.DEPARTMENT_PHYSIO)
++    label = "ডেন্টিস্ট" if department == config.DEPARTMENT_DENTAL else "থেরাপিস্ট"
++    await update.message.reply_text(f"{label} বেছে নাও (অথবা টাইপ করো):",
++        reply_markup=await async_runtime.run_sheets_read(_therapist_keyboard, department))
+     return APT_THERAPIST
+ 
+ 
+@@ -2113,10 +2113,10 @@ async def apt_time_done_callback(update: Update, context: ContextTypes.DEFAULT_T
+     context.user_data.setdefault("new_appointment", {})["Times"] = list(selected)
+     context.user_data.pop("apt_times", None)
+     await query.edit_message_text(f"✅ সময় বাছাই করা হয়েছে: {', '.join(selected)}")
+-    await query.message.reply_text(
+-        "থেরাপিস্ট বেছে নাও (অথবা টাইপ করো):",
+-        reply_markup=await async_runtime.run_sheets_read(_therapist_keyboard),
+-    )
++    department = context.user_data["new_appointment"].get("Department", config.DEPARTMENT_PHYSIO)
++    label = "ডেন্টিস্ট" if department == config.DEPARTMENT_DENTAL else "থেরাপিস্ট"
++    await query.message.reply_text(f"{label} বেছে নাও (অথবা টাইপ করো):",
++        reply_markup=await async_runtime.run_sheets_read(_therapist_keyboard, department))
+     return APT_THERAPIST
+ 
+ 
+@@ -2143,12 +2143,13 @@ def _apt_summary_text(a: dict) -> str:
+     time_label = "সময়সমূহ" if len(times) > 1 else "সময়"
+     total = len(dates) * len(times) if dates and times else 0
+     total_note = f"\nমোট অ্যাপয়েন্টমেন্ট হবে: {total}টা" if total > 1 else ""
++    provider_label = "ডেন্টিস্ট" if a.get("Department") == config.DEPARTMENT_DENTAL else "থেরাপিস্ট"
+     return (
+         "নিচের তথ্য ঠিক আছে কিনা চেক করো:\n\n"
+         f"রোগী: {a['Patient_Name']} ({a['Patient_ID']})\n"
+         f"Department: {a.get('Department') or 'N/A'}\n"
+         f"{date_label}: {date_line}\n{time_label}: {time_line}{total_note}\n"
+-        f"থেরাপিস্ট: {a['Therapist']}\n\n"
++        f"{provider_label}: {a['Therapist']}\n\n"
+         "ঠিক থাকলে নিচের বাটনে ট্যাপ করো।"
+     )
+ 
+@@ -2172,7 +2173,8 @@ async def apt_therapist_callback(update: Update, context: ContextTypes.DEFAULT_T
+     confirm_keyboard = ReplyKeyboardMarkup(
+         [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
+     )
+-    await query.edit_message_text(f"✅ থেরাপিস্ট নির্বাচন করা হয়েছে: {therapist_name}")
++    label = "ডেন্টিস্ট" if a.get("Department") == config.DEPARTMENT_DENTAL else "থেরাপিস্ট"
++    await query.edit_message_text(f"✅ {label} নির্বাচন করা হয়েছে: {therapist_name}")
+     await query.message.reply_text(_apt_summary_text(a), reply_markup=confirm_keyboard)
+     return APT_CONFIRM
+ 
+@@ -6324,11 +6326,11 @@ async def cash_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
+                 [
+                     InlineKeyboardButton(
+                         "✅ গ্রহণ",
+-                        callback_data=f"cashact_accept_{movement_id}",
++                        callback_data=f"cashact_accept_{handover.get('Department', '')}_{movement_id}",
+                     ),
+                     InlineKeyboardButton(
+                         "❌ প্রত্যাখ্যান",
+-                        callback_data=f"cashact_reject_{movement_id}",
++                        callback_data=f"cashact_reject_{handover.get('Department', '')}_{movement_id}",
+                     ),
+                 ]
+             ])
+@@ -6380,14 +6382,15 @@ def _cash_pending_keyboard(rows: list[dict]) -> InlineKeyboardMarkup:
+     buttons = []
+     for row in rows[:20]:
+         movement_id = str(row.get("Movement_ID", "")).strip()
++        department = str(row.get("_Source_Department") or row.get("Department", "")).strip()
+         buttons.append([
+             InlineKeyboardButton(
+                 f"✅ {movement_id} গ্রহণ",
+-                callback_data=f"cashact_accept_{movement_id}",
++                callback_data=f"cashact_accept_{department}_{movement_id}",
+             ),
+             InlineKeyboardButton(
+                 "❌ প্রত্যাখ্যান",
+-                callback_data=f"cashact_reject_{movement_id}",
++                callback_data=f"cashact_reject_{department}_{movement_id}",
+             ),
+         ])
+     return InlineKeyboardMarkup(buttons)
+@@ -6400,14 +6403,14 @@ async def cash_receive_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
+     if not _staff_can_access_menu(staff, roles.MENU_CASH_RECEIVE):
+         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+         return
+-    rows = await async_runtime.run_sheets_read(sheets.get_pending_cash_movements, _finance_departments(staff))
++    rows = await async_runtime.run_sheets_read(sheets.get_pending_cash_movements_across_departments, _finance_departments(staff))
+     if not rows:
+         await update.message.reply_text("✅ কোনো pending cash handover নেই।")
+         return
+     lines = ["💵 Pending cash handover:\n"]
+     for row in rows[:20]:
+         lines.append(
+-            f"• {row.get('Movement_ID', '')} | ৳{_display_sheet_amount(row.get('Amount', 0))} "
++            f"• {row.get('Department', '')} | {row.get('Movement_ID', '')} | ৳{_display_sheet_amount(row.get('Amount', 0))} "
+             f"| {row.get('Moved_By', '')} | {row.get('Timestamp', '')}"
+         )
+     await update.message.reply_text(
+@@ -6428,7 +6431,11 @@ async def cash_finalize_callback(update: Update, context: ContextTypes.DEFAULT_T
+         return
+ 
+     payload = query.data.replace("cashact_", "", 1)
+-    action, movement_id = payload.split("_", 1)
++    parts = payload.split("_", 2)
++    if len(parts) != 3:
++        await query.edit_message_text("❌ পুরোনো button; Pending list থেকে আবার চেষ্টা করো।")
++        return
++    action, department, movement_id = parts
+     decision = "Accepted" if action == "accept" else "Rejected"
+     confirmed_by = (
+         staff.get("Full_Name")
+@@ -6436,7 +6443,8 @@ async def cash_finalize_callback(update: Update, context: ContextTypes.DEFAULT_T
+         or str(staff.get("Staff_ID", ""))
+     )
+     result = await async_runtime.run_sheets_write(
+-        sheets.finalize_cash_movement,
++        sheets.finalize_cash_movement_for_department,
++        department,
+         movement_id,
+         confirmed_by,
+         decision,
+@@ -7131,6 +7139,20 @@ def _live_balance_text(summary: dict, role_str: str) -> str:
+     return "\n".join(lines)
+ 
+ 
++def _department_live_balance_text(summaries: dict, role_str: str) -> str:
++    lines = ["💰 এখন কত আছে (Live)"]
++    for department in (config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL):
++        if department not in summaries:
++            continue
++        summary = summaries[department]
++        lines += ["", f"{'🩺' if department == config.DEPARTMENT_PHYSIO else '🦷'} {department}",
++                  f"⚖️ Reception: ৳{summary['Reception_Balance']:.0f}",
++                  f"🏠 Home Treasury: ৳{summary['Home_Balance']:.0f}"]
++        if role_str.strip() == roles.Role.OWNER.value:
++            lines.append(f"🏦 Bank: ৳{summary.get('Bank_Balance', 0):.0f}")
++    return "\n".join(lines)
++
++
+ def _cash_custody_summary_text(summary: dict, role_str: str) -> str:
+     if summary.get("Start_Date") == _LIVE_BALANCE_START_DATE:
+         return _live_balance_text(summary, role_str)
+@@ -7212,11 +7234,14 @@ async def _show_financial_report(update, context, report, start_date, end_date):
+     if staff is None:
+         return
+     if report == "cash":
+-        summary = await async_runtime.run_sheets_read(
+-            sheets.get_cash_custody_summary, start_date, end_date,
+-            _finance_departments(staff)
+-        )
+-        text = _cash_custody_summary_text(summary, staff.get("Role", ""))
++        departments = _finance_departments(staff)
++        summaries = await async_runtime.run_sheets_read(
++            sheets.get_cash_custody_summaries, start_date, end_date, departments)
++        if start_date == _LIVE_BALANCE_START_DATE:
++            text = _department_live_balance_text(summaries, staff.get("Role", ""))
++        else:
++            summary = next(iter(summaries.values()))
++            text = _cash_custody_summary_text(summary, staff.get("Role", ""))
+     elif report == "rejected":
+         rows = await async_runtime.run_sheets_read(
+             sheets.get_expenses_for_date, start_date, end_date,
+diff --git a/03_Bot/sheets.py b/03_Bot/sheets.py
+index 1f44d37..03cb1a8 100644
+--- a/03_Bot/sheets.py
++++ b/03_Bot/sheets.py
+@@ -498,19 +498,29 @@ def adjust_inventory_stock(
+         return {"ok": False, "error": str(error)}
+ 
+ 
+-def get_active_therapist_names() -> list[str]:
+-    ws = _worksheet(config.SHEET_STAFF)
+-    records = safe_get_all_records(ws)
++def get_active_provider_names(department: str) -> list[str]:
++    """Return active clinical providers from the common 08_Staff registry."""
++    with sheet_scope.use_sheet(config.GOOGLE_SHEET_ID):
++        records = safe_get_all_records(_worksheet(config.SHEET_STAFF))
+     names = []
+     for row in records:
+         role = str(row.get("Role", "")).strip().lower()
+         status = str(row.get("Status", "")).strip().lower()
++        primary = str(row.get("Primary_Department", "")).strip()
+         name = str(row.get("Full_Name", "")).strip()
+-        if role == "therapist" and status == "active" and name and name not in names:
++        allowed_roles = {"therapist"} if department == config.DEPARTMENT_PHYSIO else {
++            "dentist", "dental", "dental_assistant", "dental assistant"
++        }
++        if (role in allowed_roles and status == "active" and primary == department
++                and name and name not in names):
+             names.append(name)
+     return names
+ 
+ 
++def get_active_therapist_names() -> list[str]:
++    return get_active_provider_names(config.DEPARTMENT_PHYSIO)
++
++
+ def get_staff_by_telegram_id(telegram_id: int) -> dict | None:
+     # 08_Staff on the Physio workbook is the common staff registry.
+     with sheet_scope.use_sheet(config.GOOGLE_SHEET_ID):
+@@ -2852,15 +2862,34 @@ def _department_finance_summary(
+ 
+ def get_owner_financial_dashboard(date_str: str) -> dict:
+     """Return Physio, Dental and combined business-only finance views."""
+-    payment_rows = safe_get_all_records(_worksheet(config.SHEET_PAYMENTS))
+-    expense_rows = safe_get_all_records(_worksheet(config.SHEET_EXPENSES))
+-    movement_rows = safe_get_all_records(_worksheet(config.SHEET_CASH_MOVEMENT))
+-    summaries = {
+-        department: _department_finance_summary(
+-            department, date_str, payment_rows, expense_rows, movement_rows
+-        )
+-        for department in sorted(_FINANCE_DEPARTMENTS)
+-    }
++    if not config.DENTAL_GOOGLE_SHEET_ID:
++        payment_rows = safe_get_all_records(_worksheet(config.SHEET_PAYMENTS))
++        expense_rows = safe_get_all_records(_worksheet(config.SHEET_EXPENSES))
++        movement_rows = safe_get_all_records(_worksheet(config.SHEET_CASH_MOVEMENT))
++        summaries = {
++            department: _department_finance_summary(
++                department, date_str, payment_rows, expense_rows, movement_rows
++            ) for department in sorted(_FINANCE_DEPARTMENTS)
++        }
++        unclassified = {
++            "Payments": sum(not _finance_department(r) for r in payment_rows),
++            "Expenses": sum(not _finance_department(r) for r in expense_rows),
++            "Cash_Movements": sum(not _finance_department(r) for r in movement_rows),
++        }
++    else:
++        summaries = {}
++        unclassified = {"Payments": 0, "Expenses": 0, "Cash_Movements": 0}
++        for department in sorted(_FINANCE_DEPARTMENTS):
++            with sheet_scope.use_sheet(config.sheet_id_for_department(department)):
++                payment_rows = safe_get_all_records(_worksheet(config.SHEET_PAYMENTS))
++                expense_rows = safe_get_all_records(_worksheet(config.SHEET_EXPENSES))
++                movement_rows = safe_get_all_records(_worksheet(config.SHEET_CASH_MOVEMENT))
++            summaries[department] = _department_finance_summary(
++                department, date_str, payment_rows, expense_rows, movement_rows
++            )
++            unclassified["Payments"] += sum(not _finance_department(r) for r in payment_rows)
++            unclassified["Expenses"] += sum(not _finance_department(r) for r in expense_rows)
++            unclassified["Cash_Movements"] += sum(not _finance_department(r) for r in movement_rows)
+     combined = {
+         key: round(sum(summary[key] for summary in summaries.values()), 2)
+         for key in (
+@@ -2876,11 +2905,7 @@ def get_owner_financial_dashboard(date_str: str) -> dict:
+         custodian: round(sum(s["Closing"][custodian] for s in summaries.values()), 2)
+         for custodian in ("Reception", "Home Treasury", "Digital/Bank")
+     }
+-    combined["Unclassified_Rows"] = {
+-        "Payments": sum(not _finance_department(row) for row in payment_rows),
+-        "Expenses": sum(not _finance_department(row) for row in expense_rows),
+-        "Cash_Movements": sum(not _finance_department(row) for row in movement_rows),
+-    }
++    combined["Unclassified_Rows"] = unclassified
+     return {
+         "Date": date_str,
+         config.DEPARTMENT_PHYSIO: summaries[config.DEPARTMENT_PHYSIO],
+@@ -2996,6 +3021,40 @@ def get_pending_cash_movements(departments=None) -> list[dict]:
+     return rows
+ 
+ 
++def get_pending_cash_movements_across_departments(departments=None) -> list[dict]:
++    allowed = _department_scope_values(departments) or _FINANCE_DEPARTMENTS
++    rows = []
++    for department in sorted(allowed):
++        with sheet_scope.use_sheet(config.sheet_id_for_department(department)):
++            current = get_pending_cash_movements({department})
++        for row in current:
++            row = dict(row)
++            row["_Source_Department"] = department
++            rows.append(row)
++    rows.sort(key=lambda row: str(row.get("Timestamp", "")), reverse=True)
++    return rows
++
++
++def finalize_cash_movement_for_department(
++    department, movement_id, confirmed_by, decision="Accepted", departments=None
++):
++    with sheet_scope.use_sheet(config.sheet_id_for_department(department)):
++        return finalize_cash_movement(movement_id, confirmed_by, decision, departments)
++
++
++def get_cash_custody_summary_for_department(department, date_str=None, end_date=None):
++    with sheet_scope.use_sheet(config.sheet_id_for_department(department)):
++        return get_cash_custody_summary(date_str, end_date, {department})
++
++
++def get_cash_custody_summaries(date_str=None, end_date=None, departments=None):
++    allowed = _department_scope_values(departments) or _FINANCE_DEPARTMENTS
++    return {
++        department: get_cash_custody_summary_for_department(department, date_str, end_date)
++        for department in sorted(allowed)
++    }
++
++
+ def finalize_cash_movement(
+     movement_id: str,
+     confirmed_by: str,
+diff --git a/07_Testing/test_dual_department_finance.py b/07_Testing/test_dual_department_finance.py
+new file mode 100644
+index 0000000..801534a
+--- /dev/null
++++ b/07_Testing/test_dual_department_finance.py
+@@ -0,0 +1,53 @@
++import os, sys, unittest
++from unittest.mock import patch
++from pathlib import Path
++
++ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
++sys.path.insert(0, os.path.join(ROOT, "03_Bot"))
++os.environ.setdefault("BOT_TOKEN", "test")
++os.environ.setdefault("GOOGLE_SHEET_ID", "physio")
++os.environ.setdefault("DENTAL_GOOGLE_SHEET_ID", "dental")
++_CREDENTIALS = Path(ROOT) / "credentials.json"
++_CREATED_CREDENTIALS = False
++if not _CREDENTIALS.exists():
++    _CREDENTIALS.write_text("{}", encoding="utf-8")
++    _CREATED_CREDENTIALS = True
++
++import bot, config, sheets
++
++
++class DualDepartmentFinanceTests(unittest.TestCase):
++    def test_owner_dashboard_reads_both_workbooks(self):
++        rows = {
++            ("physio", config.SHEET_PAYMENTS): [{"Department":"Physio","Date":"2026-08-14","Amount":10,"Payment_Method":"Cash"}],
++            ("dental", config.SHEET_PAYMENTS): [{"Department":"Dental","Date":"2026-08-14","Amount":400,"Payment_Method":"Cash"}],
++        }
++        class WS:
++            def __init__(self, title): self.title=title
++        with patch.object(sheets, "_worksheet", side_effect=lambda title: WS(title)), patch.object(
++            sheets, "safe_get_all_records",
++            side_effect=lambda ws: rows.get((sheets._active_sheet_id(), ws.title), []),
++        ):
++            data=sheets.get_owner_financial_dashboard("2026-08-14")
++        self.assertEqual(data["Physio"]["Today_Collection"], 10)
++        self.assertEqual(data["Dental"]["Today_Collection"], 400)
++
++    def test_live_dental_reception_has_only_two_dental_balances(self):
++        text=bot._department_live_balance_text({"Dental":{
++            "Reception_Balance":300,"Home_Balance":100,"Bank_Balance":50
++        }}, "Receptionist")
++        self.assertIn("🦷 Dental", text)
++        self.assertIn("Reception: ৳300", text)
++        self.assertIn("Home Treasury: ৳100", text)
++        self.assertNotIn("Bank", text)
++        self.assertNotIn("Physio", text)
++
++    def test_dental_provider_never_falls_back_to_physio_therapists(self):
++        with patch.object(sheets, "get_active_provider_names", return_value=[]):
++            keyboard=bot._therapist_keyboard(config.DEPARTMENT_DENTAL)
++        labels=[button.text for row in keyboard.inline_keyboard for button in row]
++        self.assertNotIn("Saiful", labels)
++        self.assertNotIn("Nipa", labels)
++
++
++if __name__ == "__main__": unittest.main()

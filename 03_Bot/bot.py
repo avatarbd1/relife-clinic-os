@@ -1279,13 +1279,13 @@ def _time_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
-def _therapist_keyboard() -> InlineKeyboardMarkup:
+def _therapist_keyboard(department=config.DEPARTMENT_PHYSIO) -> InlineKeyboardMarkup:
     try:
-        names = sheets.get_active_therapist_names()
+        names = sheets.get_active_provider_names(department)
     except Exception:
         logger.exception("get_active_therapist_names ব্যর্থ হয়েছে, fallback ব্যবহার হচ্ছে")
         names = []
-    if not names:
+    if not names and department == config.DEPARTMENT_PHYSIO:
         names = THERAPIST_NAMES_FALLBACK
     buttons = [
         [InlineKeyboardButton(name, callback_data=f"aptther_{name}")]
@@ -2068,10 +2068,10 @@ async def apt_time_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     time_str = query.data.replace("apttime_", "")
     context.user_data.setdefault("new_appointment", {})["Time"] = time_str
     await query.edit_message_text(f"✅ সময় নির্বাচন করা হয়েছে: {time_str}")
-    await query.message.reply_text(
-        "থেরাপিস্ট বেছে নাও (অথবা টাইপ করো):",
-        reply_markup=await async_runtime.run_sheets_read(_therapist_keyboard),
-    )
+    department = context.user_data["new_appointment"].get("Department", config.DEPARTMENT_PHYSIO)
+    label = "ডেন্টিস্ট" if department == config.DEPARTMENT_DENTAL else "থেরাপিস্ট"
+    await query.message.reply_text(f"{label} বেছে নাও (অথবা টাইপ করো):",
+        reply_markup=await async_runtime.run_sheets_read(_therapist_keyboard, department))
     return APT_THERAPIST
 
 
@@ -2079,10 +2079,10 @@ async def apt_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     raw = update.message.text.strip()
     times = [p.strip() for p in raw.split(",") if p.strip()] or [raw]
     context.user_data.setdefault("new_appointment", {})["Times"] = times
-    await update.message.reply_text(
-        "থেরাপিস্ট বেছে নাও (অথবা টাইপ করো):",
-        reply_markup=await async_runtime.run_sheets_read(_therapist_keyboard),
-    )
+    department = context.user_data["new_appointment"].get("Department", config.DEPARTMENT_PHYSIO)
+    label = "ডেন্টিস্ট" if department == config.DEPARTMENT_DENTAL else "থেরাপিস্ট"
+    await update.message.reply_text(f"{label} বেছে নাও (অথবা টাইপ করো):",
+        reply_markup=await async_runtime.run_sheets_read(_therapist_keyboard, department))
     return APT_THERAPIST
 
 
@@ -2113,10 +2113,10 @@ async def apt_time_done_callback(update: Update, context: ContextTypes.DEFAULT_T
     context.user_data.setdefault("new_appointment", {})["Times"] = list(selected)
     context.user_data.pop("apt_times", None)
     await query.edit_message_text(f"✅ সময় বাছাই করা হয়েছে: {', '.join(selected)}")
-    await query.message.reply_text(
-        "থেরাপিস্ট বেছে নাও (অথবা টাইপ করো):",
-        reply_markup=await async_runtime.run_sheets_read(_therapist_keyboard),
-    )
+    department = context.user_data["new_appointment"].get("Department", config.DEPARTMENT_PHYSIO)
+    label = "ডেন্টিস্ট" if department == config.DEPARTMENT_DENTAL else "থেরাপিস্ট"
+    await query.message.reply_text(f"{label} বেছে নাও (অথবা টাইপ করো):",
+        reply_markup=await async_runtime.run_sheets_read(_therapist_keyboard, department))
     return APT_THERAPIST
 
 
@@ -2143,12 +2143,13 @@ def _apt_summary_text(a: dict) -> str:
     time_label = "সময়সমূহ" if len(times) > 1 else "সময়"
     total = len(dates) * len(times) if dates and times else 0
     total_note = f"\nমোট অ্যাপয়েন্টমেন্ট হবে: {total}টা" if total > 1 else ""
+    provider_label = "ডেন্টিস্ট" if a.get("Department") == config.DEPARTMENT_DENTAL else "থেরাপিস্ট"
     return (
         "নিচের তথ্য ঠিক আছে কিনা চেক করো:\n\n"
         f"রোগী: {a['Patient_Name']} ({a['Patient_ID']})\n"
         f"Department: {a.get('Department') or 'N/A'}\n"
         f"{date_label}: {date_line}\n{time_label}: {time_line}{total_note}\n"
-        f"থেরাপিস্ট: {a['Therapist']}\n\n"
+        f"{provider_label}: {a['Therapist']}\n\n"
         "ঠিক থাকলে নিচের বাটনে ট্যাপ করো।"
     )
 
@@ -2172,7 +2173,8 @@ async def apt_therapist_callback(update: Update, context: ContextTypes.DEFAULT_T
     confirm_keyboard = ReplyKeyboardMarkup(
         [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
     )
-    await query.edit_message_text(f"✅ থেরাপিস্ট নির্বাচন করা হয়েছে: {therapist_name}")
+    label = "ডেন্টিস্ট" if a.get("Department") == config.DEPARTMENT_DENTAL else "থেরাপিস্ট"
+    await query.edit_message_text(f"✅ {label} নির্বাচন করা হয়েছে: {therapist_name}")
     await query.message.reply_text(_apt_summary_text(a), reply_markup=confirm_keyboard)
     return APT_CONFIRM
 
@@ -6324,11 +6326,11 @@ async def cash_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
                 [
                     InlineKeyboardButton(
                         "✅ গ্রহণ",
-                        callback_data=f"cashact_accept_{movement_id}",
+                        callback_data=f"cashact_accept_{handover.get('Department', '')}_{movement_id}",
                     ),
                     InlineKeyboardButton(
                         "❌ প্রত্যাখ্যান",
-                        callback_data=f"cashact_reject_{movement_id}",
+                        callback_data=f"cashact_reject_{handover.get('Department', '')}_{movement_id}",
                     ),
                 ]
             ])
@@ -6380,14 +6382,15 @@ def _cash_pending_keyboard(rows: list[dict]) -> InlineKeyboardMarkup:
     buttons = []
     for row in rows[:20]:
         movement_id = str(row.get("Movement_ID", "")).strip()
+        department = str(row.get("_Source_Department") or row.get("Department", "")).strip()
         buttons.append([
             InlineKeyboardButton(
                 f"✅ {movement_id} গ্রহণ",
-                callback_data=f"cashact_accept_{movement_id}",
+                callback_data=f"cashact_accept_{department}_{movement_id}",
             ),
             InlineKeyboardButton(
                 "❌ প্রত্যাখ্যান",
-                callback_data=f"cashact_reject_{movement_id}",
+                callback_data=f"cashact_reject_{department}_{movement_id}",
             ),
         ])
     return InlineKeyboardMarkup(buttons)
@@ -6400,14 +6403,14 @@ async def cash_receive_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not _staff_can_access_menu(staff, roles.MENU_CASH_RECEIVE):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return
-    rows = await async_runtime.run_sheets_read(sheets.get_pending_cash_movements, _finance_departments(staff))
+    rows = await async_runtime.run_sheets_read(sheets.get_pending_cash_movements_across_departments, _finance_departments(staff))
     if not rows:
         await update.message.reply_text("✅ কোনো pending cash handover নেই।")
         return
     lines = ["💵 Pending cash handover:\n"]
     for row in rows[:20]:
         lines.append(
-            f"• {row.get('Movement_ID', '')} | ৳{_display_sheet_amount(row.get('Amount', 0))} "
+            f"• {row.get('Department', '')} | {row.get('Movement_ID', '')} | ৳{_display_sheet_amount(row.get('Amount', 0))} "
             f"| {row.get('Moved_By', '')} | {row.get('Timestamp', '')}"
         )
     await update.message.reply_text(
@@ -6428,7 +6431,11 @@ async def cash_finalize_callback(update: Update, context: ContextTypes.DEFAULT_T
         return
 
     payload = query.data.replace("cashact_", "", 1)
-    action, movement_id = payload.split("_", 1)
+    parts = payload.split("_", 2)
+    if len(parts) != 3:
+        await query.edit_message_text("❌ পুরোনো button; Pending list থেকে আবার চেষ্টা করো।")
+        return
+    action, department, movement_id = parts
     decision = "Accepted" if action == "accept" else "Rejected"
     confirmed_by = (
         staff.get("Full_Name")
@@ -6436,7 +6443,8 @@ async def cash_finalize_callback(update: Update, context: ContextTypes.DEFAULT_T
         or str(staff.get("Staff_ID", ""))
     )
     result = await async_runtime.run_sheets_write(
-        sheets.finalize_cash_movement,
+        sheets.finalize_cash_movement_for_department,
+        department,
         movement_id,
         confirmed_by,
         decision,
@@ -7131,6 +7139,20 @@ def _live_balance_text(summary: dict, role_str: str) -> str:
     return "\n".join(lines)
 
 
+def _department_live_balance_text(summaries: dict, role_str: str) -> str:
+    lines = ["💰 এখন কত আছে (Live)"]
+    for department in (config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL):
+        if department not in summaries:
+            continue
+        summary = summaries[department]
+        lines += ["", f"{'🩺' if department == config.DEPARTMENT_PHYSIO else '🦷'} {department}",
+                  f"⚖️ Reception: ৳{summary['Reception_Balance']:.0f}",
+                  f"🏠 Home Treasury: ৳{summary['Home_Balance']:.0f}"]
+        if role_str.strip() == roles.Role.OWNER.value:
+            lines.append(f"🏦 Bank: ৳{summary.get('Bank_Balance', 0):.0f}")
+    return "\n".join(lines)
+
+
 def _cash_custody_summary_text(summary: dict, role_str: str) -> str:
     if summary.get("Start_Date") == _LIVE_BALANCE_START_DATE:
         return _live_balance_text(summary, role_str)
@@ -7212,11 +7234,14 @@ async def _show_financial_report(update, context, report, start_date, end_date):
     if staff is None:
         return
     if report == "cash":
-        summary = await async_runtime.run_sheets_read(
-            sheets.get_cash_custody_summary, start_date, end_date,
-            _finance_departments(staff)
-        )
-        text = _cash_custody_summary_text(summary, staff.get("Role", ""))
+        departments = _finance_departments(staff)
+        summaries = await async_runtime.run_sheets_read(
+            sheets.get_cash_custody_summaries, start_date, end_date, departments)
+        if start_date == _LIVE_BALANCE_START_DATE:
+            text = _department_live_balance_text(summaries, staff.get("Role", ""))
+        else:
+            summary = next(iter(summaries.values()))
+            text = _cash_custody_summary_text(summary, staff.get("Role", ""))
     elif report == "rejected":
         rows = await async_runtime.run_sheets_read(
             sheets.get_expenses_for_date, start_date, end_date,
