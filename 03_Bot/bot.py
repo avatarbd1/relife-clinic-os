@@ -7141,14 +7141,16 @@ def _live_balance_text(summary: dict, role_str: str) -> str:
 
 def _department_live_balance_text(summaries: dict, role_str: str) -> str:
     lines = ["💰 এখন কত আছে (Live)"]
+    is_owner = role_str.strip() == roles.Role.OWNER.value
     for department in (config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL):
         if department not in summaries:
             continue
         summary = summaries[department]
         lines += ["", f"{'🩺' if department == config.DEPARTMENT_PHYSIO else '🦷'} {department}",
-                  f"⚖️ Reception: ৳{summary['Reception_Balance']:.0f}",
-                  f"🏠 Home Treasury: ৳{summary['Home_Balance']:.0f}"]
-        if role_str.strip() == roles.Role.OWNER.value:
+                  f"⚖️ Reception: ৳{summary['Reception_Balance']:.0f}"]
+        if is_owner:
+            lines.append(f"🏠 Home Treasury: ৳{summary['Home_Balance']:.0f}")
+        if is_owner and department == config.DEPARTMENT_PHYSIO:
             lines.append(f"🏦 Bank: ৳{summary.get('Bank_Balance', 0):.0f}")
     return "\n".join(lines)
 
