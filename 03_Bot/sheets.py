@@ -512,17 +512,40 @@ def get_staff_by_telegram_id(telegram_id: int) -> dict | None:
 
 
 def get_staff_department_access(staff_id: str | None = None) -> list[dict]:
-    """Load active mapping rows once for a staff-scoped authorization request."""
-    ws = _worksheet(config.SHEET_STAFF_DEPARTMENT_ACCESS)
-    records = safe_get_all_records(ws)
-    if staff_id is None:
-        return records
-    target = str(staff_id).strip()
-    return [
-        row for row in records
-        if str(row.get("Staff_ID", "")).strip() == target
-        and str(row.get("Status", "Active")).strip().casefold() == "active"
-    ]
+    """Build authorization assignments only from 08_Staff.
+
+    The function name is retained so existing callers remain stable, but the
+    deleted Staff_Department_Access worksheet is never opened. Role and
+    Primary_Department on the active 08_Staff row are the single source of
+    truth. Invalid or blank values fail closed.
+    """
+    records = safe_get_all_records(_worksheet(config.SHEET_STAFF))
+    target = str(staff_id or "").strip()
+    assignments = []
+    for row in records:
+        row_staff_id = str(row.get("Staff_ID", "")).strip()
+        if not row_staff_id or (target and row_staff_id != target):
+            continue
+        if str(row.get("Status", "")).strip().casefold() != "active":
+            continue
+        department = department_access.normalize_department(
+            row.get("Primary_Department")
+        )
+        role = department_access.normalize_role(row.get("Role"))
+        if department is None or role is None:
+            continue
+        if (
+            department is department_access.Department.ALL
+            and role is not department_access.Role.OWNER
+        ):
+            continue
+        assignments.append({
+            "Staff_ID": row_staff_id,
+            "Department": department.value,
+            "Role": role.value,
+            "Status": "Active",
+        })
+    return assignments
 
 
 def filter_patients_for_staff(
