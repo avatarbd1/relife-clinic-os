@@ -85,12 +85,21 @@ class LiveSummaryTextTests(unittest.TestCase):
         base.update(overrides)
         return base
 
-    def test_live_summary_uses_live_header_and_footer(self):
+    def test_live_summary_shows_only_the_three_balance_lines(self):
         summary = self._summary(bot._LIVE_BALANCE_START_DATE)
         text = bot._cash_custody_summary_text(summary, "Owner")
         self.assertIn("এখন কত আছে (Live)", text)
-        self.assertIn("বর্তমান ব্যালেন্স", text)
-        self.assertNotIn("এটি নির্বাচিত সময়ের movement balance", text)
+        self.assertIn("Reception: ৳300", text)
+        self.assertIn("Home Treasury: ৳500", text)
+        self.assertIn("Bank: ৳0", text)
+        # None of the period-report breakdown lines should appear.
+        for excluded in (
+            "Cash collection", "Accepted handover", "Accepted receipt",
+            "Household Withdrawal", "Transfer out", "নির্বাচিত সময়ের",
+            "এটি নির্বাচিত সময়ের movement balance",
+        ):
+            with self.subTest(excluded=excluded):
+                self.assertNotIn(excluded, text)
 
     def test_period_summary_keeps_the_old_wording(self):
         summary = self._summary("2026-08-14")
@@ -99,10 +108,10 @@ class LiveSummaryTextTests(unittest.TestCase):
         self.assertIn("নির্বাচিত সময়ের net balance", text)
         self.assertIn("এটি নির্বাচিত সময়ের movement balance", text)
 
-    def test_non_owner_still_only_sees_reception_in_live_mode(self):
+    def test_non_owner_live_view_shows_only_reception(self):
         summary = self._summary(bot._LIVE_BALANCE_START_DATE)
         text = bot._cash_custody_summary_text(summary, "Receptionist")
-        self.assertIn("Reception", text)
+        self.assertIn("Reception: ৳300", text)
         self.assertNotIn("Home Treasury", text)
         self.assertNotIn("Bank", text)
 
