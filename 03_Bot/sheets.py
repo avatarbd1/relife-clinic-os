@@ -1722,7 +1722,11 @@ def get_daily_register(date_str: str | None = None, departments=None) -> dict:
     total_bill = total_paid = total_due = total_sessions = 0.0
     for p in payments_today:
         remarks = str(p.get("Remarks", ""))
+        service = ""
         sessions = 1
+        if remarks.startswith("Service:"):
+            service = remarks.split("|", 1)[0].split(":", 1)[1].strip()
+            sessions = 0
         if remarks.startswith("Sessions:"):
             try:
                 sessions = int(remarks.split(":", 1)[1].strip())
@@ -1741,6 +1745,8 @@ def get_daily_register(date_str: str | None = None, departments=None) -> dict:
             "Sl": p.get("SL", ""),
             "Patient_Name": p.get("Patient_Name", ""),
             "Sessions": sessions,
+            "Service": service,
+            "Department": p.get("Department", ""),
             "Bill": bill,
             "Paid": paid,
             "Due": due,

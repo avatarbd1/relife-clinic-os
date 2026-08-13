@@ -149,6 +149,10 @@ REG_PHOTO_CHOICE, REG_PHOTO_WAIT, REG_PHOTO_CONFIRM = range(90, 93)
 ) = range(19, 29)
 
 PAY_METHODS = ["Cash", "bKash", "Nagad", "Card"]
+DENTAL_SERVICES = [
+    "Consultation", "Filling", "Scaling", "Extraction", "RCT",
+    "Crown/Cap", "X-ray", "Dressing", "Denture", "Other",
+]
 THERAPIST_NAMES_FALLBACK = ["Nipa", "Saiful"]
 
 BN_WEEKDAYS = ["সোম", "মঙ্গল", "বুধ", "বৃহঃ", "শুক্র", "শনি", "রবি"]
@@ -1298,6 +1302,29 @@ def _therapist_keyboard(department=config.DEPARTMENT_PHYSIO) -> InlineKeyboardMa
 def _payment_method_keyboard() -> ReplyKeyboardMarkup:
     rows = [PAY_METHODS[i : i + 2] for i in range(0, len(PAY_METHODS), 2)]
     return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
+
+
+def _dental_service_keyboard() -> ReplyKeyboardMarkup:
+    rows = [DENTAL_SERVICES[i:i + 2] for i in range(0, len(DENTAL_SERVICES), 2)]
+    return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
+
+
+async def _ask_payment_details(message, payment: dict):
+    if payment.get("Department") == config.DEPARTMENT_DENTAL:
+        payment["Sessions"] = 0
+        await message.reply_text(
+            "🦷 কোন Dental service/procedure করা হয়েছে? তালিকা থেকে বেছে নাও অথবা লিখো:",
+            reply_markup=_dental_service_keyboard(),
+        )
+        return PAY_SESSION
+    payment["Sessions"] = 1
+    await message.reply_text(
+        _register_amount_prompt_text(
+            payment.get("Patient_Name", ""), payment.get("Patient_ID", ""), 1
+        ),
+        reply_markup=_register_amount_keyboard(1),
+    )
+    return PAY_AMOUNT
 
 
 # QUICK-BUTTON-HELPERS
@@ -2739,8 +2766,17 @@ async def pay_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data["payment"]["Patient_ID"] = patient.get("Patient_ID", "")
             context.user_data["payment"]["Patient_Name"] = patient.get("Full_Name", "")
             context.user_data["payment"]["Department"] = patient.get("Department", "")
-            context.user_data["payment"]["Sessions"] = ai_data["sessions"]
             context.user_data["payment"]["Amount"] = ai_data["amount"]
+            if patient.get("Department") == config.DEPARTMENT_DENTAL:
+                context.user_data["payment"]["Sessions"] = 0
+                await update.message.reply_text(
+                    f"🤖 রোগী: {patient.get('Full_Name','')} ({patient.get('Patient_ID','')}) — "
+                    f"টাকা {ai_data['amount']:.0f}\n\n"
+                    "🦷 Dental service/procedure বেছে নাও অথবা লিখো:",
+                    reply_markup=_dental_service_keyboard(),
+                )
+                return PAY_SESSION
+            context.user_data["payment"]["Sessions"] = ai_data["sessions"]
             await update.message.reply_text(
                 f"🤖 AI বুঝেছে: {patient.get('Full_Name','')} ({patient.get('Patient_ID','')}) — "
                 f"সেশন {ai_data['sessions']}, টাকা {ai_data['amount']:.0f}\n\n"
@@ -2796,8 +2832,19 @@ async def pay_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     ai_prefill = context.user_data.pop("_ai_prefill", None)
     if ai_prefill:
-        context.user_data["payment"]["Sessions"] = ai_prefill["sessions"]
         context.user_data["payment"]["Amount"] = ai_prefill["amount"]
+        if patient.get("Department") == config.DEPARTMENT_DENTAL:
+            context.user_data["payment"]["Sessions"] = 0
+            await query.edit_message_text(
+                f"🤖 রোগী: {patient.get('Full_Name','')} ({patient.get('Patient_ID','')}) — "
+                f"টাকা {ai_prefill['amount']:.0f}"
+            )
+            await query.message.reply_text(
+                "🦷 Dental service/procedure বেছে নাও অথবা লিখো:",
+                reply_markup=_dental_service_keyboard(),
+            )
+            return PAY_SESSION
+        context.user_data["payment"]["Sessions"] = ai_prefill["sessions"]
         await query.edit_message_text(
             f"🤖 রোগী: {patient.get('Full_Name','')} ({patient.get('Patient_ID','')}) — "
             f"সেশন {ai_prefill['sessions']}, টাকা {ai_prefill['amount']:.0f}"
@@ -2807,12 +2854,10 @@ async def pay_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return PAY_METHOD
 
-    context.user_data["payment"]["Sessions"] = 1
     await query.edit_message_text(
-        _register_amount_prompt_text(patient.get("Full_Name", ""), patient.get("Patient_ID", ""), 1),
-        reply_markup=_register_amount_keyboard(1),
+        f"✅ রোগী নির্বাচন করা হয়েছে: {patient.get('Full_Name','')} ({patient.get('Patient_ID','')})"
     )
-    return PAY_AMOUNT
+    return await _ask_payment_details(query.message, context.user_data["payment"])
 
 
 async def pay_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2827,18 +2872,27 @@ async def pay_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["payment"]["Patient_ID"] = patient.get("Patient_ID", "")
     context.user_data["payment"]["Patient_Name"] = patient.get("Full_Name", "")
     context.user_data["payment"]["Department"] = patient.get("Department", "")
-    context.user_data["payment"]["Sessions"] = 1
     context.user_data.pop("pay_search_results", None)
-
-    await update.message.reply_text(
-        _register_amount_prompt_text(patient.get("Full_Name", ""), patient.get("Patient_ID", ""), 1),
-        reply_markup=_register_amount_keyboard(1),
-    )
-    return PAY_AMOUNT
+    return await _ask_payment_details(update.message, context.user_data["payment"])
 
 
 async def pay_session(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
+    payment = context.user_data.get("payment", {})
+    if payment.get("Department") == config.DEPARTMENT_DENTAL:
+        if not text or text == "-":
+            await update.message.reply_text("❌ Dental service/procedure-এর নাম লিখো।")
+            return PAY_SESSION
+        payment["Service"] = text
+        payment["Sessions"] = 0
+        if "Amount" in payment:
+            await update.message.reply_text(
+                f"Service: {text}\nটাকা: {payment['Amount']:.0f}\n\nPayment Method বেছে নাও:",
+                reply_markup=_payment_method_keyboard(),
+            )
+            return PAY_METHOD
+        await update.message.reply_text("কত টাকা নেওয়া হলো লেখো (শুধু সংখ্যা):")
+        return PAY_AMOUNT
     try:
         sessions = int(text)
         if sessions < 0:
@@ -2876,10 +2930,15 @@ async def pay_method(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return PAY_METHOD
     context.user_data["payment"]["Payment_Method"] = method
     p = context.user_data["payment"]
+    detail_line = (
+        f"Service/Procedure: {p.get('Service', '-')}"
+        if p.get("Department") == config.DEPARTMENT_DENTAL
+        else f"সেশন: {p['Sessions']}"
+    )
     summary = (
         "নিচের তথ্য ঠিক আছে কিনা চেক করো:\n\n"
         f"রোগী: {p['Patient_Name']} ({p['Patient_ID']})\n"
-        f"সেশন: {p['Sessions']}\nটাকা: {p['Amount']}\nMethod: {p['Payment_Method']}\n\n"
+        f"{detail_line}\nটাকা: {p['Amount']}\nMethod: {p['Payment_Method']}\n\n"
         "ঠিক থাকলে নিচের বাটনে ট্যাপ করো।"
     )
     confirm_keyboard = ReplyKeyboardMarkup(
@@ -2919,6 +2978,11 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     p["Department"] = patient.get("Department", "")
     amount = p.get("Amount", 0)
     sessions = p.get("Sessions", 0)
+    is_dental = p.get("Department") == config.DEPARTMENT_DENTAL
+    remarks = (
+        f"Service: {p.get('Service', 'Other')}" if is_dental
+        else f"Sessions: {sessions}"
+    )
 
     try:
         bill_status, receipt_no = await async_runtime.run_sheets_write(
@@ -2935,7 +2999,7 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Due": "",
                 "Payment_Method": p.get("Payment_Method", "") if amount > 0 else "N/A",
                 "Received_By": staff.get("Full_Name", "Unknown"),
-                "Remarks": f"Sessions: {sessions}" if sessions is not None else "",
+                "Remarks": remarks,
             },
             idempotency_key=str(update.update_id),
         )
@@ -2946,6 +3010,8 @@ async def pay_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"রোগী: {p.get('Patient_Name')} ({patient_id})",
                 f"জমা নেওয়া হলো: {amount} ({p.get('Payment_Method')})",
             ]
+            if is_dental:
+                lines.insert(2, f"Service/Procedure: {p.get('Service', 'Other')}")
             if bill_status:
                 lines.append(f"মোট জমা: {bill_status['paid_amount']} | বাকি: {bill_status['due_amount']}")
         else:
@@ -2997,6 +3063,9 @@ def _paydel_list_keyboard(entries: list[dict]) -> InlineKeyboardMarkup:
         m = re.search(r"Sessions:\s*(\d+)", remarks)
         if m:
             label_bits.append(f"{m.group(1)} সেশন")
+        service = re.search(r"Service:\s*([^|]+)", remarks)
+        if service:
+            label_bits.append(service.group(1).strip())
         label = f"{e.get('Receipt_No', '')} — " + " | ".join(label_bits)
         buttons.append([InlineKeyboardButton(label, callback_data=f"paydelsel_{e.get('Receipt_No', '')}")])
     buttons.append([InlineKeyboardButton("❌ বাতিল", callback_data="paydelcancel")])
@@ -3046,13 +3115,16 @@ async def paydel_select_callback(update: Update, context: ContextTypes.DEFAULT_T
     remarks = str(entry.get("Remarks", ""))
     m = re.search(r"Sessions:\s*(\d+)", remarks)
     sessions_line = f"সেশন: {m.group(1)}\n" if m else ""
+    service_match = re.search(r"Service:\s*([^|]+)", remarks)
+    service_line = f"Service/Procedure: {service_match.group(1).strip()}\n" if service_match else ""
     text = (
         "নিচের এন্ট্রিটা মুছে ফেলা হবে — এটা ঠিক আছে?\n\n"
         f"রোগী: {entry.get('Patient_Name', '')} ({entry.get('Patient_ID', '')})\n"
         f"টাকা: {amount}\n"
+        f"{service_line}"
         f"{sessions_line}"
         f"Entry No: {receipt_no}\n\n"
-        "⚠️ মুছলে রোগীর হিসাব ও সেশন সংখ্যা থেকেও এটা বাদ যাবে। এটা ফেরানো যাবে না।"
+        "⚠️ মুছলে রোগীর হিসাব থেকে এন্ট্রিটি বাদ যাবে। Physio session হলে session count-ও ফেরত যাবে।"
     )
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("✅ হ্যাঁ, মুছে দাও", callback_data="paydelconfirm_yes")],
@@ -4143,14 +4215,21 @@ def _register_amount_prompt_text(patient_name: str, patient_id: str, sessions: i
 
 def _register_view_text_and_keyboard(departments=()):
     reg = sheets.get_daily_register(departments=departments)
+    dental_only = set(departments or ()) == {config.DEPARTMENT_DENTAL}
     lines = [f"📋 আজকের রেজিস্টার ({reg['date']})", ""]
     if not reg["rows"]:
         lines.append("আজ এখনো কোনো এন্ট্রি হয়নি।")
     else:
         for r in reg["rows"]:
-            lines.append(f"{r['Sl']}. {r['Patient_Name']} — সেশন: {r['Sessions']}")
+            if dental_only or r.get("Department") == config.DEPARTMENT_DENTAL:
+                lines.append(f"{r['Sl']}. {r['Patient_Name']} — Service: {r.get('Service') or 'Other'}")
+            else:
+                lines.append(f"{r['Sl']}. {r['Patient_Name']} — সেশন: {r['Sessions']}")
         lines.append("")
-        lines.append(f"👥 মোট রোগী: {reg['total_patients']}   🩺 মোট সেশন: {reg['total_sessions']}")
+        if dental_only:
+            lines.append(f"👥 মোট রোগী/এন্ট্রি: {reg['total_patients']}")
+        else:
+            lines.append(f"👥 মোট রোগী: {reg['total_patients']}   🩺 মোট সেশন: {reg['total_sessions']}")
     keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("➕ নতুন এন্ট্রি", callback_data="regnew")]])
     return "\n".join(lines), keyboard
 
