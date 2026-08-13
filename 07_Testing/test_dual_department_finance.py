@@ -32,15 +32,24 @@ class DualDepartmentFinanceTests(unittest.TestCase):
         self.assertEqual(data["Physio"]["Today_Collection"], 10)
         self.assertEqual(data["Dental"]["Today_Collection"], 400)
 
-    def test_live_dental_reception_has_only_two_dental_balances(self):
+    def test_live_dental_reception_has_only_reception_balance(self):
         text=bot._department_live_balance_text({"Dental":{
             "Reception_Balance":300,"Home_Balance":100,"Bank_Balance":50
         }}, "Receptionist")
         self.assertIn("🦷 Dental", text)
         self.assertIn("Reception: ৳300", text)
-        self.assertIn("Home Treasury: ৳100", text)
+        self.assertNotIn("Home Treasury", text)
         self.assertNotIn("Bank", text)
         self.assertNotIn("Physio", text)
+
+    def test_owner_live_separates_physio_and_dental_treasury(self):
+        text=bot._department_live_balance_text({
+            "Physio":{"Reception_Balance":10,"Home_Balance":20,"Bank_Balance":30},
+            "Dental":{"Reception_Balance":40,"Home_Balance":50,"Bank_Balance":60},
+        }, "Owner")
+        self.assertIn("🩺 Physio\n⚖️ Reception: ৳10\n🏠 Home Treasury: ৳20", text)
+        self.assertIn("🦷 Dental\n⚖️ Reception: ৳40\n🏠 Home Treasury: ৳50", text)
+        self.assertEqual(text.count("🏦 Bank:"), 1)
 
     def test_dental_provider_never_falls_back_to_physio_therapists(self):
         with patch.object(sheets, "get_active_provider_names", return_value=[]):
