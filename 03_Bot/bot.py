@@ -337,6 +337,34 @@ def _parse_date(date_str: str | None):
     return None
 
 
+_STRUCTURED_METRIC_COLUMNS = {
+    "Pain": ("Pain_After", "Pain_Before"),
+    "Pain_Before": ("Pain_Before",),
+    "Pain_After": ("Pain_After",),
+    "ROM": ("ROM",),
+    "MMT": ("MMT",),
+    "Response": ("Response",),
+    "Modification": ("Modification",),
+    "Clinical_Note": ("Clinical_Note",),
+    "Home_Exercise": ("Home_Exercise",),
+    "Special_Test": ("Special_Test",),
+}
+
+
+def _metric(note: dict | None, key: str) -> str:
+    """আগে dedicated কলাম দেখে, না পেলে পুরোনো Remarks স্ট্রিং থেকে টানে।
+
+    Stage 1-এর আগের সব নোটে কলামগুলো ফাঁকা, তাই fallback স্থায়ীভাবে থাকবে।
+    """
+    if not note:
+        return ""
+    for column in _STRUCTURED_METRIC_COLUMNS.get(key, (key,)):
+        value = str(note.get(column, "") or "").strip()
+        if value:
+            return value
+    return _extract_metric(note, key)
+
+
 def _extract_metric(note: dict | None, key: str) -> str:
     if not note:
         return ""
@@ -402,9 +430,9 @@ def _ai_summary_for_patient(plan: dict | None, notes: list[dict]) -> tuple[str, 
     if len(notes) >= 4:
         recent = notes[-4:]
         pain_values = [
-            _extract_numeric(_extract_metric(n, "Pain"))
+            _extract_numeric(_metric(n, "Pain"))
             for n in recent
-            if _extract_numeric(_extract_metric(n, "Pain")) is not None
+            if _extract_numeric(_metric(n, "Pain")) is not None
         ]
         if len(pain_values) >= 2:
             if pain_values[-1] < pain_values[0]:
@@ -494,7 +522,7 @@ def _therapist_today_queue(staff: dict, show_all: bool = False) -> list[dict]:
             "diagnosis": patient.get("Diagnosis") or (plan or {}).get("Diagnosis", "-"),
             "visit_no": len(notes) + (0 if status == "Completed" else 1),
             "last_visit": _patient_last_visit(notes, patient),
-            "pain": _extract_metric(last_note, "Pain") or "-",
+            "pain": _metric(last_note, "Pain") or "-",
             "progress": _build_progress_percent(plan, notes),
             "status": status,
             "time": str(appt.get("Time", "")).strip(),
@@ -604,9 +632,9 @@ def _pt_workspace_text(patient: dict, plan: dict, notes: list[dict], treatment: 
     last_note = notes[-1] if notes else {}
     ai_summary, confidence = _ai_summary_for_patient(plan, notes)
     last_assessment_parts = [
-        f"Pain: {_extract_metric(last_note, 'Pain') or '-'}",
-        f"ROM: {_extract_metric(last_note, 'ROM') or '-'}",
-        f"MMT: {_extract_metric(last_note, 'MMT') or '-'}",
+        f"Pain: {_metric(last_note, 'Pain') or '-'}",
+        f"ROM: {_metric(last_note, 'ROM') or '-'}",
+        f"MMT: {_metric(last_note, 'MMT') or '-'}",
     ]
     return (
         "🟢 ACTIVE TREATMENT\n\n"
@@ -645,6 +673,19 @@ def _load_patient_workspace(patient_id: str) -> tuple[dict | None, dict, list[di
     return patient, plan, notes
 
 
+_RESPONSE_VALUES = {
+    "better": "Better", "improved": "Better", "improve": "Better", "ভালো": "Better",
+    "same": "Same", "unchanged": "Same", "একই": "Same",
+    "worse": "Worse", "worsened": "Worse", "খারাপ": "Worse",
+}
+
+
+def _normalize_response(value: str) -> str:
+    """Better / Same / Worse-এ মেলায়; না মিললে যা লেখা হয়েছে তাই রাখে।"""
+    key = re.sub(r"[^a-zA-Z\u0980-\u09FF]", "", str(value or "")).lower()
+    return _RESPONSE_VALUES.get(key, str(value or "").strip())
+
+
 def _parse_pt_edit_message(text: str) -> dict:
     raw = str(text or "").strip()
     if not raw:
@@ -667,6 +708,11 @@ def _parse_pt_edit_message(text: str) -> dict:
         "machines": "Machines",
         "note": "Clinical_Note",
         "clinicalnote": "Clinical_Note",
+        "painbefore": "Pain_Before",
+        "painafter": "Pain_After",
+        "response": "Response",
+        "modification": "Modification",
+        "progression": "Modification",
     }
     for chunk in re.split(r"[\n;]+", raw):
         if ":" not in chunk:
@@ -675,7 +721,9 @@ def _parse_pt_edit_message(text: str) -> dict:
         norm = re.sub(r"[^a-z]", "", key.lower())
         target = mapping.get(norm)
         if target and value.strip():
-            updates[target] = value.strip()
+            updates[target] = (
+                _normalize_response(value) if target == "Response" else value.strip()
+            )
     if not updates:
         updates["Clinical_Note"] = raw
     return updates
@@ -790,13 +838,17 @@ async def pt_dashboard_receive_callback(update: Update, context: ContextTypes.DE
         "Exercise": plan.get("Exercise_Plan", ""),
         "Electrotherapy": plan.get("Electrotherapy_Plan", ""),
         "Manual_Therapy": plan.get("Manual_Therapy_Plan", ""),
-        "Home_Exercise": _extract_metric(last_note, "Home_Exercise"),
+        "Home_Exercise": _metric(last_note, "Home_Exercise"),
         "Machines": str(last_note.get("Machines", "") or "").strip(),
-        "Pain": _extract_metric(last_note, "Pain"),
-        "ROM": _extract_metric(last_note, "ROM"),
-        "MMT": _extract_metric(last_note, "MMT"),
-        "Special_Test": _extract_metric(last_note, "Special_Test"),
-        "Clinical_Note": _extract_metric(last_note, "Clinical_Note") or str(last_note.get("Remarks", "") or "").strip(),
+        "Pain": _metric(last_note, "Pain"),
+        "Pain_Before": _metric(last_note, "Pain_After") or _metric(last_note, "Pain"),
+        "Pain_After": "",
+        "Response": "",
+        "Modification": "",
+        "ROM": _metric(last_note, "ROM"),
+        "MMT": _metric(last_note, "MMT"),
+        "Special_Test": _metric(last_note, "Special_Test"),
+        "Clinical_Note": _metric(last_note, "Clinical_Note") or str(last_note.get("Remarks", "") or "").strip(),
         "Session_No": session_no,
         "Protocol_Day": session_no,
     }
@@ -900,6 +952,8 @@ async def pt_dashboard_done_callback(update: Update, context: ContextTypes.DEFAU
     treatment["SOAP_Plan"] = ", ".join(
         x for x in [treatment.get("Electrotherapy"), treatment.get("Manual_Therapy"), treatment.get("Exercise"), treatment.get("Home_Exercise")] if x
     )
+    if treatment.get("Pain_After") and not treatment.get("Pain"):
+        treatment["Pain"] = treatment["Pain_After"]
     remarks = [
         f"Pain: {treatment.get('Pain')}" if treatment.get("Pain") else "",
         f"ROM: {treatment.get('ROM')}" if treatment.get("ROM") else "",
@@ -1004,8 +1058,12 @@ async def pt_dashboard_edit_callback(update: Update, context: ContextTypes.DEFAU
         "✏️ Edit Mode\n\n"
         "যা বদলেছে শুধু সেটাই পাঠাও। কিছুই mandatory না।\n\n"
         "Example:\n"
-        "Pain: 4/10\nROM: improved\nMMT: 4/5\nExercise: progressed core\nMachines: Hot Pack, TENS\nNote: tolerated well\n\n"
-        f"Current Pain: {treatment.get('Pain') or '-'} | ROM: {treatment.get('ROM') or '-'} | MMT: {treatment.get('MMT') or '-'} | Machines: {treatment.get('Machines') or '-'}"
+        "Pain Before: 6/10\nPain After: 4/10\nResponse: better\nModification: progressed core\n"
+        "ROM: improved\nMMT: 4/5\nExercise: progressed core\nMachines: Hot Pack, TENS\nNote: tolerated well\n\n"
+        "Response = better / same / worse\n\n"
+        f"Current Pain Before: {treatment.get('Pain_Before') or '-'} | Pain After: {treatment.get('Pain_After') or '-'} "
+        f"| Response: {treatment.get('Response') or '-'}\n"
+        f"ROM: {treatment.get('ROM') or '-'} | MMT: {treatment.get('MMT') or '-'} | Machines: {treatment.get('Machines') or '-'}"
     )
     markup = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Workspace", callback_data="ptwback")]])
     await query.edit_message_text(prompt, reply_markup=markup)
