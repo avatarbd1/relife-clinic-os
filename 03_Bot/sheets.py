@@ -676,6 +676,51 @@ def get_all_patients() -> list[dict]:
     return records
 
 
+def _records_across_department_sheets(sheet_name: str, departments) -> list[dict]:
+    """Read one tab from each explicitly authorized department workbook."""
+    scope = _department_scope_values(departments)
+    rows = []
+    for department in (config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL):
+        if department not in scope:
+            continue
+        with sheet_scope.use_sheet(config.sheet_id_for_department(department)):
+            current = safe_get_all_records(_worksheet(sheet_name))
+        for row in current:
+            item = dict(row)
+            item["_Source_Department"] = department
+            rows.append(item)
+    return rows
+
+
+def get_all_patients_across_departments(departments) -> list[dict]:
+    rows = _records_across_department_sheets(config.SHEET_PATIENTS, departments)
+    for row in rows:
+        for key in ("Phone", "Alternative_Phone"):
+            value = str(row.get(key, "")).strip()
+            if value.isdigit() and len(value) == 10:
+                row[key] = "0" + value
+    return rows
+
+
+def search_patients_across_departments(query: str, staff: dict, mappings: list[dict]):
+    query = str(query).strip().lower()
+    departments = [assignment.department.value for assignment in
+                   department_access.effective_assignments(staff, mappings)]
+    rows = get_all_patients_across_departments(departments)
+    matched = [row for row in rows if
+               query in str(row.get("Full_Name", "")).lower()
+               or query in str(row.get("Phone", ""))
+               or query in str(row.get("Patient_ID", "")).lower()]
+    return filter_patients_for_staff(matched, staff, mappings)
+
+
+def get_patient_by_id_across_departments(patient_id: str, staff: dict, mappings: list[dict]):
+    prefix = str(patient_id).strip().upper()[:2]
+    department = config.DEPARTMENT_DENTAL if prefix == "DT" else config.DEPARTMENT_PHYSIO
+    with sheet_scope.use_sheet(config.sheet_id_for_department(department)):
+        return get_patient_by_id_for_staff(patient_id, staff, mappings)
+
+
 def get_recent_patients(limit: int = 8) -> list[dict]:
     """সবচেয়ে নতুন রেজিস্ট্রেশন করা রোগীরা আগে (Patient ID অনুযায়ী নতুন থেকে পুরনো)।
     সার্চ/টাইপ না করে সরাসরি বাটনে বেছে নেওয়ার জন্য ব্যবহৃত হয়।"""
@@ -1380,6 +1425,14 @@ def filter_records_by_departments(
 
 def get_scoped_report_records(departments) -> dict[str, list[dict]]:
     """Read and scope report inputs before returning them to presentation code."""
+    scope = _department_scope_values(departments)
+    if len(scope) > 1:
+        return {
+            config.SHEET_PATIENTS: filter_records_by_departments(
+                _records_across_department_sheets(config.SHEET_PATIENTS, scope), scope),
+            config.SHEET_PAYMENTS: filter_records_by_departments(
+                _records_across_department_sheets(config.SHEET_PAYMENTS, scope), scope),
+        }
     data = batch_get_records([config.SHEET_PATIENTS, config.SHEET_PAYMENTS])
     return {
         config.SHEET_PATIENTS: filter_records_by_departments(
@@ -1767,6 +1820,19 @@ def get_daily_register(date_str: str | None = None, departments=None) -> dict:
     }
 
 
+def get_daily_register_across_departments(date_str=None, departments=None):
+    scope = _department_scope_values(departments)
+    if len(scope) <= 1:
+        return {next(iter(scope), ""): get_daily_register(date_str, departments)}
+    result = {}
+    for department in (config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL):
+        if department not in scope:
+            continue
+        with sheet_scope.use_sheet(config.sheet_id_for_department(department)):
+            result[department] = get_daily_register(date_str, {department})
+    return result
+
+
 def _next_report_id(ws) -> str:
     ids = ws.col_values(1)[1:]
     numbers = []
@@ -1889,6 +1955,23 @@ def get_daily_patient_list(date_str: str, departments=None) -> list[dict]:
     ]
 
 
+def get_daily_patient_list_across_departments(date_str: str, departments=None):
+    scope = _department_scope_values(departments)
+    if len(scope) <= 1:
+        return get_daily_patient_list(date_str, departments)
+    rows = []
+    for department in (config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL):
+        if department not in scope:
+            continue
+        with sheet_scope.use_sheet(config.sheet_id_for_department(department)):
+            current = get_daily_patient_list(date_str, {department})
+        for row in current:
+            row = dict(row)
+            row["department"] = department
+            rows.append(row)
+    return rows
+
+
 
 # ===== Case Study (AI Lesson) Functions =====
 
@@ -1964,16 +2047,19 @@ def get_case_study_lessons(session_id: str) -> list[dict]:
 
 def get_all_staff() -> list[dict]:
     """সব সক্রিয় (Status != Inactive) স্টাফের রেকর্ড রিটার্ন করে।"""
-    ws = _worksheet(config.SHEET_STAFF)
-    records = safe_get_all_records(ws)
+    # 08_Staff is the one permanent/common staff source for both departments.
+    with sheet_scope.use_sheet(config.GOOGLE_SHEET_ID):
+        records = safe_get_all_records(_worksheet(config.SHEET_STAFF))
     return [r for r in records if str(r.get("Status", "")).strip().lower() != "inactive"]
 
 
 def get_staff_needing_break_reminder(date_str: str) -> list[dict]:
     """যাদের আজ Check-In আছে কিন্তু এখনো Break Out নেই এবং Check-Out ও নেই — এমন স্টাফের
     রেকর্ড রিটার্ন করে (দুপুর ১টার বিরতি reminder job-এর জন্য)।"""
-    ws = _worksheet(config.SHEET_ATTENDANCE)
-    records = safe_get_all_records(ws)
+    records = []
+    for department in (config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL):
+        with sheet_scope.use_sheet(config.sheet_id_for_department(department)):
+            records.extend(safe_get_all_records(_worksheet(config.SHEET_ATTENDANCE)))
     today_by_staff = {}
     for row in records:
         if str(row.get("Date", "")).strip() == date_str:
@@ -3010,6 +3096,24 @@ def get_cash_movements_for_date(date_str: str, departments=None) -> list[dict]:
         row for row in records
         if str(row.get("Date", "")).strip() == date_str.strip()
     ]
+    rows.sort(key=lambda row: str(row.get("Timestamp", "")), reverse=True)
+    return rows
+
+
+def get_cash_movements_for_date_across_departments(date_str: str, departments=None):
+    scope = _department_scope_values(departments)
+    if len(scope) <= 1:
+        return get_cash_movements_for_date(date_str, departments)
+    rows = []
+    for department in (config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL):
+        if department not in scope:
+            continue
+        with sheet_scope.use_sheet(config.sheet_id_for_department(department)):
+            current = get_cash_movements_for_date(date_str, {department})
+        for row in current:
+            item = dict(row)
+            item["_Source_Department"] = department
+            rows.append(item)
     rows.sort(key=lambda row: str(row.get("Timestamp", "")), reverse=True)
     return rows
 

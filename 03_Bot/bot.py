@@ -1418,6 +1418,11 @@ async def _search_patients_for_request(update, context, query_text: str):
     if staff is None:
         return []
     mappings = await _patient_department_mappings(staff)
+    if config.DEPARTMENT_ALL in _report_departments(staff):
+        return await async_runtime.run_sheets_read(
+            sheets.search_patients_across_departments,
+            query_text, staff, mappings,
+        )
     return await async_runtime.run_sheets_read(
         sheets.search_patients_for_staff, query_text, staff, mappings
     )
@@ -1433,6 +1438,15 @@ async def _patient_by_id_for_request(update, context, patient_id: str):
     if staff is None:
         return None
     mappings = await _patient_department_mappings(staff)
+    if config.DEPARTMENT_ALL in _report_departments(staff):
+        patient = await async_runtime.run_sheets_read(
+            sheets.get_patient_by_id_across_departments,
+            patient_id, staff, mappings,
+        )
+        if patient:
+            department = str(patient.get("Department", "")).strip()
+            sheet_scope.bind_sheet(config.sheet_id_for_department(department))
+        return patient
     return await async_runtime.run_sheets_read(
         sheets.get_patient_by_id_for_staff, patient_id, staff, mappings
     )
@@ -4214,6 +4228,34 @@ def _register_amount_prompt_text(patient_name: str, patient_id: str, sessions: i
 
 
 def _register_view_text_and_keyboard(departments=()):
+    scope = set(departments or ())
+    if config.DEPARTMENT_ALL in scope:
+        registers = sheets.get_daily_register_across_departments(
+            departments=departments
+        )
+        first = next(iter(registers.values()), {"date": bd_now().date().isoformat()})
+        lines = [f"📋 আজকের রেজিস্টার ({first['date']})"]
+        for department, icon, code in (
+            (config.DEPARTMENT_PHYSIO, "🩺", "PT"),
+            (config.DEPARTMENT_DENTAL, "🦷", "DT"),
+        ):
+            reg = registers.get(department, {"rows": [], "total_patients": 0, "total_sessions": 0})
+            lines += ["", f"{icon} {department} ({code})"]
+            if not reg["rows"]:
+                lines.append("কোনো এন্ট্রি নেই।")
+                continue
+            for r in reg["rows"]:
+                if department == config.DEPARTMENT_DENTAL:
+                    lines.append(f"{r['Sl']}. {r['Patient_Name']} — Service: {r.get('Service') or 'Other'}")
+                else:
+                    lines.append(f"{r['Sl']}. {r['Patient_Name']} — সেশন: {r['Sessions']}")
+            if department == config.DEPARTMENT_DENTAL:
+                lines.append(f"👥 মোট রোগী/এন্ট্রি: {reg['total_patients']}")
+            else:
+                lines.append(f"👥 মোট রোগী: {reg['total_patients']}   🩺 মোট সেশন: {reg['total_sessions']}")
+        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("➕ নতুন এন্ট্রি", callback_data="regnew")]])
+        return "\n".join(lines), keyboard
+
     reg = sheets.get_daily_register(departments=departments)
     dental_only = set(departments or ()) == {config.DEPARTMENT_DENTAL}
     lines = [f"📋 আজকের রেজিস্টার ({reg['date']})", ""]
@@ -4333,6 +4375,17 @@ def _reports_summary_keyboard(staff: dict) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(rows)
 
 
+def _department_report_totals(records, amount_key=None):
+    result = {}
+    for department in (config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL):
+        scoped = [r for r in records if r.get("_Source_Department") == department]
+        result[department] = (
+            sum(_sheet_amount_value(r.get(amount_key, 0) or 0) for r in scoped)
+            if amount_key else len(scoped)
+        )
+    return result
+
+
 async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
@@ -4376,6 +4429,16 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"\U0001F4B0 এই মাসের ({this_month_str}) আদায়: {this_month_collection:.0f} টাকা",
         "", "\U0001F447 আরও বিস্তারিত দেখতে নিচের বাটন চাপো:",
     ]
+    if config.DEPARTMENT_ALL in set(departments or ()):
+        month_patient_parts = _department_report_totals(
+            [p for p in patients if str(p.get("Registration_Date", "")).strip().startswith(this_month_str)]
+        )
+        month_payment_parts = _department_report_totals(this_month_payments, "Amount")
+        lines[-2:-2] = [
+            "",
+            f"🩺 Physio (PT): এই মাসে রোগী {month_patient_parts[config.DEPARTMENT_PHYSIO]}, আদায় {month_payment_parts[config.DEPARTMENT_PHYSIO]:.0f} টাকা",
+            f"🦷 Dental (DT): এই মাসে রোগী {month_patient_parts[config.DEPARTMENT_DENTAL]}, আদায় {month_payment_parts[config.DEPARTMENT_DENTAL]:.0f} টাকা",
+        ]
     await update.effective_message.reply_text(
         "\n".join(lines), reply_markup=_reports_summary_keyboard(staff)
     )
@@ -4398,11 +4461,19 @@ async def rpt_totals_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     patients = report_data[config.SHEET_PATIENTS]
     payments = report_data[config.SHEET_PAYMENTS]
     total_collection = sum(_sheet_amount_value(p.get("Amount", 0) or 0) for p in payments)
-    await query.message.reply_text(
+    text = (
         "\U0001F465 মোট রোগী ও সর্বমোট আদায়\n\n"
         f"\U0001F465 মোট রোগী (সর্বমোট): {len(patients)}\n"
         f"\U0001F4B0 সর্বমোট আদায়: {total_collection:.0f} টাকা"
     )
+    if config.DEPARTMENT_ALL in set(_report_departments(staff) or ()):
+        patient_parts = _department_report_totals(patients)
+        payment_parts = _department_report_totals(payments, "Amount")
+        text += (
+            f"\n\n🩺 Physio (PT): রোগী {patient_parts[config.DEPARTMENT_PHYSIO]}, আদায় {payment_parts[config.DEPARTMENT_PHYSIO]:.0f} টাকা"
+            f"\n🦷 Dental (DT): রোগী {patient_parts[config.DEPARTMENT_DENTAL]}, আদায় {payment_parts[config.DEPARTMENT_DENTAL]:.0f} টাকা"
+        )
+    await query.message.reply_text(text)
 
 
 async def rpt_lastmonth_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4421,9 +4492,14 @@ async def rpt_lastmonth_callback(update: Update, context: ContextTypes.DEFAULT_T
         if str(p.get("Date", "")).strip().startswith(last_month_str)
     ]
     amount = sum(_sheet_amount_value(p.get("Amount", 0) or 0) for p in payments)
-    await query.message.reply_text(
-        f"\U0001F4B0 গত মাসের ({last_month_str}) আদায়: {amount:.0f} টাকা"
-    )
+    text = f"\U0001F4B0 গত মাসের ({last_month_str}) আদায়: {amount:.0f} টাকা"
+    if config.DEPARTMENT_ALL in set(_report_departments(staff) or ()):
+        parts = _department_report_totals(payments, "Amount")
+        text += (
+            f"\n🩺 Physio (PT): {parts[config.DEPARTMENT_PHYSIO]:.0f} টাকা"
+            f"\n🦷 Dental (DT): {parts[config.DEPARTMENT_DENTAL]:.0f} টাকা"
+        )
+    await query.message.reply_text(text)
 
 
 async def rpt_daterep_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4952,7 +5028,13 @@ async def patient_list_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not _staff_can_access_menu(staff, roles.MENU_PATIENT_LIST):
         await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
         return ConversationHandler.END
-    all_patients = await async_runtime.run_sheets_read(sheets.get_all_patients)
+    departments = _report_departments(staff)
+    if config.DEPARTMENT_ALL in departments:
+        all_patients = await async_runtime.run_sheets_read(
+            sheets.get_all_patients_across_departments, departments
+        )
+    else:
+        all_patients = await async_runtime.run_sheets_read(sheets.get_all_patients)
     all_patients = await _visible_patients_for_request(
         update, context, all_patients
     )
@@ -5068,7 +5150,14 @@ async def patient_list_back_callback(update: Update, context: ContextTypes.DEFAU
         # Action Panel অন্য ফ্লো (Present/History/Treatment History) থেকে এলে
         # plist_patients cache করা নাও থাকতে পারে — তখন এখানে বানিয়ে নেওয়া হয়,
         # যাতে "🔙 তালিকায় ফিরুন" কখনো খালি স্ক্রিন না দেখায়।
-        all_patients = await async_runtime.run_sheets_read(sheets.get_all_patients)
+        staff = await _require_staff(update, context)
+        departments = _report_departments(staff or {})
+        if config.DEPARTMENT_ALL in departments:
+            all_patients = await async_runtime.run_sheets_read(
+                sheets.get_all_patients_across_departments, departments
+            )
+        else:
+            all_patients = await async_runtime.run_sheets_read(sheets.get_all_patients)
         patients = [
             p for p in all_patients
             if str(p.get("Status", "")).strip() == "Active"
@@ -5483,12 +5572,16 @@ async def date_report_day_selected(update, context):
         return
     date_str = query.data.split("_", 1)[1]
     year, month, day = map(int, date_str.split("-"))
+    departments = _report_departments(staff)
     patient_list = await async_runtime.run_sheets_read(
-        sheets.get_daily_patient_list, date_str, _report_departments(staff)
+        sheets.get_daily_patient_list_across_departments, date_str, departments
     )
     if patient_list:
+        owner_all = config.DEPARTMENT_ALL in set(departments or ())
         list_lines = "\n".join(
-            f"{i+1}. {p['name']} — {p['session']} — {p['amount']:.0f} টাকা"
+            f"{i+1}. "
+            f"{('PT • ' if p.get('department') == config.DEPARTMENT_PHYSIO else 'DT • ') if owner_all else ''}"
+            f"{p['name']} — {p['session']} — {p['amount']:.0f} টাকা"
             for i, p in enumerate(patient_list)
         )
         text = f"📋 {date_str} — রোগীর তালিকা:\n{list_lines}"
@@ -6558,7 +6651,8 @@ async def cash_movements_start(update: Update, context: ContextTypes.DEFAULT_TYP
         return
     today = bd_now().strftime("%Y-%m-%d")
     rows = await async_runtime.run_sheets_read(
-        sheets.get_cash_movements_for_date, today, _finance_departments(staff)
+        sheets.get_cash_movements_for_date_across_departments,
+        today, _finance_departments(staff)
     )
     if not rows:
         await update.message.reply_text("🔄 আজ কোনো cash movement নেই।")
@@ -6566,7 +6660,8 @@ async def cash_movements_start(update: Update, context: ContextTypes.DEFAULT_TYP
     lines = [f"🔄 আজকের cash movement — {today}\n"]
     for row in rows[:30]:
         lines.append(
-            f"• {row.get('Movement_ID', '')} | "
+            f"• {row.get('_Source_Department') or row.get('Department', '')} | "
+            f"{row.get('Movement_ID', '')} | "
             f"{row.get('From_Custodian', '')} → {row.get('To_Custodian', '')} | "
             f"৳{_display_sheet_amount(row.get('Amount', 0))} | "
             f"{row.get('Status', 'Pending')}"
@@ -7304,6 +7399,22 @@ def _cash_custody_summary_text(summary: dict, role_str: str) -> str:
     return "\n".join(lines)
 
 
+def _department_period_cash_text(summaries: dict, role_str: str) -> str:
+    sections = []
+    for department, icon, code in (
+        (config.DEPARTMENT_PHYSIO, "🩺", "PT"),
+        (config.DEPARTMENT_DENTAL, "🦷", "DT"),
+    ):
+        summary = summaries.get(department)
+        if not summary:
+            continue
+        sections.append(
+            f"{icon} {department} ({code})\n"
+            + _cash_custody_summary_text(summary, role_str)
+        )
+    return "\n\n".join(sections)
+
+
 async def custody_balance_start(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
@@ -7321,8 +7432,7 @@ async def _show_financial_report(update, context, report, start_date, end_date):
         if start_date == _LIVE_BALANCE_START_DATE:
             text = _department_live_balance_text(summaries, staff.get("Role", ""))
         else:
-            summary = next(iter(summaries.values()))
-            text = _cash_custody_summary_text(summary, staff.get("Role", ""))
+            text = _department_period_cash_text(summaries, staff.get("Role", ""))
     elif report == "rejected":
         rows = await async_runtime.run_sheets_read(
             sheets.get_expenses_for_date, start_date, end_date,
