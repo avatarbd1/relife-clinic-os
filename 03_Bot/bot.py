@@ -125,6 +125,7 @@ async def _bind_update_tenant(update: Update, context: ContextTypes.DEFAULT_TYPE
 ) = range(13)
 
 REG_PHOTO_CHOICE, REG_PHOTO_WAIT, REG_PHOTO_CONFIRM = range(90, 93)
+DENTAL_PROCEDURE, DENTAL_TOOTH, DENTAL_NOTE, DENTAL_STATUS, DENTAL_CONFIRM = range(93, 98)
 
 (
     PAY_SEARCH,
@@ -1469,6 +1470,12 @@ async def owner_department_inventory_selected(update, context):
     if not await _select_owner_department(update, context):
         return ConversationHandler.END
     return await inventory_menu(update, context)
+
+
+async def owner_department_treatment_selected(update, context):
+    if not await _select_owner_department(update, context):
+        return ConversationHandler.END
+    return await treat_start(update, context)
 
 
 async def owner_department_finance_selected(update, context):
@@ -3382,11 +3389,13 @@ async def treat_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if staff is None:
         return ConversationHandler.END
     if not _staff_can_access_menu(staff, roles.MENU_TREATMENT_NOTE):
-        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        await update.effective_message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return ConversationHandler.END
+    if await _prompt_owner_department(update, context, staff, "treatment"):
         return ConversationHandler.END
     context.user_data["treatment"] = {}
     context.user_data["treat_selected"] = set()
-    await update.message.reply_text(
+    await update.effective_message.reply_text(
         PATIENT_LOOKUP_PROMPT,
         reply_markup=ReplyKeyboardRemove(),
     )
@@ -3394,7 +3403,7 @@ async def treat_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         _recent_patient_buttons, "treatsel_"
     )
     if recent_kb:
-        await update.message.reply_text(
+        await update.effective_message.reply_text(
             "👥 অথবা সাম্প্রতিক রোগীদের মধ্য থেকে সরাসরি বেছে নাও:",
             reply_markup=recent_kb,
         )
@@ -3433,6 +3442,23 @@ async def treat_select_callback(update: Update, context: ContextTypes.DEFAULT_TY
         return ConversationHandler.END
     context.user_data.pop("treat_search_results", None)
 
+    if patient.get("Department") == config.DEPARTMENT_DENTAL:
+        context.user_data.pop("treatment", None)
+        context.user_data.pop("treat_selected", None)
+        context.user_data["dental_treatment"] = {
+            "Patient_ID": patient.get("Patient_ID", ""),
+            "Patient_Name": patient.get("Full_Name", ""),
+            "Department": config.DEPARTMENT_DENTAL,
+        }
+        await query.edit_message_text(
+            f"🦷 রোগী: {patient.get('Full_Name')} ({patient_id})"
+        )
+        await query.message.reply_text(
+            "কোন Dental service/procedure করা হয়েছে?",
+            reply_markup=_dental_service_keyboard(),
+        )
+        return DENTAL_PROCEDURE
+
     selected, summary = await _treat_prepare_for_patient(patient, context)
     if selected is None:
         await query.edit_message_text(summary)
@@ -3440,6 +3466,118 @@ async def treat_select_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     await query.edit_message_text(summary, reply_markup=_treat_confirm_keyboard(patient_id))
     return TREAT_CONFIRM_PLAN
+
+
+async def dental_procedure_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    procedure = update.message.text.strip()
+    if not procedure or procedure == "-":
+        await update.message.reply_text("❌ Dental procedure-এর নাম লিখুন:")
+        return DENTAL_PROCEDURE
+    data = context.user_data.get("dental_treatment", {})
+    data["Procedure"] = procedure
+    context.user_data["dental_treatment"] = data
+    await update.message.reply_text(
+        "🦷 Tooth number/area লিখুন (যেমন: 16, 36 অথবা Upper anterior)। জানা না থাকলে '-' দিন:"
+    )
+    return DENTAL_TOOTH
+
+
+async def dental_tooth_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    data = context.user_data.get("dental_treatment", {})
+    tooth = update.message.text.strip()
+    data["Tooth_Area"] = "" if tooth == "-" else tooth
+    context.user_data["dental_treatment"] = data
+    await update.message.reply_text(
+        "Clinical finding/complaint এবং আজ কী করা হয়েছে সংক্ষেপে লিখুন:"
+    )
+    return DENTAL_NOTE
+
+
+async def dental_note_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    note = update.message.text.strip()
+    if not note or note == "-":
+        await update.message.reply_text("❌ Clinical note লিখুন:")
+        return DENTAL_NOTE
+    data = context.user_data.get("dental_treatment", {})
+    data["Clinical_Note"] = note
+    context.user_data["dental_treatment"] = data
+    await update.message.reply_text(
+        "Treatment status বেছে নিন:",
+        reply_markup=ReplyKeyboardMarkup(
+            [["Planned", "Ongoing"], ["Completed", "Follow-up"]],
+            resize_keyboard=True, one_time_keyboard=True,
+        ),
+    )
+    return DENTAL_STATUS
+
+
+async def dental_status_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    status = update.message.text.strip()
+    allowed = {"Planned", "Ongoing", "Completed", "Follow-up"}
+    if status not in allowed:
+        await update.message.reply_text("❌ উপরের status button থেকে বেছে নিন:")
+        return DENTAL_STATUS
+    data = context.user_data.get("dental_treatment", {})
+    data["Status"] = status
+    context.user_data["dental_treatment"] = data
+    await update.message.reply_text(
+        f"🦷 রোগী: {data.get('Patient_Name')} ({data.get('Patient_ID')})\n"
+        f"Procedure: {data.get('Procedure')}\n"
+        f"Tooth/Area: {data.get('Tooth_Area') or '-'}\n"
+        f"Clinical note: {data.get('Clinical_Note')}\n"
+        f"Status: {status}\n\nSave করবে?",
+        reply_markup=ReplyKeyboardMarkup(
+            [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
+        ),
+    )
+    return DENTAL_CONFIRM
+
+
+async def dental_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    answer = update.message.text.strip().lower()
+    data = context.user_data.get("dental_treatment", {})
+    if answer not in ("হ্যাঁ", "yes", "y", "হা", "ha"):
+        context.user_data.pop("dental_treatment", None)
+        await update.message.reply_text("❌ Dental note বাতিল করা হয়েছে।")
+        return ConversationHandler.END
+    staff, patient = await _authorized_patient_action(
+        update, context, data.get("Patient_ID", ""),
+        department_access.AccessAction.CLINICAL_WRITE,
+        roles.MENU_TREATMENT_NOTE,
+    )
+    if not patient or patient.get("Department") != config.DEPARTMENT_DENTAL:
+        context.user_data.pop("dental_treatment", None)
+        await update.message.reply_text("⛔ এই Dental record save করার অনুমতি নেই।")
+        return ConversationHandler.END
+    tooth = data.get("Tooth_Area", "")
+    payload = {
+        "Patient_ID": patient.get("Patient_ID", ""),
+        "Patient_Name": patient.get("Full_Name", ""),
+        "Department": config.DEPARTMENT_DENTAL,
+        "Diagnosis": data.get("Clinical_Note", ""),
+        "Treatment_Given": data.get("Procedure", ""),
+        "Clinical_Note": data.get("Clinical_Note", ""),
+        "Remarks": " | ".join(filter(None, [
+            f"Tooth/Area: {tooth}" if tooth else "",
+            f"Status: {data.get('Status', '')}",
+        ])),
+        "Source_Type": "dental_clinical_entry",
+        "Human_Verified": True,
+    }
+    try:
+        treatment_id = await async_runtime.run_sheets_write(
+            sheets.add_treatment_note, payload,
+            created_by=staff.get("Full_Name", "Unknown"),
+        )
+        await update.message.reply_text(
+            f"✅ Dental clinical record save হয়েছে! Treatment ID: {treatment_id}\n"
+            f"Procedure: {data.get('Procedure')}\nStatus: {data.get('Status')}"
+        )
+    except Exception as error:
+        logger.exception("dental_confirm_receive failed")
+        await update.message.reply_text(f"❌ Dental record save করা যায়নি।\nError: {error}")
+    context.user_data.pop("dental_treatment", None)
+    return ConversationHandler.END
 
 
 async def treat_confirm_same_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4098,6 +4236,12 @@ async def tplan_select_callback(update: Update, context: ContextTypes.DEFAULT_TY
             "❌ তালিকার মেয়াদ শেষ। আবার শুরু করতে /cancel দাও, তারপর 🩺 ট্রিটমেন্ট প্ল্যান চাপো।"
         )
         return ConversationHandler.END
+    if patient.get("Department") == config.DEPARTMENT_DENTAL:
+        await query.edit_message_text(
+            "🦷 Dental রোগীর জন্য Physio session-based treatment plan ব্যবহার হবে না।\n"
+            "আজকের procedure লিখতে 📝 ট্রিটমেন্ট নোট ব্যবহার করুন।"
+        )
+        return ConversationHandler.END
     context.user_data.pop("tplan_search_results", None)
     context.user_data["tplan"] = {
         "Patient_ID": patient.get("Patient_ID", ""),
@@ -4726,7 +4870,8 @@ async def thist_patient_callback(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     await query.answer()
     patient_id = query.data.replace("thpsel_", "", 1)
-    if not await _patient_by_id_for_request(update, context, patient_id):
+    patient = await _patient_by_id_for_request(update, context, patient_id)
+    if not patient:
         await query.edit_message_text("⛔ এই রোগী দেখার অনুমতি নেই।")
         return ConversationHandler.END
     notes = await async_runtime.run_sheets_read(
@@ -4749,7 +4894,8 @@ async def thist_patient_callback(update: Update, context: ContextTypes.DEFAULT_T
         tid = str(n.get("Treatment_ID", "")).strip()
         date_str = n.get("Date", "")
         buttons.append([InlineKeyboardButton(f"🗓 {date_str} — {tid}", callback_data=f"thdate_{tid}")])
-    buttons.append([InlineKeyboardButton("📈 প্রোগ্রেস দেখো", callback_data=f"thistprog_{patient_id}")])
+    if patient.get("Department") != config.DEPARTMENT_DENTAL:
+        buttons.append([InlineKeyboardButton("📈 প্রোগ্রেস দেখো", callback_data=f"thistprog_{patient_id}")])
     await query.edit_message_text(
         "কোন তারিখের ট্রিটমেন্ট প্ল্যান দেখতে চাও?",
         reply_markup=InlineKeyboardMarkup(buttons),
@@ -4765,27 +4911,48 @@ async def _thist_render_note(query, context: ContextTypes.DEFAULT_TYPE, tid: str
         await query.edit_message_text("নোট পাওয়া যায়নি।")
         return
     idx = order.index(tid) if tid in order else -1
+    is_dental = (
+        n.get("Department") == config.DEPARTMENT_DENTAL
+        or str(n.get("Patient_ID", "")).upper().startswith("DT")
+    )
     lines = [
         f"📝 {n.get('Patient_Name', '')} ({n.get('Patient_ID', '')}) — {n.get('Date', '')}",
     ]
     if idx != -1:
-        lines.append(f"সেশন {idx + 1}/{len(order)}")
-    lines += [
-        "",
-        f"Diagnosis: {n.get('Diagnosis', '') or '-'}",
-        f"Treatment Given: {n.get('Treatment_Given', '') or '-'}",
-        f"Exercise: {n.get('Exercise', '') or '-'}",
-        f"Electrotherapy: {n.get('Electrotherapy', '') or '-'}",
-        f"Manual Therapy: {n.get('Manual_Therapy', '') or '-'}",
-        f"Machines: {n.get('Machines', '') or '-'}",
-    ]
+        lines.append(
+            f"Dental visit {idx + 1}/{len(order)}" if is_dental
+            else f"সেশন {idx + 1}/{len(order)}"
+        )
+    if is_dental:
+        lines += [
+            "",
+            f"Procedure: {n.get('Treatment_Given', '') or '-'}",
+            f"Clinical finding/note: {n.get('Clinical_Note', '') or n.get('Diagnosis', '') or '-'}",
+            f"Details: {n.get('Remarks', '') or '-'}",
+        ]
+    else:
+        lines += [
+            "",
+            f"Diagnosis: {n.get('Diagnosis', '') or '-'}",
+            f"Treatment Given: {n.get('Treatment_Given', '') or '-'}",
+            f"Exercise: {n.get('Exercise', '') or '-'}",
+            f"Electrotherapy: {n.get('Electrotherapy', '') or '-'}",
+            f"Manual Therapy: {n.get('Manual_Therapy', '') or '-'}",
+            f"Machines: {n.get('Machines', '') or '-'}",
+        ]
     patient_id = str(n.get("Patient_ID", "")).strip()
 
     nav_row = []
     if idx > 0:
-        nav_row.append(InlineKeyboardButton("⬅️ আগের সেশন", callback_data=f"thnav_{idx - 1}"))
+        nav_row.append(InlineKeyboardButton(
+            "⬅️ আগের visit" if is_dental else "⬅️ আগের সেশন",
+            callback_data=f"thnav_{idx - 1}"
+        ))
     if idx != -1 and idx < len(order) - 1:
-        nav_row.append(InlineKeyboardButton("পরের সেশন ➡️", callback_data=f"thnav_{idx + 1}"))
+        nav_row.append(InlineKeyboardButton(
+            "পরের visit ➡️" if is_dental else "পরের সেশন ➡️",
+            callback_data=f"thnav_{idx + 1}"
+        ))
 
     buttons = [nav_row] if nav_row else []
     if patient_id:
@@ -4886,6 +5053,10 @@ def _build_full_history_text(patient_id: str) -> str | None:
         return None
 
     name = patient.get("Full_Name") or patient.get("Name") or "Unknown"
+    is_dental = (
+        patient.get("Department") == config.DEPARTMENT_DENTAL
+        or str(patient_id).upper().startswith("DT")
+    )
     lines = [f"📜 {name} ({patient_id})-এর ইতিহাস", ""]
 
     lines.append("👤 প্রোফাইল:")
@@ -4896,10 +5067,10 @@ def _build_full_history_text(patient_id: str) -> str | None:
         lines.append(f"  নোট: {note}")
     therapist = patient.get("Therapist", "")
     if therapist:
-        lines.append(f"  থেরাপিস্ট: {therapist}")
+        lines.append(f"  {'Dentist' if is_dental else 'থেরাপিস্ট'}: {therapist}")
     lines.append("")
 
-    package = sheets.get_active_package_for_patient(patient_id)
+    package = None if is_dental else sheets.get_active_package_for_patient(patient_id)
     if package:
         total = package.get("Total_Sessions", "N/A")
         done = package.get("Sessions_Completed", "N/A")
@@ -4939,13 +5110,18 @@ def _build_full_history_text(patient_id: str) -> str | None:
 
     treatment_notes = sheets.get_treatment_notes_for_patient(patient_id)
     if treatment_notes:
-        lines.append("📝 ট্রিটমেন্ট নোট:")
+        lines.append("🦷 Dental procedure history:" if is_dental else "📝 ট্রিটমেন্ট নোট:")
         for t in treatment_notes[-5:]:
             date_str = t.get("Date", "")
-            note_text = t.get("Note", "") or t.get("Notes", "") or t.get("Treatment_Given", "") or t.get("Remarks", "")
+            if is_dental:
+                procedure = t.get("Treatment_Given", "") or "-"
+                details = t.get("Remarks", "") or t.get("Clinical_Note", "")
+                note_text = f"{procedure}" + (f" | {details}" if details else "")
+            else:
+                note_text = t.get("Note", "") or t.get("Notes", "") or t.get("Treatment_Given", "") or t.get("Remarks", "")
             lines.append(f"  • {date_str}: {note_text}")
     else:
-        lines.append("📝 কোনো ট্রিটমেন্ট নোট নেই।")
+        lines.append("🦷 কোনো Dental procedure record নেই।" if is_dental else "📝 কোনো ট্রিটমেন্ট নোট নেই।")
 
     full_text = "\n".join(lines)
     if len(full_text) > 4000:
@@ -8237,6 +8413,7 @@ def main():
     treat_conv = ConversationHandler(
         entry_points=[
             MessageHandler(filters.Regex(f"^{roles.MENU_TREATMENT_NOTE}$"), treat_start),
+            CallbackQueryHandler(owner_department_treatment_selected, pattern="^ownerdept:treatment:"),
             CallbackQueryHandler(plist_action_treat, pattern="^plistact_treat_"),
         ],
         states={
@@ -8278,6 +8455,21 @@ def main():
             ],
             TREAT_AI_QUESTION: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), treat_ai_question_receive),
+            ],
+            DENTAL_PROCEDURE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), dental_procedure_receive),
+            ],
+            DENTAL_TOOTH: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), dental_tooth_receive),
+            ],
+            DENTAL_NOTE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), dental_note_receive),
+            ],
+            DENTAL_STATUS: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), dental_status_receive),
+            ],
+            DENTAL_CONFIRM: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), dental_confirm_receive),
             ],
         },
         fallbacks=[
