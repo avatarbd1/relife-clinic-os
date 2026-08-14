@@ -723,6 +723,30 @@ class CashHandoverRoleTests(unittest.TestCase):
 
 
 class OwnerFinancialDashboardTests(unittest.TestCase):
+    def test_dashboard_cash_position_ignores_closed_previous_month(self):
+        summary = sheets._department_finance_summary(
+            "Physio",
+            "2026-08-14",
+            [
+                {"Date": "2026-07-31", "Department": "Physio",
+                 "Amount": 200, "Payment_Method": "Cash"},
+                {"Date": "2026-08-13", "Department": "Physio",
+                 "Amount": 1000, "Payment_Method": "Cash"},
+            ],
+            [
+                {"Date": "2026-07-31", "Department": "Physio",
+                 "Amount": 400, "Type": "Clinic Expense", "Status": "Paid",
+                 "Paid_From": "Reception"},
+                {"Date": "2026-08-13", "Department": "Physio",
+                 "Amount": 800, "Type": "Clinic Expense", "Status": "Paid",
+                 "Paid_From": "Reception"},
+            ],
+            [],
+            [],
+        )
+
+        self.assertEqual(summary["Closing"]["Reception"], 200)
+
     def test_fixed_salary_commitment_excludes_owner_and_includes_support_roles(self):
         rows = [
             {"Role": "Owner", "Status": "Active", "Salary": 99999, "Primary_Department": "All"},

@@ -3116,8 +3116,10 @@ def _department_finance_summary(
         result = {"Reception": 0.0, "Home Treasury": 0.0, "Digital/Bank": 0.0}
 
         def included(row: dict) -> bool:
-            row_date = str(row.get("Date", "")).strip()
-            return bool(row_date) and (row_date < date_str if before else row_date <= date_str)
+            row_date = str(row.get("Date", "")).strip()[:10]
+            if not row_date.startswith(month):
+                return False
+            return row_date < date_str if before else row_date <= date_str
 
         for row in payments:
             if not included(row):
