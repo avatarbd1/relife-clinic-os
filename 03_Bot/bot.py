@@ -4679,7 +4679,14 @@ def _running_expense(summary: dict) -> float:
 
 
 def _business_liability(summary: dict, fixed_salary: float) -> float:
-    return summary["Month_Clinic_Expense"] + fixed_salary
+    variable_expense = summary.get(
+        "Month_Variable_Clinic_Expense", summary["Month_Clinic_Expense"]
+    )
+    return (
+        variable_expense
+        + summary.get("Month_Fixed_Overhead_Liability", 0)
+        + fixed_salary
+    )
 
 
 async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4799,7 +4806,8 @@ async def rpt_owner_finance_detail_callback(update: Update, context: ContextType
             if not lines:
                 lines = ["💼 ব্যবসায়িক দায়"]
             detail = (
-                f"Clinic expense: ৳{current_part['Month_Clinic_Expense']:.0f}\n"
+                f"Variable expense: ৳{current_part.get('Month_Variable_Clinic_Expense', current_part['Month_Clinic_Expense']):.0f}\n"
+                f"Fixed overhead: ৳{current_part.get('Month_Fixed_Overhead_Liability', 0):.0f}\n"
                 f"নির্ধারিত বেতন: ৳{commitments[department]:.0f}\n"
                 f"মোট দায়: ৳{liability:.0f}"
             )

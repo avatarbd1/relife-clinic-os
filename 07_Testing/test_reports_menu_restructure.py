@@ -128,6 +128,15 @@ class FinanceDetailMathTests(unittest.TestCase):
         self.assertEqual(bot._running_expense(summary), 24110)
         self.assertEqual(bot._business_liability(summary, 64300), 79760)
 
+    def test_dental_liability_adds_fixed_overhead_and_variable_cost_only(self):
+        summary = {
+            "Month_Clinic_Expense": 16500,
+            "Month_Variable_Clinic_Expense": 4000,
+            "Month_Fixed_Overhead_Liability": 22000,
+            "Month_Salary": 0,
+        }
+        self.assertEqual(bot._business_liability(summary, 23000), 49000)
+
 
 if __name__ == "__main__":
     unittest.main()

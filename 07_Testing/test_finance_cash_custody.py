@@ -759,6 +759,35 @@ class OwnerFinancialDashboardTests(unittest.TestCase):
         self.assertEqual(totals["Physio"], 23800)
         self.assertEqual(totals["Dental"], 0)
 
+    def test_dental_fixed_overhead_replaces_paid_fixed_rows_without_double_count(self):
+        summary = sheets._department_finance_summary(
+            "Dental",
+            "2026-08-14",
+            [],
+            [
+                {"Date": "2026-08-02", "Department": "Dental", "Category": "চেম্বার ভাড়া", "Amount": 10000, "Type": "Clinic Expense", "Status": "Paid"},
+                {"Date": "2026-08-03", "Department": "Dental", "Category": "বিদ্যুৎ বিল", "Amount": 2500, "Type": "Clinic Expense", "Status": "Paid"},
+                {"Date": "2026-08-04", "Department": "Dental", "Category": "Dental Lab Bill", "Amount": 4000, "Type": "Clinic Expense", "Status": "Paid"},
+            ],
+            [],
+            [],
+        )
+        self.assertEqual(summary["Month_Clinic_Expense"], 16500)
+        self.assertEqual(summary["Month_Variable_Clinic_Expense"], 4000)
+        self.assertEqual(summary["Month_Fixed_Overhead_Actual"], 12500)
+        self.assertEqual(summary["Month_Fixed_Overhead_Liability"], 22000)
+
+    def test_dental_fixed_overhead_uses_actual_when_a_fixed_item_exceeds_budget(self):
+        summary = sheets._department_finance_summary(
+            "Dental",
+            "2026-08-14",
+            [],
+            [{"Date": "2026-08-02", "Department": "Dental", "Category": "বিদ্যুৎ বিল", "Amount": 3500, "Type": "Clinic Expense", "Status": "Paid"}],
+            [],
+            [],
+        )
+        self.assertEqual(summary["Month_Fixed_Overhead_Liability"], 22500)
+
     def test_owner_dashboard_text_only_shows_cash_and_salary(self):
         summary = {
             "Month_Salary": 8650,

@@ -3038,6 +3038,16 @@ def get_reception_cash_balance(department: str) -> float:
 
 _FINANCE_DEPARTMENTS = {config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL}
 
+# Dental monthly commitments that must be covered even before they are paid.
+# Expense rows for the three matching categories replace (rather than add to)
+# their commitment; only an amount above the commitment increases liability.
+DENTAL_FIXED_MONTHLY_OVERHEAD = {
+    "Receptionist": 6000.0,
+    "চেম্বার ভাড়া": 10000.0,
+    "বিদ্যুৎ বিল": 3000.0,
+    "ক্লিনার বেতন": 3000.0,
+}
+
 
 def _finance_department(row: dict) -> str:
     value = str(row.get("Department", "")).strip()
@@ -3100,6 +3110,27 @@ def _department_finance_summary(
         and str(row.get("Type", "")).strip() == config.EXPENSE_TYPE_CLINIC
         and _expense_is_paid(row)
     )
+    fixed_overhead = (
+        DENTAL_FIXED_MONTHLY_OVERHEAD
+        if department == config.DEPARTMENT_DENTAL else {}
+    )
+    paid_fixed_by_category = {category: 0.0 for category in fixed_overhead}
+    for row in expenses:
+        category = str(row.get("Category", "")).strip()
+        if (
+            category in paid_fixed_by_category
+            and str(row.get("Date", "")).strip().startswith(month)
+            and str(row.get("Type", "")).strip() == config.EXPENSE_TYPE_CLINIC
+            and _expense_is_paid(row)
+        ):
+            paid_fixed_by_category[category] += _money(row)
+    fixed_overhead_actual = sum(paid_fixed_by_category.values())
+    fixed_overhead_commitment = sum(fixed_overhead.values())
+    fixed_overhead_liability = sum(
+        max(amount, paid_fixed_by_category[category])
+        for category, amount in fixed_overhead.items()
+    )
+    variable_clinic_expense = month_clinic_expense - fixed_overhead_actual
     month_household = sum(
         _money(row) for row in expenses
         if str(row.get("Date", "")).strip().startswith(month)
@@ -3158,6 +3189,10 @@ def _department_finance_summary(
         "Today_Collection": round(today_collection, 2),
         "Month_Collection": round(month_collection, 2),
         "Month_Clinic_Expense": round(month_clinic_expense, 2),
+        "Month_Variable_Clinic_Expense": round(variable_clinic_expense, 2),
+        "Month_Fixed_Overhead_Actual": round(fixed_overhead_actual, 2),
+        "Month_Fixed_Overhead_Commitment": round(fixed_overhead_commitment, 2),
+        "Month_Fixed_Overhead_Liability": round(fixed_overhead_liability, 2),
         "Month_Household_Withdrawal": round(month_household, 2),
         "Month_Salary": round(month_salary, 2),
         "Month_Net_After_Salary": round(
@@ -3206,6 +3241,8 @@ def get_owner_financial_dashboard(date_str: str) -> dict:
         key: round(sum(summary[key] for summary in summaries.values()), 2)
         for key in (
             "Today_Collection", "Month_Collection", "Month_Clinic_Expense",
+            "Month_Variable_Clinic_Expense", "Month_Fixed_Overhead_Actual",
+            "Month_Fixed_Overhead_Commitment", "Month_Fixed_Overhead_Liability",
             "Month_Household_Withdrawal", "Month_Salary", "Month_Net_After_Salary",
         )
     }
