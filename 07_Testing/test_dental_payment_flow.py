@@ -1,6 +1,7 @@
 import os, sys, unittest
 from pathlib import Path
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "03_Bot"))
@@ -37,6 +38,36 @@ class DentalPaymentFlowTests(unittest.TestCase):
         self.assertIn("Filling", labels)
         self.assertIn("RCT", labels)
         self.assertFalse(any("সেশন" in label for label in labels))
+
+
+class DentalPatientListPaymentTests(unittest.IsolatedAsyncioTestCase):
+    async def test_patient_list_payment_asks_for_dental_service_not_sessions(self):
+        patient = {
+            "Patient_ID": "DT0002",
+            "Full_Name": "Rimon",
+            "Department": "Dental",
+        }
+        query = SimpleNamespace(
+            data="plistact_pay_DT0002",
+            answer=AsyncMock(),
+            edit_message_text=AsyncMock(),
+            message=SimpleNamespace(reply_text=AsyncMock()),
+        )
+        update = SimpleNamespace(callback_query=query)
+        context = SimpleNamespace(user_data={})
+
+        with patch.object(
+            bot,
+            "_authorized_patient_action",
+            AsyncMock(return_value=({"Role": "Receptionist"}, patient)),
+        ):
+            state = await bot.plist_action_pay(update, context)
+
+        self.assertEqual(state, bot.PAY_SESSION)
+        self.assertEqual(context.user_data["payment"]["Sessions"], 0)
+        prompt = query.message.reply_text.await_args.args[0]
+        self.assertIn("Dental service/procedure", prompt)
+        self.assertNotIn("কত টাকা নেওয়া হলো", prompt)
 
 
 if __name__ == "__main__": unittest.main()

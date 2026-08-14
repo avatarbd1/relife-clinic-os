@@ -6104,13 +6104,12 @@ async def plist_action_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Patient_ID": patient.get("Patient_ID", ""),
         "Patient_Name": patient.get("Full_Name", ""),
         "Department": patient.get("Department", ""),
-        "Sessions": 1,
     }
     await query.edit_message_text(
-        _register_amount_prompt_text(patient.get("Full_Name", ""), patient.get("Patient_ID", ""), 1),
-        reply_markup=_register_amount_keyboard(1),
+        f"✅ রোগী বাছাই হয়েছে: {patient.get('Full_Name', '')} "
+        f"({patient.get('Patient_ID', '')})"
     )
-    return PAY_AMOUNT
+    return await _ask_payment_details(query.message, context.user_data["payment"])
 
 
 async def plist_action_apt(update: Update, context: ContextTypes.DEFAULT_TYPE):
