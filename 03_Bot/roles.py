@@ -63,201 +63,98 @@ MENU_FINANCE_ACCOUNTS = "🧾 হিসাব ও খরচ"
 MENU_REJECTED_EXPENSES = "❌ প্রত্যাখ্যাত খরচ"
 
 ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
-    Role.OWNER: [
-        [MENU_HOME],
-        [MENU_CUSTODY_BALANCE],
-        [MENU_FINANCE_DASHBOARDS],
-        [MENU_PAYMENT, MENU_FINANCE_ACCOUNTS],
-        [MENU_TODAY_SCHEDULE],
-        [MENU_PATIENT_MGMT, MENU_APPOINTMENT],
-        [MENU_TREATMENT, MENU_REPORTS],
-        [MENU_HOUSEHOLD_WITHDRAWAL, MENU_FINANCE_OVERVIEW],
-        [MENU_INVENTORY, MENU_AI_TOOLS],
-        [MENU_DELETE_ENTRY, MENU_SETTINGS],
-    ],
-    Role.RECEPTIONIST: [
-        [MENU_HOME],
-        [MENU_PATIENT_MGMT],
-        [MENU_APPOINTMENT, MENU_TODAY_SCHEDULE],
-        [MENU_PAYMENT, MENU_REPORTS],
-        [MENU_DELETE_ENTRY],
-        [MENU_INVENTORY, MENU_FINANCE],
-    ],
-    Role.THERAPIST: [
-        [MENU_HOME],
-        [MENU_MY_PATIENTS],
-        [MENU_APPOINTMENT, MENU_PATIENT_LIST],
-        [MENU_TREATMENT_NOTE, MENU_TREATMENT_PLAN],
-        [MENU_PATIENT_HISTORY, MENU_TREATMENT_HISTORY],
-        [MENU_CLINICAL_AI],
-        [MENU_CASE_STUDY, MENU_INVENTORY],
-    ],
-    Role.MANAGER: [
-        [MENU_HOME],
-        [MENU_PATIENT_MGMT],
-        [MENU_APPOINTMENT, MENU_TODAY_SCHEDULE],
-        [MENU_TREATMENT],
-        [MENU_REPORTS],
-        [MENU_DELETE_ENTRY],
-        [MENU_INVENTORY, MENU_FINANCE],
-    ],
+    Role.OWNER: [[MENU_HOME],[MENU_CUSTODY_BALANCE],[MENU_FINANCE_DASHBOARDS],[MENU_PAYMENT, MENU_FINANCE_ACCOUNTS],[MENU_TODAY_SCHEDULE],[MENU_PATIENT_MGMT, MENU_APPOINTMENT],[MENU_TREATMENT, MENU_REPORTS],[MENU_HOUSEHOLD_WITHDRAWAL, MENU_FINANCE_OVERVIEW],[MENU_INVENTORY, MENU_AI_TOOLS],[MENU_DELETE_ENTRY, MENU_SETTINGS]],
+    Role.RECEPTIONIST: [[MENU_HOME],[MENU_PATIENT_MGMT],[MENU_APPOINTMENT, MENU_TODAY_SCHEDULE],[MENU_PAYMENT, MENU_REPORTS],[MENU_DELETE_ENTRY],[MENU_INVENTORY, MENU_FINANCE]],
+    Role.THERAPIST: [[MENU_HOME],[MENU_MY_PATIENTS],[MENU_APPOINTMENT, MENU_PATIENT_LIST],[MENU_TREATMENT_NOTE, MENU_TREATMENT_PLAN],[MENU_PATIENT_HISTORY, MENU_TREATMENT_HISTORY],[MENU_CLINICAL_AI],[MENU_CASE_STUDY, MENU_INVENTORY]],
+    Role.MANAGER: [[MENU_HOME],[MENU_PATIENT_MGMT],[MENU_APPOINTMENT, MENU_TODAY_SCHEDULE],[MENU_TREATMENT],[MENU_REPORTS],[MENU_DELETE_ENTRY],[MENU_INVENTORY, MENU_FINANCE]],
+    # Temporary Dental data-entry mode: broad operational access, still department-scoped.
+    Role.DENTIST: [[MENU_HOME],[MENU_PATIENT_MGMT],[MENU_APPOINTMENT, MENU_TODAY_SCHEDULE],[MENU_PAYMENT, MENU_REPORTS],[MENU_TREATMENT],[MENU_DELETE_ENTRY],[MENU_INVENTORY, MENU_FINANCE]],
+    Role.DENTAL_ASSISTANT: [[MENU_HOME],[MENU_PATIENT_MGMT],[MENU_APPOINTMENT, MENU_TODAY_SCHEDULE],[MENU_PAYMENT, MENU_REPORTS],[MENU_TREATMENT],[MENU_DELETE_ENTRY],[MENU_INVENTORY, MENU_FINANCE]],
 }
 
 ROLE_HIDDEN_MENU_ITEMS: dict[Role, list[str]] = {
-    Role.OWNER: [
-        MENU_ATTENDANCE, MENU_TODAY_APPOINTMENTS,
-        MENU_PATIENT_REG, MENU_PATIENT_HISTORY, MENU_PATIENT_LIST,
-        MENU_TREATMENT_NOTE, MENU_TREATMENT_PLAN, MENU_TREATMENT_HISTORY,
-        MENU_DAILY_REGISTER, MENU_STAFF_AI_QUERY, MENU_CASE_STUDY, MENU_CLINICAL_AI,
-        MENU_SALARY, MENU_SALARY_HISTORY, MENU_MY_PAYMENTS,
-        MENU_OWNER_CLINIC_EXPENSE, MENU_HOUSEHOLD_WITHDRAWAL,
-        MENU_FINANCE_OVERVIEW,
-        MENU_EXPENSE_APPROVAL, MENU_EXPENSE_TRACKER, MENU_REJECTED_EXPENSES,
-        MENU_CASH_RECEIVE, MENU_CASH_MOVEMENTS, MENU_CUSTODY_BALANCE,
-        MENU_PHYSIO_FINANCE_DASHBOARD, MENU_DENTAL_FINANCE_DASHBOARD,
-        MENU_COMBINED_BUSINESS_SUMMARY,
-    ],
-    Role.RECEPTIONIST: [
-        MENU_ATTENDANCE, MENU_TODAY_APPOINTMENTS,
-        MENU_PATIENT_REG, MENU_PATIENT_LIST, MENU_DAILY_REGISTER,
-        MENU_SMALL_EXPENSE_REQUEST, MENU_APPROVED_EXPENSES,
-        MENU_EXPENSE_TRACKER, MENU_REJECTED_EXPENSES,
-        MENU_CASH_HANDOVER, MENU_CASH_MOVEMENTS,
-        MENU_CUSTODY_BALANCE,
-    ],
+    Role.OWNER: [MENU_ATTENDANCE, MENU_TODAY_APPOINTMENTS,MENU_PATIENT_REG, MENU_PATIENT_HISTORY, MENU_PATIENT_LIST,MENU_TREATMENT_NOTE, MENU_TREATMENT_PLAN, MENU_TREATMENT_HISTORY,MENU_DAILY_REGISTER, MENU_STAFF_AI_QUERY, MENU_CASE_STUDY, MENU_CLINICAL_AI,MENU_SALARY, MENU_SALARY_HISTORY, MENU_MY_PAYMENTS,MENU_OWNER_CLINIC_EXPENSE, MENU_HOUSEHOLD_WITHDRAWAL,MENU_FINANCE_OVERVIEW,MENU_EXPENSE_APPROVAL, MENU_EXPENSE_TRACKER, MENU_REJECTED_EXPENSES,MENU_CASH_RECEIVE, MENU_CASH_MOVEMENTS, MENU_CUSTODY_BALANCE,MENU_PHYSIO_FINANCE_DASHBOARD, MENU_DENTAL_FINANCE_DASHBOARD,MENU_COMBINED_BUSINESS_SUMMARY],
+    Role.RECEPTIONIST: [MENU_ATTENDANCE, MENU_TODAY_APPOINTMENTS,MENU_PATIENT_REG, MENU_PATIENT_LIST, MENU_DAILY_REGISTER,MENU_SMALL_EXPENSE_REQUEST, MENU_APPROVED_EXPENSES,MENU_EXPENSE_TRACKER, MENU_REJECTED_EXPENSES,MENU_CASH_HANDOVER, MENU_CASH_MOVEMENTS,MENU_CUSTODY_BALANCE],
     Role.THERAPIST: [MENU_ATTENDANCE, MENU_TODAY_APPOINTMENTS],
-    Role.MANAGER: [
-        MENU_ATTENDANCE, MENU_TODAY_APPOINTMENTS,
-        MENU_PATIENT_REG, MENU_PATIENT_LIST, MENU_TREATMENT_HISTORY,
-        MENU_DAILY_REGISTER, MENU_EXPENSE_TRACKER, MENU_REJECTED_EXPENSES,
-        MENU_CASH_RECEIVE, MENU_CASH_MOVEMENTS, MENU_CUSTODY_BALANCE,
-    ],
+    Role.MANAGER: [MENU_ATTENDANCE, MENU_TODAY_APPOINTMENTS,MENU_PATIENT_REG, MENU_PATIENT_LIST, MENU_TREATMENT_HISTORY,MENU_DAILY_REGISTER, MENU_EXPENSE_TRACKER, MENU_REJECTED_EXPENSES,MENU_CASH_RECEIVE, MENU_CASH_MOVEMENTS, MENU_CUSTODY_BALANCE],
+    Role.DENTIST: [MENU_ATTENDANCE, MENU_TODAY_APPOINTMENTS, MENU_PATIENT_REG, MENU_PATIENT_HISTORY, MENU_PATIENT_LIST, MENU_TREATMENT_NOTE, MENU_TREATMENT_PLAN, MENU_TREATMENT_HISTORY, MENU_DAILY_REGISTER],
+    Role.DENTAL_ASSISTANT: [MENU_ATTENDANCE, MENU_TODAY_APPOINTMENTS, MENU_PATIENT_REG, MENU_PATIENT_HISTORY, MENU_PATIENT_LIST, MENU_TREATMENT_NOTE, MENU_TREATMENT_PLAN, MENU_TREATMENT_HISTORY, MENU_DAILY_REGISTER],
 }
 
 ROLE_PATIENT_MGMT_ITEMS: dict[Role, list[str]] = {
     Role.OWNER: [MENU_PATIENT_REG, MENU_PATIENT_HISTORY, MENU_PATIENT_LIST],
     Role.RECEPTIONIST: [MENU_PATIENT_REG, MENU_PATIENT_LIST],
     Role.MANAGER: [MENU_PATIENT_REG, MENU_PATIENT_LIST],
+    Role.DENTIST: [MENU_PATIENT_REG, MENU_PATIENT_HISTORY, MENU_PATIENT_LIST],
+    Role.DENTAL_ASSISTANT: [MENU_PATIENT_REG, MENU_PATIENT_HISTORY, MENU_PATIENT_LIST],
 }
 
 ROLE_TREATMENT_ITEMS: dict[Role, list[str]] = {
     Role.OWNER: [MENU_TREATMENT_NOTE, MENU_TREATMENT_PLAN, MENU_TREATMENT_HISTORY],
     Role.MANAGER: [MENU_TREATMENT_HISTORY],
+    Role.DENTIST: [MENU_TREATMENT_NOTE, MENU_TREATMENT_PLAN, MENU_TREATMENT_HISTORY],
+    Role.DENTAL_ASSISTANT: [MENU_TREATMENT_NOTE, MENU_TREATMENT_PLAN, MENU_TREATMENT_HISTORY],
 }
 
-ROLE_AI_TOOLS_ITEMS: dict[Role, list[str]] = {
-    Role.OWNER: [MENU_STAFF_AI_QUERY, MENU_CASE_STUDY, MENU_CLINICAL_AI],
-    Role.THERAPIST: [MENU_CLINICAL_AI],
-}
+ROLE_AI_TOOLS_ITEMS: dict[Role, list[str]] = {Role.OWNER: [MENU_STAFF_AI_QUERY, MENU_CASE_STUDY, MENU_CLINICAL_AI],Role.THERAPIST: [MENU_CLINICAL_AI]}
 
 ROLE_FINANCE_ITEMS: dict[Role, list[str]] = {
     Role.OWNER: [],
-    Role.RECEPTIONIST: [
-        MENU_SMALL_EXPENSE_REQUEST, MENU_APPROVED_EXPENSES,
-        MENU_EXPENSE_TRACKER, MENU_REJECTED_EXPENSES, MENU_CASH_HANDOVER,
-        MENU_CASH_MOVEMENTS, MENU_CUSTODY_BALANCE,
-    ],
-    Role.MANAGER: [
-        MENU_EXPENSE_TRACKER, MENU_REJECTED_EXPENSES, MENU_CASH_RECEIVE,
-        MENU_CASH_MOVEMENTS, MENU_CUSTODY_BALANCE,
-    ],
+    Role.RECEPTIONIST: [MENU_SMALL_EXPENSE_REQUEST, MENU_APPROVED_EXPENSES,MENU_EXPENSE_TRACKER, MENU_REJECTED_EXPENSES, MENU_CASH_HANDOVER,MENU_CASH_MOVEMENTS, MENU_CUSTODY_BALANCE],
+    Role.MANAGER: [MENU_EXPENSE_TRACKER, MENU_REJECTED_EXPENSES, MENU_CASH_RECEIVE,MENU_CASH_MOVEMENTS, MENU_CUSTODY_BALANCE],
+    Role.DENTIST: [MENU_SMALL_EXPENSE_REQUEST, MENU_APPROVED_EXPENSES, MENU_EXPENSE_TRACKER, MENU_REJECTED_EXPENSES, MENU_CASH_HANDOVER, MENU_CASH_MOVEMENTS, MENU_CUSTODY_BALANCE],
+    Role.DENTAL_ASSISTANT: [MENU_SMALL_EXPENSE_REQUEST, MENU_APPROVED_EXPENSES, MENU_EXPENSE_TRACKER, MENU_REJECTED_EXPENSES, MENU_CASH_HANDOVER, MENU_CASH_MOVEMENTS, MENU_CUSTODY_BALANCE],
 }
-
-ROLE_FINANCE_DASHBOARD_ITEMS: dict[Role, list[str]] = {
-    Role.OWNER: [
-        MENU_PHYSIO_FINANCE_DASHBOARD, MENU_DENTAL_FINANCE_DASHBOARD,
-    ],
-}
-
-ROLE_FINANCE_ACCOUNTS_ITEMS: dict[Role, list[str]] = {
-    Role.OWNER: [
-        MENU_SALARY, MENU_SALARY_HISTORY, MENU_MY_PAYMENTS,
-        MENU_OWNER_CLINIC_EXPENSE, MENU_EXPENSE_APPROVAL, MENU_EXPENSE_TRACKER,
-        MENU_REJECTED_EXPENSES, MENU_CASH_RECEIVE, MENU_CASH_MOVEMENTS,
-    ],
-}
-
-ROLE_REPORTS_EXTRA_ITEMS: dict[Role, list[str]] = {
-    Role.OWNER: [MENU_DAILY_REGISTER],
-    Role.RECEPTIONIST: [MENU_DAILY_REGISTER],
-    Role.MANAGER: [MENU_DAILY_REGISTER],
-}
+ROLE_FINANCE_DASHBOARD_ITEMS: dict[Role, list[str]] = {Role.OWNER: [MENU_PHYSIO_FINANCE_DASHBOARD, MENU_DENTAL_FINANCE_DASHBOARD]}
+ROLE_FINANCE_ACCOUNTS_ITEMS: dict[Role, list[str]] = {Role.OWNER: [MENU_SALARY, MENU_SALARY_HISTORY, MENU_MY_PAYMENTS,MENU_OWNER_CLINIC_EXPENSE, MENU_EXPENSE_APPROVAL, MENU_EXPENSE_TRACKER,MENU_REJECTED_EXPENSES, MENU_CASH_RECEIVE, MENU_CASH_MOVEMENTS]}
+ROLE_REPORTS_EXTRA_ITEMS: dict[Role, list[str]] = {Role.OWNER: [MENU_DAILY_REGISTER],Role.RECEPTIONIST: [MENU_DAILY_REGISTER],Role.MANAGER: [MENU_DAILY_REGISTER],Role.DENTIST: [MENU_DAILY_REGISTER],Role.DENTAL_ASSISTANT: [MENU_DAILY_REGISTER]}
 
 
 def get_menu_rows_for_role(role_str: str) -> list[list[str]]:
-    try:
-        role = Role(role_str.strip())
-    except ValueError:
-        return []
+    try: role = Role(role_str.strip())
+    except ValueError: return []
     return ROLE_MENU_ROWS.get(role, [])
 
 
 def get_menu_for_role(role_str: str) -> list[str]:
-    rows = get_menu_rows_for_role(role_str)
-    flat = [item for row in rows for item in row]
-    try:
-        role = Role(role_str.strip())
-    except ValueError:
-        return flat
-    flat += ROLE_HIDDEN_MENU_ITEMS.get(role, [])
-    return flat
+    rows = get_menu_rows_for_role(role_str); flat = [item for row in rows for item in row]
+    try: role = Role(role_str.strip())
+    except ValueError: return flat
+    flat += ROLE_HIDDEN_MENU_ITEMS.get(role, []); return flat
 
 
 def _normalized_roles(role_values) -> list[Role]:
-    """Return known roles once, in deterministic privilege/menu order."""
-    if isinstance(role_values, str):
-        role_values = [role_values]
+    if isinstance(role_values, str): role_values = [role_values]
     resolved = set()
     for value in role_values or []:
-        try:
-            resolved.add(Role(str(value).strip()))
-        except ValueError:
-            continue
-    priority = [
-        Role.OWNER,
-        Role.MANAGER,
-        Role.RECEPTIONIST,
-        Role.THERAPIST,
-        Role.DENTIST,
-        Role.DENTAL_ASSISTANT,
-        Role.AUDITOR,
-        Role.SYSTEM_ADMIN,
-    ]
+        try: resolved.add(Role(str(value).strip()))
+        except ValueError: continue
+    priority = [Role.OWNER,Role.MANAGER,Role.RECEPTIONIST,Role.THERAPIST,Role.DENTIST,Role.DENTAL_ASSISTANT,Role.AUDITOR,Role.SYSTEM_ADMIN]
     return [role for role in priority if role in resolved]
 
 
 def get_menu_rows_for_roles(role_values) -> list[list[str]]:
-    """Merge menus for explicit effective roles without duplicate buttons."""
-    rows: list[list[str]] = []
-    seen: set[str] = set()
+    rows=[]; seen=set()
     for role in _normalized_roles(role_values):
         for row in ROLE_MENU_ROWS.get(role, []):
-            filtered = [item for item in row if item not in seen]
-            if filtered:
-                rows.append(filtered)
-                seen.update(filtered)
+            filtered=[item for item in row if item not in seen]
+            if filtered: rows.append(filtered); seen.update(filtered)
     return rows
 
 
 def get_menu_for_roles(role_values) -> list[str]:
-    items = [item for row in get_menu_rows_for_roles(role_values) for item in row]
-    seen = set(items)
+    items=[item for row in get_menu_rows_for_roles(role_values) for item in row]; seen=set(items)
     for role in _normalized_roles(role_values):
         for item in ROLE_HIDDEN_MENU_ITEMS.get(role, []):
-            if item not in seen:
-                items.append(item)
-                seen.add(item)
+            if item not in seen: items.append(item); seen.add(item)
     return items
 
 
 def get_items_for_roles(items_map: dict[Role, list[str]], role_values) -> list[str]:
-    items: list[str] = []
-    seen: set[str] = set()
+    items=[]; seen=set()
     for role in _normalized_roles(role_values):
         for item in items_map.get(role, []):
-            if item not in seen:
-                items.append(item)
-                seen.add(item)
+            if item not in seen: items.append(item); seen.add(item)
     return items
 
 
@@ -266,7 +163,6 @@ def can_any_access(role_values, menu_item: str) -> bool:
 
 
 def can_access(role_str: str, menu_item: str) -> bool:
-    """Legacy single-role adapter; production handlers use can_any_access."""
     return can_any_access([role_str], menu_item)
 
 
@@ -274,24 +170,18 @@ def is_therapist_owner_of_patient(therapist_name: str, patient_row: dict) -> boo
     return patient_row.get("Therapist", "").strip() == therapist_name.strip()
 
 
-PATIENT_ACTION_LABELS: dict[str, str] = {
-    "hist": "📜 ইতিহাস দেখো",
-    "apt": "📅 অ্যাপয়েন্টমেন্ট দাও",
-    "pay": "💳 পেমেন্ট নাও",
-    "treat": "📝 ট্রিটমেন্ট নোট লেখো",
-}
-
+PATIENT_ACTION_LABELS = {"hist": "📜 ইতিহাস দেখো", "apt": "📅 অ্যাপয়েন্টমেন্ট দাও", "pay": "💳 পেমেন্ট নাও", "treat": "📝 ট্রিটমেন্ট নোট লেখো"}
 ROLE_PATIENT_ACTIONS: dict[Role, list[str]] = {
     Role.OWNER: ["hist", "apt", "pay", "treat"],
     Role.RECEPTIONIST: ["hist", "apt", "pay"],
     Role.THERAPIST: ["hist", "treat"],
     Role.MANAGER: ["hist", "apt", "pay"],
+    Role.DENTIST: ["hist", "apt", "pay", "treat"],
+    Role.DENTAL_ASSISTANT: ["hist", "apt", "pay", "treat"],
 }
 
 
 def get_patient_actions(role_str: str) -> list[str]:
-    try:
-        role = Role(role_str.strip())
-    except ValueError:
-        return []
+    try: role = Role(role_str.strip())
+    except ValueError: return []
     return ROLE_PATIENT_ACTIONS.get(role, [])
