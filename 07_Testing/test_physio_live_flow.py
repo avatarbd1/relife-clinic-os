@@ -105,6 +105,21 @@ class QuickPlanParsingTests(unittest.TestCase):
         result = self.parse("Walking and active ROM")
         self.assertEqual(result["Exercise_Plan"], "Walking and active ROM")
 
+    def test_fast_multiline_entry_separates_electro_and_manual(self):
+        result = self.parse(
+            "Shoulder elevation.\n\nEMS\nDeltoid teres minor biceps triceps releasing"
+        )
+        self.assertEqual(result["Exercise_Plan"], "Shoulder elevation.")
+        self.assertEqual(result["Electrotherapy_Plan"], "EMS")
+        self.assertEqual(
+            result["Manual_Therapy_Plan"],
+            "Deltoid teres minor biceps triceps releasing",
+        )
+
+    def test_repeated_label_lines_are_not_lost(self):
+        result = self.parse("Manual: Release\nManual: Mobilization")
+        self.assertEqual(result["Manual_Therapy_Plan"], "Release\nMobilization")
+
     def test_quick_save_explicitly_blocks_dental(self):
         function = next(
             item for item in ast.parse(self.source).body
@@ -115,6 +130,13 @@ class QuickPlanParsingTests(unittest.TestCase):
     def test_quick_session_choices_are_clear(self):
         for label in ("৭ সেশন", "১৪ সেশন", "২১ সেশন", "২৮ সেশন"):
             self.assertIn(label, self.source)
+
+    def test_quick_plan_requires_review_and_has_field_edits(self):
+        for callback in (
+            "qpedit_exercise", "qpedit_electro", "qpedit_manual",
+            "qpedit_finding", "qpedit_sessions", "qpsave", "qpcancel",
+        ):
+            self.assertIn(callback, self.source)
 
 
 class MissingGenderCaptureTests(unittest.TestCase):

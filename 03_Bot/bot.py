@@ -256,6 +256,8 @@ COST_ITEM = 59
     TPLAN_CATEGORY, TPLAN_TESTS, TPLAN_MODE,
     TPLAN_QUICK_FINDINGS, TPLAN_QUICK_PROTOCOL, TPLAN_QUICK_TOTAL,
 ) = range(200, 206)
+TPLAN_QUICK_REVIEW = 206
+TPLAN_QUICK_EDIT = 207
 
 MACHINE_LIST = [
     "Hot Pack", "Cold Pack",
@@ -4209,7 +4211,12 @@ def _quick_category_keyboard() -> InlineKeyboardMarkup:
 
 
 def _parse_quick_protocol(text: str) -> dict[str, str]:
-    """Split one therapist-written message into the existing plan fields."""
+    """Split one short therapist message into Exercise/Electro/Manual fields.
+
+    Labelled input is preferred. For fast mobile entry, an unlabelled first line is
+    Exercise, a recognised electro modality is Electro, and remaining lines are
+    Manual. The review step lets the therapist correct every field before save.
+    """
     raw = str(text or "").strip()
     fields = {"Exercise_Plan": "", "Electrotherapy_Plan": "", "Manual_Therapy_Plan": ""}
     labels = {
@@ -4217,15 +4224,63 @@ def _parse_quick_protocol(text: str) -> dict[str, str]:
         "electro": "Electrotherapy_Plan", "electrotherapy": "Electrotherapy_Plan",
         "manual": "Manual_Therapy_Plan", "manualtherapy": "Manual_Therapy_Plan",
     }
+    unlabelled = []
     for part in re.split(r"[;\n]+", raw):
+        part = part.strip()
+        if not part:
+            continue
         key, sep, value = part.partition(":")
         normalized = re.sub(r"[^a-z\u0980-\u09ff]", "", key.casefold())
         target = labels.get(normalized)
         if sep and target and value.strip():
-            fields[target] = value.strip()
-    if raw and not any(fields.values()):
-        fields["Exercise_Plan"] = raw
+            previous = fields[target]
+            fields[target] = "\n".join(filter(None, (previous, value.strip())))
+        else:
+            unlabelled.append(part)
+
+    modalities = re.compile(
+        r"^(?:e?ms|nmes|tens|ift|ultrasound|us|swd|short\s*wave|"
+        r"shockwave|laser|traction|hot\s*pack|cold\s*pack|wax\s*bath)\b",
+        re.IGNORECASE,
+    )
+    for part in unlabelled:
+        if modalities.search(part):
+            target = "Electrotherapy_Plan"
+        elif not fields["Exercise_Plan"]:
+            target = "Exercise_Plan"
+        else:
+            target = "Manual_Therapy_Plan"
+        fields[target] = "\n".join(filter(None, (fields[target], part)))
     return fields
+
+
+def _quick_plan_review_text(context: ContextTypes.DEFAULT_TYPE) -> str:
+    tplan = context.user_data.get("tplan", {})
+    return (
+        "⚡ Quick Assessment + Plan — Save করার আগে দেখুন\n\n"
+        f"রোগী: {tplan.get('Patient_Name')} ({tplan.get('Patient_ID')})\n"
+        f"Finding: {context.user_data.get('tplan_quick_findings', '') or '-'}\n"
+        f"Sessions: {tplan.get('Total_Sessions') or '-'}\n"
+        f"Exercise: {tplan.get('Exercise_Plan') or '-'}\n"
+        f"Electro: {tplan.get('Electrotherapy_Plan') or '-'}\n"
+        f"Manual: {tplan.get('Manual_Therapy_Plan') or '-'}"
+    )
+
+
+def _quick_plan_review_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("✏️ Exercise", callback_data="qpedit_exercise"),
+            InlineKeyboardButton("✏️ Electro", callback_data="qpedit_electro"),
+        ],
+        [
+            InlineKeyboardButton("✏️ Manual", callback_data="qpedit_manual"),
+            InlineKeyboardButton("✏️ Finding", callback_data="qpedit_finding"),
+        ],
+        [InlineKeyboardButton("✏️ Session", callback_data="qpedit_sessions")],
+        [InlineKeyboardButton("✅ ঠিক আছে—Save", callback_data="qpsave")],
+        [InlineKeyboardButton("❌ বাতিল", callback_data="qpcancel")],
+    ])
 
 
 async def _assessment_advance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -4496,26 +4551,82 @@ async def tplan_quick_total(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("৭, ১৪, ২১, ২৮ চাপুন অথবা একটি সংখ্যা লিখুন।")
         return TPLAN_QUICK_TOTAL
     context.user_data["tplan"]["Total_Sessions"] = int(match.group())
-    tplan = context.user_data["tplan"]
     await update.message.reply_text(
-        "⚡ Quick Assessment + Plan\n\n"
-        f"রোগী: {tplan.get('Patient_Name')} ({tplan.get('Patient_ID')})\n"
-        f"Finding: {context.user_data.get('tplan_quick_findings', '')}\n"
-        f"Sessions: {tplan.get('Total_Sessions')}\n"
-        f"Exercise: {tplan.get('Exercise_Plan') or '-'}\n"
-        f"Electro: {tplan.get('Electrotherapy_Plan') or '-'}\n"
-        f"Manual: {tplan.get('Manual_Therapy_Plan') or '-'}",
-        reply_markup=ReplyKeyboardRemove(),
+        _quick_plan_review_text(context),
+        reply_markup=_quick_plan_review_keyboard(),
     )
-    return await tplan_quick_confirm(update, context)
+    return TPLAN_QUICK_REVIEW
+
+
+async def tplan_quick_review_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    if query.data == "qpcancel":
+        staff = context.user_data.get("staff", {})
+        await query.edit_message_text("❌ Quick Assessment + Plan বাতিল হয়েছে; কিছু save হয়নি।")
+        await query.message.reply_text("মেনু থেকে আবার শুরু করতে পারেন।", reply_markup=_menu_keyboard(staff))
+        return ConversationHandler.END
+    if query.data == "qpsave":
+        return await tplan_quick_confirm(update, context)
+
+    target = query.data.replace("qpedit_", "", 1)
+    prompts = {
+        "exercise": "Exercise ঠিক করে লিখুন। না থাকলে - দিন:",
+        "electro": "Electro ঠিক করে লিখুন। যেমন EMS/TENS/IFT; না থাকলে - দিন:",
+        "manual": "Manual therapy ঠিক করে লিখুন। না থাকলে - দিন:",
+        "finding": "Finding ঠিক করে এক লাইনে লিখুন:",
+        "sessions": "Session সংখ্যা দিন: 7 / 14 / 21 / 28",
+    }
+    if target not in prompts:
+        return TPLAN_QUICK_REVIEW
+    context.user_data["tplan_quick_edit_target"] = target
+    await query.message.reply_text(prompts[target], reply_markup=ReplyKeyboardRemove())
+    return TPLAN_QUICK_EDIT
+
+
+async def tplan_quick_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    value = update.message.text.strip()
+    target = context.user_data.pop("tplan_quick_edit_target", "")
+    tplan = context.user_data.get("tplan", {})
+    if target == "sessions":
+        match = re.search(r"\d+", value)
+        if not match or int(match.group()) <= 0:
+            context.user_data["tplan_quick_edit_target"] = target
+            await update.message.reply_text("সঠিক Session সংখ্যা দিন: 7 / 14 / 21 / 28")
+            return TPLAN_QUICK_EDIT
+        tplan["Total_Sessions"] = int(match.group())
+    elif target == "finding":
+        if not value or value == "-":
+            context.user_data["tplan_quick_edit_target"] = target
+            await update.message.reply_text("Finding খালি রাখা যাবে না। এক লাইনে লিখুন:")
+            return TPLAN_QUICK_EDIT
+        context.user_data["tplan_quick_findings"] = value
+        label = context.user_data.get("tplan_quick_category_label", "General")
+        tplan["Diagnosis"] = f"{label} | {value}"
+    else:
+        field = {
+            "exercise": "Exercise_Plan",
+            "electro": "Electrotherapy_Plan",
+            "manual": "Manual_Therapy_Plan",
+        }.get(target)
+        if not field:
+            return TPLAN_QUICK_REVIEW
+        tplan[field] = "" if value == "-" else value
+
+    await update.message.reply_text(
+        _quick_plan_review_text(context),
+        reply_markup=_quick_plan_review_keyboard(),
+    )
+    return TPLAN_QUICK_REVIEW
 
 
 async def tplan_quick_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    send = update.callback_query.message.reply_text if update.callback_query else update.message.reply_text
     staff = await _require_staff(update, context)
     cached = context.user_data.get("tplan", {})
     patient_id = str(cached.get("Patient_ID", "")).strip()
     if staff is None:
-        await update.message.reply_text(
+        await send(
             "❌ Staff profile পাওয়া যায়নি; কিছু save হয়নি।",
         )
         return ConversationHandler.END
@@ -4525,12 +4636,12 @@ async def tplan_quick_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
         roles.MENU_TREATMENT_PLAN,
     )
     if patient is None or patient.get("Department") == config.DEPARTMENT_DENTAL:
-        await update.message.reply_text("⛔ এই Physio record save করার অনুমতি নেই।")
+        await send("⛔ এই Physio record save করার অনুমতি নেই।")
         return ConversationHandler.END
     cached["Department"] = patient.get("Department", "")
     active = await async_runtime.run_sheets_read(sheets.get_active_plan_for_patient, patient_id)
     if active:
-        await update.message.reply_text(
+        await send(
             f"⚠️ Active Plan {active.get('Plan_ID')} আছে—duplicate plan তৈরি হয়নি। "
             "আগের plan complete/modify করে আবার চেষ্টা করুন।",
             reply_markup=_menu_keyboard(staff),
@@ -4545,7 +4656,7 @@ async def tplan_quick_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
     except Exception:
         logger.exception("quick assessment save failed")
-        await update.message.reply_text("❌ Assessment save হয়নি; Treatment Plan-ও লেখা হয়নি।")
+        await send("❌ Assessment save হয়নি; Treatment Plan-ও লেখা হয়নি।")
         return ConversationHandler.END
     try:
         plan_id = await async_runtime.run_sheets_write(
@@ -4554,12 +4665,12 @@ async def tplan_quick_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
     except Exception:
         logger.exception("quick treatment plan save failed")
-        await update.message.reply_text(
+        await send(
             f"⚠️ Assessment {assessment_id} save হয়েছে, কিন্তু Treatment Plan save হয়নি। "
             "আবার plan তৈরি করার আগে Owner-কে জানান।"
         )
         return ConversationHandler.END
-    await update.message.reply_text(
+    await send(
         f"✅ Quick Assessment + TP save হয়েছে\nAssessment: {assessment_id}\nPlan: {plan_id}",
         reply_markup=_menu_keyboard(staff),
     )
@@ -9144,6 +9255,12 @@ def main():
             TPLAN_QUICK_FINDINGS: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_quick_findings)],
             TPLAN_QUICK_PROTOCOL: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_quick_protocol)],
             TPLAN_QUICK_TOTAL: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_quick_total)],
+            TPLAN_QUICK_REVIEW: [
+                CallbackQueryHandler(tplan_quick_review_callback, pattern="^qp(?:edit_|save|cancel)"),
+            ],
+            TPLAN_QUICK_EDIT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_quick_edit_receive),
+            ],
         },
         fallbacks=[
             MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
