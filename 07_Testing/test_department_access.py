@@ -115,6 +115,28 @@ class DepartmentAccessTests(unittest.TestCase):
         self.assertTrue(authorize_record(person, record, AccessAction.CLINICAL_READ).allowed)
         self.assertFalse(authorize_record(person, record, AccessAction.CLINICAL_WRITE).allowed)
 
+    def test_temporary_dental_data_entry_allows_dental_clinical_write_only(self):
+        person = staff("Receptionist", "Dental")
+        person["Clinical_Write_Scope"] = "Dental_Temporary_Data_Entry"
+        self.assertTrue(
+            authorize_record(
+                person, {"Department": "Dental"}, AccessAction.CLINICAL_WRITE
+            ).allowed
+        )
+        decision = authorize_record(
+            person, {"Department": "Physio"}, AccessAction.CLINICAL_WRITE
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, "department_mismatch")
+
+    def test_receptionist_without_temporary_scope_stays_non_clinical(self):
+        person = staff("Receptionist", "Dental")
+        self.assertFalse(
+            authorize_record(
+                person, {"Department": "Dental"}, AccessAction.CLINICAL_WRITE
+            ).allowed
+        )
+
 
 class LiveAssignmentAuthorizationTests(unittest.TestCase):
     def test_owner_all_mapping_works_without_primary_department(self):

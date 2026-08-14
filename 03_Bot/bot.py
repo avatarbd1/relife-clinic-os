@@ -325,14 +325,44 @@ def _effective_role_strings(staff_or_role) -> list[str]:
     return [legacy_role] if legacy_role else []
 
 
+def _has_temporary_dental_data_entry(staff: dict) -> bool:
+    """Explicit, Dental-only migration switch; does not change the staff role."""
+    scope = str(staff.get("Clinical_Write_Scope", "")).strip().casefold()
+    if scope != "dental_temporary_data_entry":
+        return False
+    assignments = staff.get("_Department_Role_Assignments", ())
+    departments = {
+        getattr(getattr(assignment, "department", None), "value", "")
+        for assignment in assignments
+    }
+    if departments:
+        return departments == {config.DEPARTMENT_DENTAL}
+    if config.DEPARTMENT_ENFORCEMENT_ENABLED:
+        return False
+    return str(staff.get("Primary_Department", "")).strip() == config.DEPARTMENT_DENTAL
+
+
 def _staff_can_access_menu(staff: dict, menu_item: str) -> bool:
-    return roles.can_any_access(_effective_role_strings(staff), menu_item)
+    return (
+        roles.can_any_access(_effective_role_strings(staff), menu_item)
+        or (
+            _has_temporary_dental_data_entry(staff)
+            and menu_item in roles.DENTAL_TEMP_DATA_ENTRY_ITEMS
+        )
+    )
 
 
 def _menu_keyboard(staff_or_role) -> ReplyKeyboardMarkup:
     rows = roles.get_menu_rows_for_roles(
         _effective_role_strings(staff_or_role)
     )
+    if isinstance(staff_or_role, dict) and _has_temporary_dental_data_entry(staff_or_role):
+        seen = {item for row in rows for item in row}
+        for row in roles.DENTAL_TEMP_DATA_ENTRY_ROWS:
+            extra = [item for item in row if item not in seen]
+            if extra:
+                rows.append(extra)
+                seen.update(extra)
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
 
 

@@ -214,9 +214,14 @@ def _authorize_role_for_record(
     assistant_support_scope = (
         clinical_scope == "dental_assistant_support_no_independent_write"
     )
+    temporary_dental_data_entry = (
+        clinical_scope == "dental_temporary_data_entry"
+        and department is Department.DENTAL
+        and role in {Role.RECEPTIONIST, Role.DENTIST}
+    )
 
     if role is Role.RECEPTIONIST and clinical:
-        if not (
+        if not temporary_dental_data_entry and not (
             assistant_support_scope
             and department is Department.DENTAL
             and action is AccessAction.CLINICAL_READ
@@ -234,7 +239,7 @@ def _authorize_role_for_record(
     clinical_writer = role in {Role.THERAPIST, Role.DENTIST} or (
         role is Role.MANAGER and manager_therapist_scope
     )
-    if action is AccessAction.CLINICAL_WRITE and clinical_writer:
+    if action is AccessAction.CLINICAL_WRITE and clinical_writer and not temporary_dental_data_entry:
         if not assigned_or_cross_cover:
             return AccessDecision(
                 False, DenialReason.ASSIGNMENT_REQUIRED.value, department
@@ -324,4 +329,3 @@ def authorize_record(
             False, DenialReason.ROLE_FORBIDDEN.value, department
         ),
     )
-
