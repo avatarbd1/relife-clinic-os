@@ -54,14 +54,13 @@ class OwnerFinanceTopLevelTests(unittest.TestCase):
 
 
 class DashboardGroupTests(unittest.TestCase):
-    def test_dashboard_group_has_the_three_dashboard_views(self):
+    def test_dashboard_group_has_separate_pt_dt_views_only(self):
         items = roles.ROLE_FINANCE_DASHBOARD_ITEMS[roles.Role.OWNER]
         self.assertEqual(
             items,
             [
                 roles.MENU_PHYSIO_FINANCE_DASHBOARD,
                 roles.MENU_DENTAL_FINANCE_DASHBOARD,
-                roles.MENU_COMBINED_BUSINESS_SUMMARY,
             ],
         )
 

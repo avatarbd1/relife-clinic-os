@@ -8116,7 +8116,11 @@ def _owner_finance_view_text(data: dict, view: str) -> str:
     closing = summary["Closing"]
     fixed_salary = data["Salary_Commitment"][view]
     salary_paid = summary["Month_Salary"]
-    salary_due = max(fixed_salary - salary_paid, 0)
+    fixed_overhead = summary.get("Month_Fixed_Overhead_Commitment", 0)
+    fixed_overhead_paid = summary.get("Month_Fixed_Overhead_Actual", 0)
+    total_fixed_cost = fixed_salary + fixed_overhead
+    total_fixed_paid = salary_paid + fixed_overhead_paid
+    fixed_cost_due = max(total_fixed_cost - total_fixed_paid, 0)
     total_cash = sum(closing.values())
     return (
         f"{title} — {date_str}\n\n"
@@ -8125,10 +8129,10 @@ def _owner_finance_view_text(data: dict, view: str) -> str:
         f"Home Treasury: ৳{closing['Home Treasury']:.0f}\n"
         f"Digital/Bank: ৳{closing['Digital/Bank']:.0f}\n"
         f"মোট হাতে আছে: ৳{total_cash:.0f}\n\n"
-        "💼 বেতন\n"
-        f"নির্ধারিত: ৳{fixed_salary:.0f}\n"
-        f"পরিশোধিত/অগ্রিম: ৳{salary_paid:.0f}\n"
-        f"বাকি: ৳{salary_due:.0f}"
+        "🏢 মাসিক Fixed Cost\n"
+        f"মোট Fixed Cost: ৳{total_fixed_cost:.0f}\n"
+        f"পরিশোধিত/অগ্রিম: ৳{total_fixed_paid:.0f}\n"
+        f"Fixed Cost বাকি: ৳{fixed_cost_due:.0f}"
     )
 
 

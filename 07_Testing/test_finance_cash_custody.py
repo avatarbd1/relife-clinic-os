@@ -705,14 +705,11 @@ class CashHandoverRoleTests(unittest.TestCase):
             with self.subTest(handler=handler):
                 self.assertIn(handler, source)
 
-    def test_owner_alone_receives_three_financial_dashboard_views(self):
-        # Owner's চলতি হিসাব top level is now 4 grouped tabs; the three
-        # dashboard views live one level down, under the Dashboard group.
+    def test_owner_alone_receives_separate_pt_dt_dashboard_views(self):
         dashboard_items = roles.ROLE_FINANCE_DASHBOARD_ITEMS[roles.Role.OWNER]
         for item in (
             roles.MENU_PHYSIO_FINANCE_DASHBOARD,
             roles.MENU_DENTAL_FINANCE_DASHBOARD,
-            roles.MENU_COMBINED_BUSINESS_SUMMARY,
         ):
             self.assertIn(item, dashboard_items)
             self.assertTrue(roles.can_access("Owner", item))
@@ -720,6 +717,7 @@ class CashHandoverRoleTests(unittest.TestCase):
             self.assertNotIn(item, roles.ROLE_FINANCE_ITEMS[roles.Role.MANAGER])
             self.assertFalse(roles.can_access("Receptionist", item))
             self.assertFalse(roles.can_access("Manager", item))
+        self.assertNotIn(roles.MENU_COMBINED_BUSINESS_SUMMARY, dashboard_items)
 
 
 class OwnerFinancialDashboardTests(unittest.TestCase):
@@ -800,9 +798,11 @@ class OwnerFinancialDashboardTests(unittest.TestCase):
         self.assertEqual(summary["Month_Variable_Clinic_Expense"], 2500)
         self.assertEqual(summary["Month_Fixed_Overhead_Liability"], 13000)
 
-    def test_owner_dashboard_text_only_shows_cash_and_salary(self):
+    def test_owner_dashboard_shows_cash_and_fixed_cost_balance(self):
         summary = {
             "Month_Salary": 8650,
+            "Month_Fixed_Overhead_Commitment": 13000,
+            "Month_Fixed_Overhead_Actual": 0,
             "Closing": {
                 "Reception": 0,
                 "Home Treasury": 10390,
@@ -819,11 +819,30 @@ class OwnerFinancialDashboardTests(unittest.TestCase):
         text = bot._owner_finance_view_text(data, "Combined")
         self.assertIn("বর্তমান Cash Position", text)
         self.assertIn("মোট হাতে আছে: ৳10590", text)
-        self.assertIn("নির্ধারিত: ৳64300", text)
+        self.assertIn("মোট Fixed Cost: ৳77300", text)
         self.assertIn("পরিশোধিত/অগ্রিম: ৳8650", text)
-        self.assertIn("বাকি: ৳55650", text)
+        self.assertIn("Fixed Cost বাকি: ৳68650", text)
         self.assertNotIn("collection", text)
         self.assertNotIn("Household Withdrawal", text)
+
+    def test_dental_dashboard_uses_same_fixed_cost_payment_logic(self):
+        summary = {
+            "Month_Salary": 2000,
+            "Month_Fixed_Overhead_Commitment": 19000,
+            "Month_Fixed_Overhead_Actual": 10000,
+            "Closing": {"Reception": 0, "Home Treasury": 0, "Digital/Bank": 0},
+        }
+        data = {
+            "Date": "2026-08-14",
+            "Physio": summary,
+            "Dental": summary,
+            "Combined": summary,
+            "Salary_Commitment": {"Physio": 64300, "Dental": 23000, "Combined": 87300},
+        }
+        text = bot._owner_finance_view_text(data, "Dental")
+        self.assertIn("মোট Fixed Cost: ৳42000", text)
+        self.assertIn("পরিশোধিত/অগ্রিম: ৳12000", text)
+        self.assertIn("Fixed Cost বাকি: ৳30000", text)
 
     def test_department_views_preserve_scope_and_opening_balances(self):
         payment_ws, expense_ws, movement_ws, salary_ws = object(), object(), object(), object()
