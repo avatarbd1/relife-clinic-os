@@ -30,6 +30,10 @@ NEW_COLUMNS = {
     ],
     config.SHEET_APPOINTMENTS: [
         ("Received_By", "কে রোগী receive করেছে"),
+        ("Gender", "booking-এর সময় patient gender snapshot"),
+        ("Room", "automatic treatment-room reservation"),
+        ("Bed", "automatic bed reservation"),
+        ("Station", "Treatment অথবা Traction"),
     ],
 }
 

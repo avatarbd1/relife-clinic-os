@@ -15,6 +15,7 @@ import time
 import threading
 
 import config
+import physio_flow
 import department_access
 import sheet_scope
 from department_access import AccessAction, authorize_record
@@ -782,6 +783,26 @@ def _next_appointment_id(ws) -> str:
 def add_appointment(data: dict, created_by: str) -> str:
     ws = _worksheet(config.SHEET_APPOINTMENTS)
     appointment_id = _next_appointment_id(ws)
+    extra_values = None
+    if str(data.get("Department", "")).strip() == config.DEPARTMENT_PHYSIO:
+        patient = get_patient_by_id(str(data.get("Patient_ID", "")).strip()) or {}
+        active_plan = get_active_plan_for_patient(str(data.get("Patient_ID", "")).strip()) or {}
+        plan_text = " ".join(str(active_plan.get(key, "") or "") for key in (
+            "Exercise_Plan", "Electrotherapy_Plan", "Manual_Therapy_Plan"
+        ))
+        gender = physio_flow.normalize_gender(patient.get("Gender", ""))
+        assignment = (
+            physio_flow.allocate_resource(
+                get_all_appointments(), data.get("Date", ""), data.get("Time", ""),
+                gender, needs_traction="traction" in plan_text.casefold(),
+            )
+            if gender else
+            {"Gender": "", "Room": "Waiting", "Bed": "", "Station": "Waiting"}
+        )
+        data = dict(data)
+        data.update(assignment)
+        data["Remarks"] = physio_flow.with_flow_tag(data.get("Remarks", ""), assignment)
+        extra_values = assignment
     row = [
         appointment_id,
         data.get("Date", ""),
@@ -796,8 +817,13 @@ def add_appointment(data: dict, created_by: str) -> str:
     _append_unified_row(
         ws, row, "appointment", appointment_id,
         provider_id=created_by,
+        extra_values=extra_values,
     )
     return appointment_id
+
+
+def get_appointment_flow_fields(appointment: dict) -> dict[str, str]:
+    return physio_flow.flow_fields(appointment)
 
 
 def get_all_appointments() -> list[dict]:

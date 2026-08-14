@@ -54,6 +54,7 @@ import department_access
 from attendance_location import validate_location
 from observability import capture_exception, init_sentry
 import roles
+import physio_flow
 import calendar_helper
 import staff_ai_query
 import case_study_ai
@@ -250,7 +251,10 @@ COST_ITEM = 59
 (PAYDEL_LIST, PAYDEL_CONFIRM) = range(300, 302)  # আজকের এন্ট্রি মুছার ফ্লো
 (INV_UPDATE,) = range(310, 311)  # ইনভেন্টরি স্টক আপডেট ফ্লো
 
-TPLAN_CATEGORY, TPLAN_TESTS = range(200, 202)
+(
+    TPLAN_CATEGORY, TPLAN_TESTS, TPLAN_MODE,
+    TPLAN_QUICK_FINDINGS, TPLAN_QUICK_PROTOCOL,
+) = range(200, 205)
 
 MACHINE_LIST = [
     "Hot Pack", "Cold Pack",
@@ -525,6 +529,7 @@ def _therapist_today_queue(staff: dict, show_all: bool = False) -> list[dict]:
         plan = sheets.get_active_plan_for_patient(patient_id) or sheets.get_last_plan_for_patient(patient_id)
         last_note = notes[-1] if notes else {}
         status = _normalize_appt_status(appt.get("Status", "Scheduled"))
+        resource = sheets.get_appointment_flow_fields(appt)
         items.append({
             "appointment_id": str(appt.get("Appointment_ID", "")).strip(),
             "patient_id": patient_id,
@@ -538,6 +543,7 @@ def _therapist_today_queue(staff: dict, show_all: bool = False) -> list[dict]:
             "status": status,
             "time": str(appt.get("Time", "")).strip(),
             "reassessment_due": _reassessment_due(plan, notes),
+            "location": " • ".join(x for x in (resource.get("Room"), resource.get("Bed")) if x) or "Auto allocation নেই",
         })
     return items
 
@@ -574,7 +580,7 @@ def _pt_dashboard_text(staff: dict, queue: list[dict] | None = None) -> str:
             f"{idx}. {item['name']}",
             f"{item['diagnosis']}",
             f"Visit {item['visit_no']} | Pain {item['pain']} | Progress {item['progress']}%",
-            f"{item['time']} | {item['status']}{due}",
+            f"{item['time']} | {item['location']} | {item['status']}{due}",
             "",
         ])
 
@@ -2346,6 +2352,7 @@ async def apt_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         dates = a.get("Dates") or ([a["Date"]] if a.get("Date") else [])
         times = a.get("Times") or ([a["Time"]] if a.get("Time") else [])
         ids = []
+        reservations = []
         for d in dates:
             for t in times:
                 row = dict(a)
@@ -2353,16 +2360,41 @@ async def apt_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 row["Time"] = t
                 row.pop("Dates", None)
                 row.pop("Times", None)
-                appointment_id = await async_runtime.run_sheets_write(
-                    sheets.add_appointment,
-                    row,
-                    created_by=staff.get("Full_Name", "Unknown"),
-                )
+                try:
+                    appointment_id = await async_runtime.run_sheets_write(
+                        sheets.add_appointment,
+                        row,
+                        created_by=staff.get("Full_Name", "Unknown"),
+                    )
+                except physio_flow.PhysioCapacityError as error:
+                    partial = (
+                        f"\n⚠️ এর আগে এই request-এ save হয়েছে: {', '.join(ids)}"
+                        if ids else ""
+                    )
+                    await update.message.reply_text(
+                        f"⚠️ {d} {t}: {error}{partial}\nঅন্য সময় বেছে নিয়ে আবার বুক করুন।",
+                        reply_markup=_menu_keyboard(staff),
+                    )
+                    context.user_data.pop("new_appointment", None)
+                    context.user_data.pop("apt_dates", None)
+                    context.user_data.pop("apt_times", None)
+                    return ConversationHandler.END
                 ids.append(appointment_id)
+                saved = await async_runtime.run_sheets_read(
+                    sheets.get_appointment_by_id, appointment_id
+                ) or {}
+                resource = sheets.get_appointment_flow_fields(saved)
+                location = " • ".join(
+                    x for x in (resource.get("Room"), resource.get("Bed")) if x
+                )
+                if location:
+                    reservations.append(f"{d} {t}: {location}")
         if len(ids) > 1:
             msg = f"✅ {len(ids)}টা অ্যাপয়েন্টমেন্ট বুক হয়েছে!\nAppointment IDs: {', '.join(ids)}"
         else:
             msg = f"✅ অ্যাপয়েন্টমেন্ট বুক হয়েছে! Appointment ID: {ids[0] if ids else '-'}"
+        if reservations:
+            msg += "\n\n📍 " + "\n📍 ".join(reservations)
         await update.message.reply_text(msg, reply_markup=_menu_keyboard(staff))
     else:
         await update.message.reply_text(
@@ -2739,9 +2771,12 @@ async def today_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.effective_message.reply_text("আজ কোনো পেন্ডিং অ্যাপয়েন্টমেন্ট নেই।")
         return
     for a in appts:
+        resource = sheets.get_appointment_flow_fields(a)
+        location = " • ".join(x for x in (resource.get("Room"), resource.get("Bed")) if x)
         text = (
             f"🕐 {a.get('Time')} — {a.get('Patient_Name')} ({a.get('Patient_ID')})\n"
             f"Department: {a.get('Department')} | থেরাপিস্ট: {a.get('Therapist')}"
+            + (f"\n📍 {location}" if location else "")
         )
         buttons = InlineKeyboardMarkup([[
             InlineKeyboardButton(
@@ -4084,6 +4119,50 @@ def _category_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
+def _tplan_mode_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("⚡ Quick 5", callback_data="tpmode_quick_5"),
+            InlineKeyboardButton("⚡ Quick 7", callback_data="tpmode_quick_7"),
+        ],
+        [
+            InlineKeyboardButton("⚡ Quick 10", callback_data="tpmode_quick_10"),
+            InlineKeyboardButton("⚡ Quick 15", callback_data="tpmode_quick_15"),
+        ],
+        [InlineKeyboardButton("🧾 Detailed Assessment + TP", callback_data="tpmode_detailed")],
+    ])
+
+
+def _quick_category_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(
+            assessment_defs.ASSESSMENT_CATEGORIES[key]["label"],
+            callback_data=f"qpcat_{key}",
+        )]
+        for key in assessment_defs.CATEGORY_ORDER
+    ])
+
+
+def _parse_quick_protocol(text: str) -> dict[str, str]:
+    """Split one therapist-written message into the existing plan fields."""
+    raw = str(text or "").strip()
+    fields = {"Exercise_Plan": "", "Electrotherapy_Plan": "", "Manual_Therapy_Plan": ""}
+    labels = {
+        "exercise": "Exercise_Plan", "ex": "Exercise_Plan", "ব্যায়াম": "Exercise_Plan",
+        "electro": "Electrotherapy_Plan", "electrotherapy": "Electrotherapy_Plan",
+        "manual": "Manual_Therapy_Plan", "manualtherapy": "Manual_Therapy_Plan",
+    }
+    for part in re.split(r"[;\n]+", raw):
+        key, sep, value = part.partition(":")
+        normalized = re.sub(r"[^a-z\u0980-\u09ff]", "", key.casefold())
+        target = labels.get(normalized)
+        if sep and target and value.strip():
+            fields[target] = value.strip()
+    if raw and not any(fields.values()):
+        fields["Exercise_Plan"] = raw
+    return fields
+
+
 async def _assessment_advance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """assessment queue থেকে পরের টেস্ট পাঠায়; queue শেষ হলে সেভ করে পুরনো Diagnosis ধাপে চলে যায়।"""
     send = update.message.reply_text if update.message else update.callback_query.message.reply_text
@@ -4269,10 +4348,138 @@ async def tplan_select_callback(update: Update, context: ContextTypes.DEFAULT_TY
         f"{warn}✅ রোগী বাছাই হলো: {patient.get('Full_Name')} ({patient_id})"
     )
     await query.message.reply_text(
-        "Chief Complaint অনুযায়ী ক্যাটাগরি বাছাই করো — এর ভিত্তিতে প্রাথমিক মূল্যায়ন (assessment) নেওয়া হবে:",
-        reply_markup=_category_keyboard(),
+        "কোন পদ্ধতিতে record নেবে?", reply_markup=_tplan_mode_keyboard()
     )
-    return TPLAN_CATEGORY
+    return TPLAN_MODE
+
+
+async def tplan_mode_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    if query.data == "tpmode_detailed":
+        await query.edit_message_text(
+            "Chief Complaint অনুযায়ী category বাছাই করো — বিস্তারিত assessment শুরু হবে।",
+            reply_markup=_category_keyboard(),
+        )
+        return TPLAN_CATEGORY
+    try:
+        context.user_data["tplan"]["Total_Sessions"] = int(query.data.rsplit("_", 1)[1])
+    except (KeyError, ValueError):
+        await query.answer("Quick plan-এর session button আবার চাপুন।", show_alert=True)
+        return TPLAN_MODE
+    await query.edit_message_text(
+        "⚡ Quick Assessment + TP\n\nসমস্যার ধরন বাছাই করো:",
+        reply_markup=_quick_category_keyboard(),
+    )
+    return TPLAN_MODE
+
+
+async def tplan_quick_category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    key = query.data.replace("qpcat_", "", 1)
+    category = assessment_defs.ASSESSMENT_CATEGORIES.get(key)
+    if not category:
+        return TPLAN_MODE
+    context.user_data["tplan_quick_category"] = key
+    context.user_data["tplan_quick_category_label"] = category["label"]
+    await query.edit_message_text(
+        "এক লাইনে শুধু গুরুত্বপূর্ণ finding লেখো।\n\n"
+        "উদাহরণ: Pain 6/10, SLR Right 40°, Neuro deficit নেই, Red flag নেই"
+    )
+    return TPLAN_QUICK_FINDINGS
+
+
+async def tplan_quick_findings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    findings = update.message.text.strip()
+    if not findings:
+        await update.message.reply_text("Finding এক লাইনে লেখো:")
+        return TPLAN_QUICK_FINDINGS
+    context.user_data["tplan_quick_findings"] = findings
+    await update.message.reply_text(
+        "এক message-এ treatment protocol লেখো:\n\n"
+        "Exercise: ...\nElectro: ...\nManual: ...\n\nযেটা লাগবে না সেটা বাদ দাও।",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    return TPLAN_QUICK_PROTOCOL
+
+
+async def tplan_quick_protocol(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    fields = _parse_quick_protocol(update.message.text)
+    if not any(fields.values()):
+        await update.message.reply_text("কমপক্ষে একটি treatment protocol লেখো।")
+        return TPLAN_QUICK_PROTOCOL
+    tplan = context.user_data["tplan"]
+    tplan.update(fields)
+    label = context.user_data.get("tplan_quick_category_label", "General")
+    findings = context.user_data.get("tplan_quick_findings", "")
+    tplan["Diagnosis"] = f"{label} | {findings}"
+    await update.message.reply_text(
+        "⚡ Quick Assessment + TP\n\n"
+        f"রোগী: {tplan.get('Patient_Name')} ({tplan.get('Patient_ID')})\n"
+        f"Finding: {findings}\nSessions: {tplan.get('Total_Sessions')}\n"
+        f"Exercise: {tplan.get('Exercise_Plan') or '-'}\n"
+        f"Electro: {tplan.get('Electrotherapy_Plan') or '-'}\n"
+        f"Manual: {tplan.get('Manual_Therapy_Plan') or '-'}",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    return await tplan_quick_confirm(update, context)
+
+
+async def tplan_quick_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = await _require_staff(update, context)
+    cached = context.user_data.get("tplan", {})
+    patient_id = str(cached.get("Patient_ID", "")).strip()
+    if staff is None:
+        await update.message.reply_text(
+            "❌ Staff profile পাওয়া যায়নি; কিছু save হয়নি।",
+        )
+        return ConversationHandler.END
+    staff, patient = await _authorized_patient_action(
+        update, context, patient_id,
+        department_access.AccessAction.CLINICAL_WRITE,
+        roles.MENU_TREATMENT_PLAN,
+    )
+    if patient is None or patient.get("Department") == config.DEPARTMENT_DENTAL:
+        await update.message.reply_text("⛔ এই Physio record save করার অনুমতি নেই।")
+        return ConversationHandler.END
+    cached["Department"] = patient.get("Department", "")
+    active = await async_runtime.run_sheets_read(sheets.get_active_plan_for_patient, patient_id)
+    if active:
+        await update.message.reply_text(
+            f"⚠️ Active Plan {active.get('Plan_ID')} আছে—duplicate plan তৈরি হয়নি। "
+            "আগের plan complete/modify করে আবার চেষ্টা করুন।",
+            reply_markup=_menu_keyboard(staff),
+        )
+        return ConversationHandler.END
+    try:
+        assessment_id = await async_runtime.run_sheets_write(
+            sheets.add_assessment, patient_id,
+            context.user_data.get("tplan_quick_category", "general"),
+            {"Mode": "Quick", "Findings": context.user_data.get("tplan_quick_findings", "")},
+            created_by=staff.get("Full_Name", "Unknown"),
+        )
+    except Exception:
+        logger.exception("quick assessment save failed")
+        await update.message.reply_text("❌ Assessment save হয়নি; Treatment Plan-ও লেখা হয়নি।")
+        return ConversationHandler.END
+    try:
+        plan_id = await async_runtime.run_sheets_write(
+            sheets.add_treatment_plan, cached,
+            created_by=staff.get("Full_Name", "Unknown"),
+        )
+    except Exception:
+        logger.exception("quick treatment plan save failed")
+        await update.message.reply_text(
+            f"⚠️ Assessment {assessment_id} save হয়েছে, কিন্তু Treatment Plan save হয়নি। "
+            "আবার plan তৈরি করার আগে Owner-কে জানান।"
+        )
+        return ConversationHandler.END
+    await update.message.reply_text(
+        f"✅ Quick Assessment + TP save হয়েছে\nAssessment: {assessment_id}\nPlan: {plan_id}",
+        reply_markup=_menu_keyboard(staff),
+    )
+    return ConversationHandler.END
 
 
 async def tplan_diagnosis(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4453,6 +4660,11 @@ async def tplan_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.pop("tplan", None)
     context.user_data.pop("tplan_prev", None)
     context.user_data.pop("tplan_search_results", None)
+    for key in (
+        "tplan_quick_category", "tplan_quick_category_label",
+        "tplan_quick_findings",
+    ):
+        context.user_data.pop(key, None)
     await update.effective_message.reply_text(
         "ট্রিটমেন্ট প্ল্যান বাতিল করা হয়েছে।",
         reply_markup=_menu_keyboard(staff),
@@ -8803,6 +9015,10 @@ def main():
                 CallbackQueryHandler(tplan_select_callback, pattern="^tplansel_"),
                 CallbackQueryHandler(_tplan_search_cancel, pattern="^tplansearchback$"),
             ],
+            TPLAN_MODE: [
+                CallbackQueryHandler(tplan_mode_callback, pattern="^tpmode_"),
+                CallbackQueryHandler(tplan_quick_category_callback, pattern="^qpcat_"),
+            ],
             TPLAN_CATEGORY: [
                 CallbackQueryHandler(tplan_category_callback, pattern="^tpcat_"),
             ],
@@ -8820,6 +9036,8 @@ def main():
             TPLAN_ELECTRO: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_electro)],
             TPLAN_MANUAL: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_manual)],
             TPLAN_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_confirm)],
+            TPLAN_QUICK_FINDINGS: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_quick_findings)],
+            TPLAN_QUICK_PROTOCOL: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_quick_protocol)],
         },
         fallbacks=[
             MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),
