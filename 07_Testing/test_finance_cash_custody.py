@@ -386,10 +386,15 @@ class ExpenseApprovalWorkflowTests(unittest.TestCase):
         )
         records = {
             payment_ws: [
+                {"Date": "2026-07-31", "Amount": 200,
+                 "Payment_Method": "Cash"},
                 {"Date": "2026-08-13", "Amount": 1000,
                  "Payment_Method": "Cash"},
             ],
             expense_ws: [
+                {"Date": "2026-07-31", "Amount": 400,
+                 "Type": "Clinic Expense", "Status": "Paid",
+                 "Paid_From": "Reception"},
                 {"Date": "2026-08-13", "Amount": 800,
                  "Type": "Clinic Expense", "Status": "Paid",
                  "Paid_From": "Reception"},
@@ -407,6 +412,42 @@ class ExpenseApprovalWorkflowTests(unittest.TestCase):
 
         self.assertEqual(summary["Reception_Opening"], 200)
         self.assertEqual(summary["Reception_Balance"], 0)
+        self.assertEqual(summary["Reception_Closing"], 200)
+
+    def test_live_balance_uses_current_month_not_all_time_history(self):
+        payment_ws, expense_ws, movement_ws, salary_ws = (
+            object(), object(), object(), object()
+        )
+        records = {
+            payment_ws: [
+                {"Date": "2026-07-31", "Amount": 200,
+                 "Payment_Method": "Cash"},
+                {"Date": "2026-08-13", "Amount": 1000,
+                 "Payment_Method": "Cash"},
+            ],
+            expense_ws: [
+                {"Date": "2026-07-31", "Amount": 400,
+                 "Type": "Clinic Expense", "Status": "Paid",
+                 "Paid_From": "Reception"},
+                {"Date": "2026-08-13", "Amount": 800,
+                 "Type": "Clinic Expense", "Status": "Paid",
+                 "Paid_From": "Reception"},
+            ],
+            movement_ws: [],
+            salary_ws: [],
+        }
+        with patch.object(
+            sheets, "_worksheet",
+            side_effect=[payment_ws, expense_ws, movement_ws, salary_ws],
+        ), patch.object(
+            sheets, "safe_get_all_records", side_effect=lambda ws: records[ws]
+        ):
+            summary = sheets.get_cash_custody_summary(
+                sheets._RECEPTION_BALANCE_EPOCH, "2026-08-14"
+            )
+
+        self.assertEqual(summary["Reception_Balance"], 200)
+        self.assertEqual(summary["Reception_Opening"], 0)
         self.assertEqual(summary["Reception_Closing"], 200)
 
     def test_reconciliation_text_shows_opening_and_closing(self):

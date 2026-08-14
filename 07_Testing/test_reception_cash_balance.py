@@ -41,23 +41,23 @@ def _fake_records_by_sheet(rows_by_sheet):
 
 
 class ReceptionCashBalanceTests(unittest.TestCase):
-    def test_balance_spans_full_history_not_just_today(self):
+    def test_balance_uses_current_month_not_old_closed_months(self):
         rows = {
             config.SHEET_PAYMENTS: [
                 {
-                    "Date": "2026-01-01", "Payment_Method": "Cash",
+                    "Date": "2026-08-01", "Payment_Method": "Cash",
                     "Amount": 1000, "Department": config.DEPARTMENT_PHYSIO,
                 },
             ],
             config.SHEET_EXPENSES: [
                 {
-                    "Paid_At": "2026-01-02", "Paid_From": config.CASH_CUSTODIAN_RECEPTION,
+                    "Paid_At": "2026-08-02", "Paid_From": config.CASH_CUSTODIAN_RECEPTION,
                     "Amount": 300, "Status": "Paid", "Department": config.DEPARTMENT_PHYSIO,
                 },
             ],
             config.SHEET_CASH_MOVEMENT: [
                 {
-                    "Date": "2026-01-03", "Status": "Accepted",
+                    "Date": "2026-08-03", "Status": "Accepted",
                     "From_Custodian": config.CASH_CUSTODIAN_RECEPTION,
                     "To_Custodian": config.CASH_CUSTODIAN_HOME_TREASURY,
                     "Amount": 200, "Department": config.DEPARTMENT_PHYSIO,
@@ -80,11 +80,11 @@ class ReceptionCashBalanceTests(unittest.TestCase):
         rows = {
             config.SHEET_PAYMENTS: [
                 {
-                    "Date": "2026-01-01", "Payment_Method": "Cash",
+                    "Date": "2026-08-01", "Payment_Method": "Cash",
                     "Amount": 500, "Department": config.DEPARTMENT_PHYSIO,
                 },
                 {
-                    "Date": "2026-01-01", "Payment_Method": "Cash",
+                    "Date": "2026-08-01", "Payment_Method": "Cash",
                     "Amount": 900, "Department": config.DEPARTMENT_DENTAL,
                 },
             ],

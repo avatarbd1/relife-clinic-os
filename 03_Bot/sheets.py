@@ -2748,6 +2748,7 @@ def get_expenses_for_date(
     end_date = end_date or start_date
     if end_date < start_date:
         raise ValueError("end_date must be on or after start_date")
+
     ws = _worksheet(config.SHEET_EXPENSES)
     rows = [
         _normalized_expense(row)
@@ -2805,6 +2806,14 @@ def get_cash_custody_summary(
     if end_date < start_date:
         raise ValueError("end_date must be on or after start_date")
 
+    # Business cash is closed month-by-month. The Live shortcut keeps its
+    # sentinel for UI routing, but its ledger starts on this month's first day.
+    ledger_start_date = (
+        f"{end_date[:7]}-01"
+        if start_date == _RECEPTION_BALANCE_EPOCH
+        else start_date
+    )
+
     raw_payments = safe_get_all_records(_worksheet(config.SHEET_PAYMENTS))
     raw_expenses = safe_get_all_records(_worksheet(config.SHEET_EXPENSES))
     raw_movements = safe_get_all_records(_worksheet(config.SHEET_CASH_MOVEMENT))
@@ -2820,18 +2829,18 @@ def get_cash_custody_summary(
 
     cash_collected = _sum_where(
         payment_rows,
-        lambda row: _in_range(row.get("Date"), start_date, end_date)
+        lambda row: _in_range(row.get("Date"), ledger_start_date, end_date)
         and str(row.get("Payment_Method", "")).strip().lower() == "cash",
     )
 
     paid_expenses = [
         row for row in expense_rows
-        if _in_range(_cash_effective_date(row), start_date, end_date)
+        if _in_range(_cash_effective_date(row), ledger_start_date, end_date)
         and _expense_is_paid(row)
     ]
     paid_salaries = [
         row for row in salary_rows
-        if _in_range(_cash_effective_date(row), start_date, end_date)
+        if _in_range(_cash_effective_date(row), ledger_start_date, end_date)
         and str(row.get("Status", "")).strip() in ("", "Paid")
     ]
 
@@ -2861,7 +2870,7 @@ def get_cash_custody_summary(
 
     in_range_movements = [
         row for row in movement_rows
-        if _in_range(row.get("Date"), start_date, end_date)
+        if _in_range(row.get("Date"), ledger_start_date, end_date)
     ]
 
     def _moved(rows, side, custodian):
@@ -2891,9 +2900,11 @@ def get_cash_custody_summary(
     # Opening cash is every recorded cash effect strictly before the selected
     # range.  Keeping this separate from the period movement makes both the
     # reconciliation and the carry-forward explicit.
+    month_start = f"{ledger_start_date[:7]}-01"
+
     def _before(value):
         text = str(value or "").strip()[:10]
-        return bool(text) and text < start_date
+        return bool(text) and month_start <= text < ledger_start_date
 
     prior_cash_collected = _sum_where(
         payment_rows,
@@ -2949,25 +2960,25 @@ def get_cash_custody_summary(
     unclassified_expense = _sum_where(
         raw_expenses,
         lambda row: _is_unclassified(row)
-        and _in_range(_cash_effective_date(row), start_date, end_date)
+        and _in_range(_cash_effective_date(row), ledger_start_date, end_date)
         and _expense_is_paid(row),
     )
     unclassified_salary = _sum_where(
         raw_salaries,
         lambda row: _is_unclassified(row)
-        and _in_range(_cash_effective_date(row), start_date, end_date)
+        and _in_range(_cash_effective_date(row), ledger_start_date, end_date)
         and str(row.get("Status", "")).strip() in ("", "Paid"),
     )
     unclassified_payment = _sum_where(
         raw_payments,
         lambda row: _is_unclassified(row)
-        and _in_range(row.get("Date"), start_date, end_date)
+        and _in_range(row.get("Date"), ledger_start_date, end_date)
         and str(row.get("Payment_Method", "")).strip().lower() == "cash",
     )
     unclassified_movement = sum(
         _movement_amount(row) for row in raw_movements
         if _is_unclassified(row)
-        and _in_range(row.get("Date"), start_date, end_date)
+        and _in_range(row.get("Date"), ledger_start_date, end_date)
         and str(row.get("Status", "")).strip() == "Accepted"
     )
 
@@ -3011,11 +3022,10 @@ _RECEPTION_BALANCE_EPOCH = "2000-01-01"  # রেকর্ডের শুরু
 
 
 def get_reception_cash_balance(department: str) -> float:
-    """একটি বিভাগের Reception-এ এখন হাতে কত ক্যাশ আছে (all-time cumulative)।
+    """একটি বিভাগের Reception-এ চলতি মাসে এখন হাতে কত ক্যাশ আছে।
 
-    get_cash_custody_summary()-এর টেস্ট-করা হিসাবই পুনরায় ব্যবহার করে —
-    রেকর্ডের শুরু থেকে আজ পর্যন্ত রেঞ্জ দিয়ে ডাকলে period net movement-ই
-    আসলে all-time running balance হয়ে যায় (opening cash = 0 ধরে)।
+    পুরোনো closed month-এর mismatch carry করা হয় না; চলতি মাসের cash
+    collection থেকে Reception expense ও accepted handover বাদ যায়।
     """
     today = bd_now().strftime("%Y-%m-%d")
     summary = get_cash_custody_summary(
