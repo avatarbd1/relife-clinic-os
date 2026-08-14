@@ -245,6 +245,7 @@ SALARY_PAID_FROM = 58  # বেতন কোন ভান্ডার থেক�
 (COST_CATEGORY, COST_AMOUNT, COST_NOTE, COST_CONFIRM) = range(49, 53)  # Daily Cost Tracker
 (CASH_AMOUNT, CASH_NOTE, CASH_CONFIRM) = range(53, 56)  # Cash handover workflow
 (COST_DEPARTMENT, CASH_DEPARTMENT) = range(56, 58)
+COST_ITEM = 59
 (PAYDEL_LIST, PAYDEL_CONFIRM) = range(300, 302)  # আজকের এন্ট্রি মুছার ফ্লো
 (INV_UPDATE,) = range(310, 311)  # ইনভেন্টরি স্টক আপডেট ফ্লো
 
@@ -7014,14 +7015,29 @@ async def _expense_form_start(
     return COST_DEPARTMENT
 
 
-async def _send_expense_category_prompt(message, *, shared_only=False):
-    categories = (
-        list(sheets.SHARED_EXPENSE_ALLOCATIONS)
-        if shared_only else sheets.EXPENSE_CATEGORIES
-    )
+async def _send_expense_category_prompt(
+    message, context, *, shared_only=False, mode="", department=""
+):
+    if shared_only:
+        categories = list(sheets.SHARED_EXPENSE_ALLOCATIONS)
+    elif mode == "reception_request":
+        categories = list(sheets.RECEPTION_EXPENSE_CATEGORIES)
+    else:
+        categories = list(sheets.OWNER_EXPENSE_CATEGORIES)
+    if department == config.DEPARTMENT_PHYSIO:
+        categories = [
+            category for category in categories
+            if category not in ("Dental ব্যবহার্য পণ্য", "Dental Lab Bill")
+        ]
+    elif department == config.DEPARTMENT_DENTAL:
+        categories = [
+            category for category in categories
+            if category != "PT ব্যবহার্য পণ্য"
+        ]
+    context.user_data["cost_categories"] = categories
     buttons = [
-        [InlineKeyboardButton(cat, callback_data=f"costcat_{cat}")]
-        for cat in categories
+        [InlineKeyboardButton(category, callback_data=f"costcat_{index}")]
+        for index, category in enumerate(categories)
     ]
     await message.reply_text(
         "খরচের ক্যাটাগরি বেছে নাও:",
@@ -7046,7 +7062,9 @@ async def cost_department_callback(update: Update, context: ContextTypes.DEFAULT
         expense["Scope"] = "Shared"
         context.user_data["cost"] = expense
         await query.edit_message_text("বিভাগ: PT + DT Shared")
-        await _send_expense_category_prompt(query.message, shared_only=True)
+        await _send_expense_category_prompt(
+            query.message, context, shared_only=True
+        )
         return COST_CATEGORY
     if staff is None or not _staff_has_finance_department(staff, department):
         await query.edit_message_text("⛔ এই Department-এর finance access নেই।")
@@ -7065,7 +7083,12 @@ async def cost_department_callback(update: Update, context: ContextTypes.DEFAULT
             "🏠 Home Treasury থেকে household-এর জন্য কত টাকা নিচ্ছেন?"
         )
         return COST_AMOUNT
-    await _send_expense_category_prompt(query.message)
+    await _send_expense_category_prompt(
+        query.message,
+        context,
+        mode=expense.get("Mode", ""),
+        department=department,
+    )
     return COST_CATEGORY
 
 
@@ -7127,12 +7150,51 @@ async def household_withdrawal_start(
 async def cost_category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    category = query.data.replace("costcat_", "", 1)
+    categories = context.user_data.get("cost_categories", [])
+    try:
+        category = categories[int(query.data.replace("costcat_", "", 1))]
+    except (ValueError, IndexError):
+        await query.edit_message_text("❌ Category সঠিক নয়। আবার শুরু করুন।")
+        context.user_data.pop("cost", None)
+        context.user_data.pop("cost_categories", None)
+        return ConversationHandler.END
     expense = context.user_data.get("cost", {})
     expense["Category"] = category
     context.user_data["cost"] = expense
+    items = sheets.EXPENSE_ITEM_OPTIONS.get(category, [])
+    if items:
+        buttons = [
+            [InlineKeyboardButton(item, callback_data=f"costitem_{index}")]
+            for index, item in enumerate(items)
+        ]
+        await query.edit_message_text(
+            f"ক্যাটাগরি: {category}\n\nকোন item/service-এর খরচ?",
+            reply_markup=InlineKeyboardMarkup(buttons),
+        )
+        return COST_ITEM
     await query.edit_message_text(
         f"ক্যাটাগরি: {category}\n\nকত টাকা খরচ হবে লেখো:"
+    )
+    return COST_AMOUNT
+
+
+async def cost_item_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    expense = context.user_data.get("cost", {})
+    items = sheets.EXPENSE_ITEM_OPTIONS.get(expense.get("Category", ""), [])
+    try:
+        index = int(query.data.replace("costitem_", "", 1))
+        item = items[index]
+    except (ValueError, IndexError):
+        await query.edit_message_text("❌ Item সঠিক নয়। আবার শুরু করুন।")
+        context.user_data.pop("cost", None)
+        return ConversationHandler.END
+    expense["Item"] = item
+    context.user_data["cost"] = expense
+    await query.edit_message_text(
+        f"ক্যাটাগরি: {expense.get('Category', '')}\n"
+        f"Item: {item}\n\nকত টাকা খরচ হবে লেখো:"
     )
     return COST_AMOUNT
 
@@ -7156,7 +7218,16 @@ async def cost_amount_receive(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def cost_note_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     expense = context.user_data.get("cost", {})
     note = update.message.text.strip()
-    expense["Note"] = "" if note == "-" else note
+    note = "" if note == "-" else note
+    if (
+        expense.get("Category") == "অন্যান্য"
+        or expense.get("Item") in ("অন্যান্য", "অন্য Lab Work")
+    ) and not note:
+        await update.message.reply_text(
+            "❌ ‘অন্যান্য’ খরচে কী কেনা/করা হয়েছে তা note-এ লিখতে হবে:"
+        )
+        return COST_NOTE
+    expense["Note"] = note
     context.user_data["cost"] = expense
     mode = expense.get("Mode", "")
     action = (
@@ -7166,6 +7237,7 @@ async def cost_note_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(
         f"ক্যাটাগরি: {expense.get('Category', '')}\n"
+        f"Item: {expense.get('Item') or '-'}\n"
         f"পরিমাণ: ৳{expense.get('Amount', 0):.0f}\n"
         f"নোট: {expense.get('Note') or '-'}\n\n"
         f"{action}",
@@ -7207,6 +7279,7 @@ async def _notify_expense_approvers(
                 text=(
                     f"💸 ছোট খরচের request: {expense_id}\n"
                     f"ক্যাটাগরি: {expense.get('Category', '')}\n"
+                    f"Item: {expense.get('Item') or '-'}\n"
                     f"পরিমাণ: ৳{expense.get('Amount', 0):.0f}\n"
                     f"Request করেছেন: {requested_by}\n"
                     f"নোট: {expense.get('Note') or '-'}"
@@ -7242,6 +7315,11 @@ async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
         or str(staff.get("Staff_ID", ""))
     )
     mode = expense.get("Mode", "")
+    saved_note = expense.get("Note", "")
+    if expense.get("Item"):
+        saved_note = f"Item: {expense['Item']}"
+        if expense.get("Note"):
+            saved_note += f" | {expense['Note']}"
     try:
         if mode == "reception_request":
             if not _staff_can_access_menu(
@@ -7253,7 +7331,7 @@ async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
                 expense.get("Category", ""),
                 expense.get("Amount", 0),
                 actor,
-                expense.get("Note", ""),
+                saved_note,
                 expense.get("Department", ""),
             )
             await update.message.reply_text(
@@ -7286,7 +7364,7 @@ async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
                     expense.get("Category", ""),
                     expense.get("Amount", 0),
                     actor,
-                    note=expense.get("Note", ""),
+                    note=saved_note,
                 )
                 allocations = result["Allocations"]
                 await update.message.reply_text(
@@ -7303,7 +7381,7 @@ async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
                 expense.get("Category", ""),
                 expense.get("Amount", 0),
                 actor,
-                note=expense.get("Note", ""),
+                note=saved_note,
                 expense_type=expense_type,
                 paid_from=config.CASH_CUSTODIAN_HOME_TREASURY,
                 status="Paid",
@@ -7327,12 +7405,14 @@ async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
             reply_markup=_menu_keyboard(staff),
         )
     context.user_data.pop("cost", None)
+    context.user_data.pop("cost_categories", None)
     return ConversationHandler.END
 
 
 async def cost_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff", {})
     context.user_data.pop("cost", None)
+    context.user_data.pop("cost_categories", None)
     await update.effective_message.reply_text(
         "❌ বাতিল করা হলো।",
         reply_markup=_menu_keyboard(staff),
@@ -7646,8 +7726,13 @@ def _expense_report_text(rows, start_date: str, end_date: str, role_str: str) ->
     if not visible_rows:
         lines.append("এই সময়ে কোনো খরচের record নেই।")
     for row in visible_rows:
+        note = str(row.get("Note", "")).strip()
+        item = ""
+        if note.startswith("Item: "):
+            item = note.split(" | ", 1)[0].replace("Item: ", "", 1)
         lines.append(
             f"• {row.get('Expense_ID', '')} | {row.get('Category', '')} | "
+            f"{item + ' | ' if item else ''}"
             f"৳{_sheet_amount_value(row.get('Amount', 0) or 0):.0f} | "
             f"{row.get('Status', '')} | {row.get('Paid_From', '')}"
         )
@@ -8116,6 +8201,10 @@ def main():
             ],
             COST_CATEGORY: [
                 CallbackQueryHandler(cost_category_callback, pattern="^costcat_"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), _tap_the_button),
+            ],
+            COST_ITEM: [
+                CallbackQueryHandler(cost_item_callback, pattern="^costitem_"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), _tap_the_button),
             ],
             COST_AMOUNT: [

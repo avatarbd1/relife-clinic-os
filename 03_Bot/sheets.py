@@ -2251,10 +2251,76 @@ def add_salary_payment(
     return payment_id
 
 
-EXPENSE_CATEGORIES = [
-    "ভাড়া", "বিদ্যুৎ বিল", "ইউটিলিটি", "সরঞ্জাম/মেডিসিন",
-    "মেইনটেন্যান্স", "মার্কেটিং", "অন্যান্য",
+OWNER_EXPENSE_CATEGORIES = [
+    "চেম্বার ভাড়া",
+    "বিদ্যুৎ বিল",
+    "পানি বিল",
+    "ক্লিনার বেতন",
+    "PT ব্যবহার্য পণ্য",
+    "Dental ব্যবহার্য পণ্য",
+    "Dental Lab Bill",
+    "যাতায়াত/কুরিয়ার",
+    "যন্ত্রপাতি ক্রয়",
+    "যন্ত্রপাতি মেরামত",
+    "Printing ও Stationery",
+    "মেরামত ও রক্ষণাবেক্ষণ",
+    "মার্কেটিং",
+    "সরকারি ফি/লাইসেন্স",
+    "অন্যান্য",
 ]
+RECEPTION_EXPENSE_CATEGORIES = [
+    "PT ব্যবহার্য পণ্য",
+    "Dental ব্যবহার্য পণ্য",
+    "Dental Lab Bill",
+    "যাতায়াত/কুরিয়ার",
+    "যন্ত্রপাতি মেরামত",
+    "Printing ও Stationery",
+    "মেরামত ও রক্ষণাবেক্ষণ",
+    "অন্যান্য",
+]
+# Backward-compatible name used by older imports/tests.
+EXPENSE_CATEGORIES = OWNER_EXPENSE_CATEGORIES
+
+EXPENSE_ITEM_OPTIONS = {
+    "PT ব্যবহার্য পণ্য": [
+        "Hand Gloves", "Tissue", "Olive Oil", "Aerosol", "Savlon",
+        "Detergent Powder", "PP Wax", "Poly", "Acupuncture Needle",
+        "Ultrasound Gel", "Electrotherapy Pad", "Tape/Bandage", "অন্যান্য",
+    ],
+    "Dental ব্যবহার্য পণ্য": [
+        "Hand Gloves", "Mask", "Cotton/Gauze", "Syringe/Needle",
+        "Suction Tip/Saliva Ejector", "Dental Bib/Tissue", "Etchant",
+        "Bonding", "Composite", "GIC", "Temporary Filling Material",
+        "GP Point", "Paper Point", "Dental File", "Irrigation Solution",
+        "Impression Material/Alginate", "Dental Stone", "Acrylic/Teeth",
+        "Disinfectant/Sterilization Product", "অন্যান্য",
+    ],
+    "Dental Lab Bill": [
+        "Crown/Bridge", "Denture", "Repair", "অন্য Lab Work",
+    ],
+    "যাতায়াত/কুরিয়ার": [
+        "Courier/Parcel", "Clinic Transport", "Delivery Charge", "অন্যান্য",
+    ],
+    "যন্ত্রপাতি ক্রয়": [
+        "Physio Machine", "Dental Machine", "Computer/Printer",
+        "Furniture/Fixture", "অন্যান্য",
+    ],
+    "যন্ত্রপাতি মেরামত": [
+        "Physio Machine", "Dental Handpiece", "Dental Machine",
+        "Computer/Printer", "Furniture/Fixture", "অন্যান্য",
+    ],
+    "Printing ও Stationery": [
+        "Prescription Pad", "Receipt Book", "Paper/Photocopy",
+        "Pen/Marker/File", "Printer Ink/Toner", "অন্যান্য",
+    ],
+    "মেরামত ও রক্ষণাবেক্ষণ": [
+        "Electrical", "Plumbing", "Room/Furniture", "Cleaning/Laundry",
+        "Waste Disposal", "অন্যান্য",
+    ],
+    "সরকারি ফি/লাইসেন্স": [
+        "License/Renewal", "Government Fee", "অন্যান্য",
+    ],
+}
 SHARED_EXPENSE_ALLOCATIONS = {
     "Generator Petrol": {
         config.DEPARTMENT_PHYSIO: 0.40,

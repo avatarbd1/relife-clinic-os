@@ -91,6 +91,43 @@ class FinanceLedgerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             sheets.add_expense("ভাড়া", 100, "S1", expense_type="Transfer")
 
+    def test_owner_and_reception_expense_categories_are_role_specific(self):
+        self.assertIn("চেম্বার ভাড়া", sheets.OWNER_EXPENSE_CATEGORIES)
+        self.assertNotIn("চেম্বার ভাড়া", sheets.RECEPTION_EXPENSE_CATEGORIES)
+        self.assertIn("PT ব্যবহার্য পণ্য", sheets.RECEPTION_EXPENSE_CATEGORIES)
+        self.assertIn("Dental Lab Bill", sheets.RECEPTION_EXPENSE_CATEGORIES)
+
+    def test_expense_items_are_grouped_under_clear_categories(self):
+        self.assertIn(
+            "Ultrasound Gel", sheets.EXPENSE_ITEM_OPTIONS["PT ব্যবহার্য পণ্য"]
+        )
+        self.assertIn(
+            "Composite", sheets.EXPENSE_ITEM_OPTIONS["Dental ব্যবহার্য পণ্য"]
+        )
+        self.assertIn(
+            "Dental Handpiece", sheets.EXPENSE_ITEM_OPTIONS["যন্ত্রপাতি মেরামত"]
+        )
+        self.assertIn(
+            "Receipt Book", sheets.EXPENSE_ITEM_OPTIONS["Printing ও Stationery"]
+        )
+
+    def test_expense_report_displays_saved_item_next_to_category(self):
+        text = bot._expense_report_text(
+            [{
+                "Expense_ID": "EX0001",
+                "Category": "PT ব্যবহার্য পণ্য",
+                "Amount": 450,
+                "Status": "Paid",
+                "Paid_From": config.CASH_CUSTODIAN_RECEPTION,
+                "Type": config.EXPENSE_TYPE_CLINIC,
+                "Note": "Item: Ultrasound Gel | 2 bottles",
+            }],
+            "2026-08-14",
+            "2026-08-14",
+            roles.Role.OWNER.value,
+        )
+        self.assertIn("PT ব্যবহার্য পণ্য | Ultrasound Gel | ৳450", text)
+
     def test_generator_petrol_splits_40_60_without_double_counting(self):
         calls = []
 
