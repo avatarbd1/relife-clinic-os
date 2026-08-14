@@ -73,6 +73,7 @@ class DepartmentReportIsolationTests(unittest.TestCase):
             "rpt_lastmonth_callback",
             "rpt_daterep_callback",
             "rpt_todayregister_callback",
+            "rpt_owner_finance_detail_callback",
             "date_report_calendar_navigate",
             "date_report_day_selected",
         ]

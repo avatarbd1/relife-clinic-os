@@ -4635,6 +4635,13 @@ def _reports_summary_keyboard(staff: dict) -> InlineKeyboardMarkup:
     )
     if roles.MENU_DAILY_REGISTER in extras:
         rows.append([InlineKeyboardButton("\U0001F4CB আজকের রেজিস্টার", callback_data="rpt_todayregister")])
+    if roles.Role.OWNER.value in _effective_role_strings(staff):
+        rows += [
+            [InlineKeyboardButton("📊 এই মাসের আদায় ও খরচ", callback_data="rpt_monthcost")],
+            [InlineKeyboardButton("📉 গত মাসের খরচ", callback_data="rpt_lastcost")],
+            [InlineKeyboardButton("💼 ব্যবসায়িক দায়", callback_data="rpt_liability")],
+            [InlineKeyboardButton("🔴 এখনও খরচ ওঠেনি", callback_data="rpt_uncovered")],
+        ]
     return InlineKeyboardMarkup(rows)
 
 
@@ -4649,6 +4656,32 @@ def _department_report_totals(records, amount_key=None):
     return result
 
 
+def _last_month_end_str(now) -> str:
+    return (now.replace(day=1) - timedelta(days=1)).strftime("%Y-%m-%d")
+
+
+async def _owner_report_finance_snapshot(now):
+    today_str = now.strftime("%Y-%m-%d")
+    current = await async_runtime.run_sheets_read(
+        sheets.get_owner_financial_dashboard, today_str
+    )
+    previous = await async_runtime.run_sheets_read(
+        sheets.get_owner_financial_dashboard, _last_month_end_str(now)
+    )
+    commitments = await async_runtime.run_sheets_read(
+        sheets.get_owner_monthly_salary_commitments
+    )
+    return current, previous, commitments
+
+
+def _running_expense(summary: dict) -> float:
+    return summary["Month_Clinic_Expense"] + summary["Month_Salary"]
+
+
+def _business_liability(summary: dict, fixed_salary: float) -> float:
+    return summary["Month_Clinic_Expense"] + fixed_salary
+
+
 async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = await _require_staff(update, context)
     if staff is None:
@@ -4659,87 +4692,61 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     departments = _report_departments(staff)
     now = bd_now()
     today_str = now.strftime("%Y-%m-%d")
-    this_month_str, last_month_str = _month_bounds(now)
+    this_month_str, _ = _month_bounds(now)
 
     report_data = await async_runtime.run_sheets_read(
         sheets.get_scoped_report_records, departments
     )
     patients = report_data[config.SHEET_PATIENTS]
     payments = report_data[config.SHEET_PAYMENTS]
-    today_new_patients = sum(
-        1 for p in patients
-        if str(p.get("Registration_Date", "")).strip() == today_str
-    )
-    this_month_patients = sum(
-        1 for p in patients
-        if str(p.get("Registration_Date", "")).strip().startswith(this_month_str)
-    )
     today_payments = [
         p for p in payments if str(p.get("Date", "")).strip() == today_str
     ]
-    today_collection = sum(_sheet_amount_value(p.get("Amount", 0) or 0) for p in today_payments)
     this_month_payments = [
         p for p in payments
         if str(p.get("Date", "")).strip().startswith(this_month_str)
     ]
-    this_month_collection = sum(_sheet_amount_value(p.get("Amount", 0) or 0) for p in this_month_payments)
+    today_patient_parts = _department_report_totals([
+        p for p in patients
+        if str(p.get("Registration_Date", "")).strip() == today_str
+    ])
+    month_patient_parts = _department_report_totals([
+        p for p in patients
+        if str(p.get("Registration_Date", "")).strip().startswith(this_month_str)
+    ])
+    today_payment_parts = _department_report_totals(today_payments, "Amount")
+    month_payment_parts = _department_report_totals(this_month_payments, "Amount")
 
-    owner_finance_lines = []
-    if roles.Role.OWNER.value in _effective_role_strings(staff):
+    is_owner = roles.Role.OWNER.value in _effective_role_strings(staff)
+    current_finance = None
+    if is_owner:
         current_finance = await async_runtime.run_sheets_read(
             sheets.get_owner_financial_dashboard, today_str
         )
-        last_finance = await async_runtime.run_sheets_read(
-            sheets.get_owner_financial_dashboard, f"{last_month_str}-01"
-        )
-        salary_commitments = await async_runtime.run_sheets_read(
-            sheets.get_owner_monthly_salary_commitments
-        )
-        current = current_finance["Combined"]
-        previous = last_finance["Combined"]
-        fixed_salary = salary_commitments["Combined"]
-        current_actual_expense = (
-            current["Month_Clinic_Expense"] + current["Month_Salary"]
-        )
-        previous_actual_expense = (
-            previous["Month_Clinic_Expense"] + previous["Month_Salary"]
-        )
-        business_liability = current["Month_Clinic_Expense"] + fixed_salary
-        coverage_balance = current["Month_Collection"] - business_liability
-        status_line = (
-            f"🔴 এখনও খরচ ওঠেনি: ৳{abs(coverage_balance):.0f}"
-            if coverage_balance < 0 else
-            f"🟢 নিরাপদ ব্যবসায়িক লাভ: ৳{coverage_balance:.0f}"
-        )
-        owner_finance_lines = [
-            "",
-            "📊 মাসের খরচ ওঠার অবস্থা",
-            f"এই মাসে আদায়: ৳{current['Month_Collection']:.0f}",
-            f"এই মাসের actual খরচ: ৳{current_actual_expense:.0f}",
-            f"গত মাসের actual খরচ: ৳{previous_actual_expense:.0f}",
-            f"মোট ব্যবসায়িক দায়: ৳{business_liability:.0f}",
-            status_line,
-        ]
 
-    lines = [
-        "\U0001F4CA রিপোর্ট ও অ্যানালিটিক্স", "",
-        f"\U0001F195 আজকের নতুন রোগী: {today_new_patients}",
-        f"\U0001F4C8 এই মাসের ({this_month_str}) নতুন রোগী: {this_month_patients}",
-        f"\U0001F4B0 আজকের আদায়: {today_collection:.0f} টাকা",
-        f"\U0001F4B0 এই মাসের ({this_month_str}) আদায়: {this_month_collection:.0f} টাকা",
-        *owner_finance_lines,
-        "", "\U0001F447 আরও বিস্তারিত দেখতে নিচের বাটন চাপো:",
-    ]
-    if config.DEPARTMENT_ALL in set(departments or ()):
-        month_patient_parts = _department_report_totals(
-            [p for p in patients if str(p.get("Registration_Date", "")).strip().startswith(this_month_str)]
-        )
-        month_payment_parts = _department_report_totals(this_month_payments, "Amount")
-        lines[-2:-2] = [
+    allowed = set(departments or ())
+    show_all = config.DEPARTMENT_ALL in allowed
+    lines = ["\U0001F4CA রিপোর্ট ও অ্যানালিটিক্স"]
+    for department, icon, code in (
+        (config.DEPARTMENT_PHYSIO, "🩺", "PT"),
+        (config.DEPARTMENT_DENTAL, "🦷", "DT"),
+    ):
+        if not show_all and department not in allowed:
+            continue
+        lines += [
             "",
-            f"🩺 Physio (PT): এই মাসে রোগী {month_patient_parts[config.DEPARTMENT_PHYSIO]}, আদায় {month_payment_parts[config.DEPARTMENT_PHYSIO]:.0f} টাকা",
-            f"🦷 Dental (DT): এই মাসে রোগী {month_patient_parts[config.DEPARTMENT_DENTAL]}, আদায় {month_payment_parts[config.DEPARTMENT_DENTAL]:.0f} টাকা",
+            f"{icon} {department} ({code})",
+            f"🆕 আজকের নতুন রোগী: {today_patient_parts[department]}",
+            f"📈 এই মাসের নতুন রোগী: {month_patient_parts[department]}",
+            f"💰 আজকের আদায়: ৳{today_payment_parts[department]:.0f}",
+            f"💰 এই মাসের আদায়: ৳{month_payment_parts[department]:.0f}",
         ]
+        if current_finance is not None:
+            lines.append(
+                f"📊 এই মাসের রানিং খরচ: "
+                f"৳{_running_expense(current_finance[department]):.0f}"
+            )
+    lines += ["", "👇 আরও বিস্তারিত দেখতে নিচের বাটন চাপো:"]
     await update.effective_message.reply_text(
         "\n".join(lines), reply_markup=_reports_summary_keyboard(staff)
     )
@@ -4747,6 +4754,69 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "মেনুতে ফিরতে নিচের কীবোর্ড ব্যবহার করো:",
         reply_markup=_menu_keyboard(staff),
     )
+
+
+async def rpt_owner_finance_detail_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    staff = await _require_staff(update, context)
+    if (
+        staff is None
+        or not _staff_can_access_menu(staff, roles.MENU_REPORTS)
+        or roles.Role.OWNER.value not in _effective_role_strings(staff)
+    ):
+        await query.message.reply_text("⛔ এই রিপোর্ট শুধু Owner দেখতে পারবেন।")
+        return
+
+    now = bd_now()
+    this_month_str, last_month_str = _month_bounds(now)
+    current, previous, commitments = await _owner_report_finance_snapshot(now)
+    action = query.data.replace("rpt_", "", 1)
+    lines = []
+
+    for department, icon, code in (
+        (config.DEPARTMENT_PHYSIO, "🩺", "PT"),
+        (config.DEPARTMENT_DENTAL, "🦷", "DT"),
+        ("Combined", "🏢", "Combined"),
+    ):
+        current_part = current[department]
+        previous_part = previous[department]
+        liability = _business_liability(current_part, commitments[department])
+        uncovered = liability - current_part["Month_Collection"]
+
+        if action == "monthcost":
+            if not lines:
+                lines = [f"📊 এই মাসের ({this_month_str}) আদায় ও খরচ"]
+            detail = (
+                f"আদায়: ৳{current_part['Month_Collection']:.0f}\n"
+                f"রানিং খরচ: ৳{_running_expense(current_part):.0f}"
+            )
+        elif action == "lastcost":
+            if not lines:
+                lines = [f"📉 গত মাসের ({last_month_str}) খরচ"]
+            detail = f"খরচ: ৳{_running_expense(previous_part):.0f}"
+        elif action == "liability":
+            if not lines:
+                lines = ["💼 ব্যবসায়িক দায়"]
+            detail = (
+                f"Clinic expense: ৳{current_part['Month_Clinic_Expense']:.0f}\n"
+                f"নির্ধারিত বেতন: ৳{commitments[department]:.0f}\n"
+                f"মোট দায়: ৳{liability:.0f}"
+            )
+        elif action == "uncovered":
+            if not lines:
+                lines = ["🔴 এখনও খরচ ওঠেনি"]
+            detail = (
+                f"{'এখনও খরচ ওঠেনি' if uncovered > 0 else 'খরচ উঠে উদ্বৃত্ত'}: "
+                f"৳{abs(uncovered):.0f}"
+            )
+        else:
+            await query.message.reply_text("❌ অজানা রিপোর্ট।")
+            return
+
+        lines += ["", f"{icon} {department} ({code})", detail]
+
+    await query.message.reply_text("\n".join(lines))
 
 
 async def rpt_totals_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -8689,6 +8759,10 @@ def main():
     app.add_handler(CallbackQueryHandler(rpt_lastmonth_callback, pattern="^rpt_lastmonth$"))
     app.add_handler(CallbackQueryHandler(rpt_todayregister_callback, pattern="^rpt_todayregister$"))
     app.add_handler(CallbackQueryHandler(rpt_daterep_callback, pattern="^rpt_daterep$"))
+    app.add_handler(CallbackQueryHandler(
+        rpt_owner_finance_detail_callback,
+        pattern="^rpt_(monthcost|lastcost|liability|uncovered)$",
+    ))
     app.add_handler(MessageHandler(filters.Regex(f"^{roles.MENU_DATE_REPORT}$"), date_report_menu))
     app.add_handler(CallbackQueryHandler(date_report_calendar_navigate, pattern="^calnav_"))
     app.add_handler(CallbackQueryHandler(date_report_day_selected, pattern="^calday_"))
