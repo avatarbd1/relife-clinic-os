@@ -44,6 +44,17 @@ class PatientQueryAuthorizationTests(unittest.TestCase):
             )
         self.assertEqual([row["Patient_ID"] for row in visible], ["P1"])
 
+    def test_physio_therapist_patient_list_excludes_dental(self):
+        therapist = {
+            "Staff_ID": "T1", "Role": "Therapist",
+            "Primary_Department": "Physio",
+        }
+        with patch.object(config, "DEPARTMENT_ENFORCEMENT_ENABLED", True):
+            visible = sheets.filter_patients_for_staff(
+                self.patients, therapist, []
+            )
+        self.assertEqual([row["Patient_ID"] for row in visible], ["P1"])
+
     def test_owner_requires_explicit_all_scope(self):
         with patch.object(config, "DEPARTMENT_ENFORCEMENT_ENABLED", True):
             allowed = sheets.filter_patients_for_staff(

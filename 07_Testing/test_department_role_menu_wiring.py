@@ -20,6 +20,38 @@ import sheets  # noqa: E402
 
 
 class MultiRoleMenuTests(unittest.TestCase):
+    def test_therapist_daily_clinical_menu_is_visible(self):
+        rows = roles.ROLE_MENU_ROWS[roles.Role.THERAPIST]
+        self.assertEqual(
+            rows,
+            [
+                [roles.MENU_HOME],
+                [roles.MENU_TODAY_SCHEDULE],
+                [roles.MENU_PATIENT_LIST],
+                [roles.MENU_MY_PATIENTS],
+                [roles.MENU_TREATMENT_NOTE, roles.MENU_TREATMENT_PLAN],
+                [roles.MENU_PATIENT_HISTORY, roles.MENU_TREATMENT_HISTORY],
+                [roles.MENU_CLINICAL_AI],
+                [roles.MENU_CASE_STUDY, roles.MENU_INVENTORY],
+            ],
+        )
+
+    def test_therapist_schedule_can_open_attendance_and_own_appointments(self):
+        items = roles.get_menu_for_role(roles.Role.THERAPIST.value)
+        self.assertIn(roles.MENU_ATTENDANCE, items)
+        self.assertIn(roles.MENU_TODAY_APPOINTMENTS, items)
+
+    def test_therapist_has_no_dental_or_finance_menu_access(self):
+        items = roles.get_menu_for_role(roles.Role.THERAPIST.value)
+        forbidden = {
+            roles.MENU_PAYMENT,
+            roles.MENU_FINANCE,
+            roles.MENU_FINANCE_OVERVIEW,
+            roles.MENU_CASH_HANDOVER,
+            roles.MENU_DENTAL_FINANCE_DASHBOARD,
+        }
+        self.assertTrue(forbidden.isdisjoint(items))
+
     def test_manager_and_therapist_menus_are_combined_without_duplicates(self):
         items = roles.get_menu_for_roles(["Manager", "Therapist"])
         self.assertIn(roles.MENU_PATIENT_MGMT, items)
