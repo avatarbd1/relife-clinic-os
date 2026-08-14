@@ -18,19 +18,32 @@ import bot, config, sheets
 
 class DualDepartmentFinanceTests(unittest.TestCase):
     def test_owner_dashboard_reads_both_workbooks(self):
+        physio_sheet_id = "physio-dashboard-test"
+        dental_sheet_id = "dental-dashboard-test"
         rows = {
-            ("physio", config.SHEET_PAYMENTS): [{"Department":"Physio","Date":"2026-08-14","Amount":10,"Payment_Method":"Cash"}],
-            ("dental", config.SHEET_PAYMENTS): [{"Department":"Dental","Date":"2026-08-14","Amount":400,"Payment_Method":"Cash"}],
+            (physio_sheet_id, config.SHEET_PAYMENTS): [{"Department":"Physio","Date":"2026-08-14","Amount":10,"Payment_Method":"Cash"}],
+            (dental_sheet_id, config.SHEET_PAYMENTS): [{"Department":"Dental","Date":"2026-08-14","Amount":400,"Payment_Method":"Cash"}],
+            (physio_sheet_id, config.SHEET_SALARY): [{"Department":"Physio","Date":"2026-08-14","Amount":2,"Status":"Paid","Paid_From":"Home Treasury"}],
+            (dental_sheet_id, config.SHEET_SALARY): [{"Department":"Dental","Date":"2026-08-14","Amount":50,"Status":"Paid","Paid_From":"Home Treasury"}],
         }
         class WS:
-            def __init__(self, title): self.title=title
-        with patch.object(sheets, "_worksheet", side_effect=lambda title: WS(title)), patch.object(
+            def __init__(self, title, sheet_id):
+                self.title = title
+                self.sheet_id = sheet_id
+        with patch.object(config, "GOOGLE_SHEET_ID", physio_sheet_id), patch.object(
+            config, "DENTAL_GOOGLE_SHEET_ID", dental_sheet_id
+        ), patch.object(
+            sheets, "_worksheet",
+            side_effect=lambda title: WS(title, sheets._active_sheet_id()),
+        ), patch.object(
             sheets, "safe_get_all_records",
-            side_effect=lambda ws: rows.get((sheets._active_sheet_id(), ws.title), []),
+            side_effect=lambda ws: rows.get((ws.sheet_id, ws.title), []),
         ):
             data=sheets.get_owner_financial_dashboard("2026-08-14")
         self.assertEqual(data["Physio"]["Today_Collection"], 10)
         self.assertEqual(data["Dental"]["Today_Collection"], 400)
+        self.assertEqual(data["Physio"]["Month_Net_After_Salary"], 8)
+        self.assertEqual(data["Dental"]["Month_Net_After_Salary"], 350)
 
     def test_live_dental_reception_has_only_reception_balance(self):
         text=bot._department_live_balance_text({"Dental":{

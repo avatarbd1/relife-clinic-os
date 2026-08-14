@@ -572,7 +572,7 @@ class CashHandoverRoleTests(unittest.TestCase):
 
 class OwnerFinancialDashboardTests(unittest.TestCase):
     def test_department_views_preserve_scope_and_opening_balances(self):
-        payment_ws, expense_ws, movement_ws = object(), object(), object()
+        payment_ws, expense_ws, movement_ws, salary_ws = object(), object(), object(), object()
         records = {
             payment_ws: [
                 {"Date": "2026-08-10", "Department": "Physio", "Amount": 1000, "Payment_Method": "Cash"},
@@ -588,8 +588,12 @@ class OwnerFinancialDashboardTests(unittest.TestCase):
                 {"Date": "2026-08-10", "Department": "Physio", "Received_Amount": 400, "Status": "Accepted", "From_Custodian_ID": "Physio Reception Cash", "To_Custodian_ID": "Home Treasury"},
                 {"Date": "2026-08-11", "Department": "Physio", "Requested_Amount": 300, "Received_Amount": 250, "Status": "Accepted", "From_Custodian_ID": "Physio Reception Cash", "To_Custodian_ID": "Home Treasury"},
             ],
+            salary_ws: [
+                {"Date": "2026-08-10", "Department": "Physio", "Amount": 75, "Status": "Paid", "Paid_From": "Home Treasury"},
+                {"Date": "2026-08-11", "Department": "Dental", "Amount": 100, "Status": "Paid", "Paid_From": "Digital/Bank"},
+            ],
         }
-        with patch.object(sheets, "_worksheet", side_effect=[payment_ws, expense_ws, movement_ws]), patch.object(
+        with patch.object(sheets, "_worksheet", side_effect=[payment_ws, expense_ws, movement_ws, salary_ws]), patch.object(
             sheets, "safe_get_all_records", side_effect=lambda ws: records[ws]
         ):
             data = sheets.get_owner_financial_dashboard("2026-08-11")
@@ -600,19 +604,22 @@ class OwnerFinancialDashboardTests(unittest.TestCase):
         self.assertEqual(physio["Today_Collection"], 500)
         self.assertEqual(dental["Today_Collection"], 800)
         self.assertEqual(physio["Opening"]["Reception"], 600)
-        self.assertEqual(physio["Opening"]["Home Treasury"], 400)
+        self.assertEqual(physio["Opening"]["Home Treasury"], 325)
         self.assertEqual(physio["Closing"]["Reception"], 750)
-        self.assertEqual(physio["Closing"]["Home Treasury"], 650)
-        self.assertEqual(dental["Closing"]["Digital/Bank"], 800)
+        self.assertEqual(physio["Closing"]["Home Treasury"], 575)
+        self.assertEqual(physio["Month_Salary"], 75)
+        self.assertEqual(physio["Month_Net_After_Salary"], 1325)
+        self.assertEqual(dental["Month_Salary"], 100)
+        self.assertEqual(dental["Closing"]["Digital/Bank"], 700)
         self.assertEqual(combined["Today_Collection"], 1300)
         self.assertEqual(combined["Unclassified_Rows"]["Payments"], 1)
 
     def test_missing_department_never_enters_department_totals(self):
-        tabs = [object(), object(), object()]
+        tabs = [object(), object(), object(), object()]
         with patch.object(sheets, "_worksheet", side_effect=tabs), patch.object(
             sheets,
             "safe_get_all_records",
-            side_effect=[[{"Date": "2026-08-11", "Amount": 100}], [], []],
+            side_effect=[[{"Date": "2026-08-11", "Amount": 100}], [], [], []],
         ):
             data = sheets.get_owner_financial_dashboard("2026-08-11")
         self.assertEqual(data["Combined"]["Today_Collection"], 0)
