@@ -2881,12 +2881,14 @@ def _department_finance_summary(
     payment_rows: list[dict],
     expense_rows: list[dict],
     movement_rows: list[dict],
+    salary_rows: list[dict],
 ) -> dict:
     """Department-preserving owner totals; missing Department is excluded."""
     month = date_str[:7]
     payments = [row for row in payment_rows if _finance_department(row) == department]
     expenses = [row for row in expense_rows if _finance_department(row) == department]
     movements = [row for row in movement_rows if _finance_department(row) == department]
+    salaries = [row for row in salary_rows if _finance_department(row) == department]
 
     today_collection = sum(
         _money(row) for row in payments
@@ -2908,6 +2910,11 @@ def _department_finance_summary(
         and str(row.get("Type", "")).strip() == config.EXPENSE_TYPE_HOUSEHOLD
         and _expense_is_paid(row)
     )
+    month_salary = sum(
+        _money(row) for row in salaries
+        if _cash_effective_date(row).startswith(month)
+        and str(row.get("Status", "")).strip() in ("", "Paid")
+    )
 
     def balances(before: bool) -> dict[str, float]:
         result = {"Reception": 0.0, "Home Treasury": 0.0, "Digital/Bank": 0.0}
@@ -2924,6 +2931,14 @@ def _department_finance_summary(
             result[target] += _money(row)
         for row in expenses:
             if not included(row) or not _expense_is_paid(row):
+                continue
+            source = _custodian(row, "Paid")
+            if source:
+                result[source] -= _money(row)
+        for row in salaries:
+            if not included({"Date": _cash_effective_date(row)}):
+                continue
+            if str(row.get("Status", "")).strip() not in ("", "Paid"):
                 continue
             source = _custodian(row, "Paid")
             if source:
@@ -2946,7 +2961,10 @@ def _department_finance_summary(
         "Month_Collection": round(month_collection, 2),
         "Month_Clinic_Expense": round(month_clinic_expense, 2),
         "Month_Household_Withdrawal": round(month_household, 2),
-        "Month_Net_Before_Salary": round(month_collection - month_clinic_expense, 2),
+        "Month_Salary": round(month_salary, 2),
+        "Month_Net_After_Salary": round(
+            month_collection - month_clinic_expense - month_salary, 2
+        ),
         "Opening": balances(True),
         "Closing": balances(False),
     }
@@ -2958,35 +2976,39 @@ def get_owner_financial_dashboard(date_str: str) -> dict:
         payment_rows = safe_get_all_records(_worksheet(config.SHEET_PAYMENTS))
         expense_rows = safe_get_all_records(_worksheet(config.SHEET_EXPENSES))
         movement_rows = safe_get_all_records(_worksheet(config.SHEET_CASH_MOVEMENT))
+        salary_rows = safe_get_all_records(_worksheet(config.SHEET_SALARY))
         summaries = {
             department: _department_finance_summary(
-                department, date_str, payment_rows, expense_rows, movement_rows
+                department, date_str, payment_rows, expense_rows, movement_rows, salary_rows
             ) for department in sorted(_FINANCE_DEPARTMENTS)
         }
         unclassified = {
             "Payments": sum(not _finance_department(r) for r in payment_rows),
             "Expenses": sum(not _finance_department(r) for r in expense_rows),
             "Cash_Movements": sum(not _finance_department(r) for r in movement_rows),
+            "Salaries": sum(not _finance_department(r) for r in salary_rows),
         }
     else:
         summaries = {}
-        unclassified = {"Payments": 0, "Expenses": 0, "Cash_Movements": 0}
+        unclassified = {"Payments": 0, "Expenses": 0, "Cash_Movements": 0, "Salaries": 0}
         for department in sorted(_FINANCE_DEPARTMENTS):
             with sheet_scope.use_sheet(config.sheet_id_for_department(department)):
                 payment_rows = safe_get_all_records(_worksheet(config.SHEET_PAYMENTS))
                 expense_rows = safe_get_all_records(_worksheet(config.SHEET_EXPENSES))
                 movement_rows = safe_get_all_records(_worksheet(config.SHEET_CASH_MOVEMENT))
+                salary_rows = safe_get_all_records(_worksheet(config.SHEET_SALARY))
             summaries[department] = _department_finance_summary(
-                department, date_str, payment_rows, expense_rows, movement_rows
+                department, date_str, payment_rows, expense_rows, movement_rows, salary_rows
             )
             unclassified["Payments"] += sum(not _finance_department(r) for r in payment_rows)
             unclassified["Expenses"] += sum(not _finance_department(r) for r in expense_rows)
             unclassified["Cash_Movements"] += sum(not _finance_department(r) for r in movement_rows)
+            unclassified["Salaries"] += sum(not _finance_department(r) for r in salary_rows)
     combined = {
         key: round(sum(summary[key] for summary in summaries.values()), 2)
         for key in (
             "Today_Collection", "Month_Collection", "Month_Clinic_Expense",
-            "Month_Household_Withdrawal", "Month_Net_Before_Salary",
+            "Month_Household_Withdrawal", "Month_Salary", "Month_Net_After_Salary",
         )
     }
     combined["Opening"] = {

@@ -7870,9 +7870,11 @@ def _owner_finance_view_text(data: dict, view: str) -> str:
         comparison = (
             "\nDepartment totals\n"
             f"🩺 Physio: collection ৳{physio['Month_Collection']:.0f}, "
-            f"net ৳{physio['Month_Net_Before_Salary']:.0f}\n"
+            f"staff salary ৳{physio['Month_Salary']:.0f}\n"
+            f"net (salary বাদে) ৳{physio['Month_Net_After_Salary']:.0f}\n"
             f"🦷 Dental: collection ৳{dental['Month_Collection']:.0f}, "
-            f"net ৳{dental['Month_Net_Before_Salary']:.0f}\n"
+            f"staff salary ৳{dental['Month_Salary']:.0f}\n"
+            f"net (salary বাদে) ৳{dental['Month_Net_After_Salary']:.0f}\n"
         )
         unclassified = summary["Unclassified_Rows"]
         warning = (
@@ -7887,7 +7889,8 @@ def _owner_finance_view_text(data: dict, view: str) -> str:
         f"আজকের collection: ৳{summary['Today_Collection']:.0f}\n"
         f"এই মাসের collection: ৳{summary['Month_Collection']:.0f}\n"
         f"এই মাসের clinic expense: ৳{summary['Month_Clinic_Expense']:.0f}\n"
-        f"এই মাসের net (salary-এর আগে): ৳{summary['Month_Net_Before_Salary']:.0f}\n"
+        f"এই মাসের staff salary: ৳{summary['Month_Salary']:.0f}\n"
+        f"এই মাসের net (salary বাদে): ৳{summary['Month_Net_After_Salary']:.0f}\n"
         f"Household Withdrawal: ৳{summary['Month_Household_Withdrawal']:.0f}\n"
         f"{comparison}\n"
         "Opening → Closing custody\n"
