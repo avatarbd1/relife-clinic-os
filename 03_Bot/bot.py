@@ -1755,7 +1755,10 @@ _REG_FIELD_LABELS = {"Full_Name": "নাম", "Phone": "ফোন", "Address": 
 
 
 def _reg_missing_fields(p: dict) -> list:
-    return [k for k in _REG_REQUIRED_ORDER if not str(p.get(k, "")).strip()]
+    required = list(_REG_REQUIRED_ORDER)
+    if str(p.get("Department", "")).strip().casefold() == config.DEPARTMENT_DENTAL.casefold():
+        required.remove("Phone")
+    return [k for k in required if not str(p.get(k, "")).strip()]
 
 
 async def _reg_ask_fields_or_continue(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -1994,7 +1997,7 @@ async def reg_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
     p = context.user_data["new_patient"]
     summary = (
         "নিচের তথ্য ঠিক আছে কিনা চেক করো:\n\n"
-        f"নাম: {p['Full_Name']}\nফোন: {p['Phone']}\nঠিকানা: {p['Address']}\n"
+        f"নাম: {p['Full_Name']}\nফোন: {p.get('Phone') or 'দেওয়া হয়নি'}\nঠিকানা: {p['Address']}\n"
         f"বয়স: {p.get('Age') or '-'}\n"
         f"নোট: {p['Diagnosis'] or '-'}\n\n"
         "ঠিক থাকলে নিচের বাটনে ট্যাপ করো।"
