@@ -3159,6 +3159,48 @@ def get_owner_financial_dashboard(date_str: str) -> dict:
     }
 
 
+def _salary_commitments_for_rows(
+    rows: list[dict], default_department: str = ""
+) -> dict[str, float]:
+    """Return active fixed monthly salaries without Owner compensation."""
+    totals = {department: 0.0 for department in _FINANCE_DEPARTMENTS}
+    for row in rows:
+        if str(row.get("Status", "")).strip().casefold() != "active":
+            continue
+        if str(row.get("Role", "")).strip().casefold() == "owner":
+            continue
+        department = str(
+            row.get("Primary_Department", "") or row.get("Department", "")
+        ).strip()
+        if department not in _FINANCE_DEPARTMENTS:
+            clinic_id = str(row.get("Clinic_ID", "")).strip().casefold()
+            if "physio" in clinic_id:
+                department = config.DEPARTMENT_PHYSIO
+            elif "dental" in clinic_id:
+                department = config.DEPARTMENT_DENTAL
+            elif default_department in _FINANCE_DEPARTMENTS:
+                department = default_department
+        if department in totals:
+            totals[department] += _money(row, "Salary")
+    return {key: round(value, 2) for key, value in totals.items()}
+
+
+def get_owner_monthly_salary_commitments() -> dict[str, float]:
+    """Read active staff masters and return fixed salary commitments."""
+    totals = {department: 0.0 for department in _FINANCE_DEPARTMENTS}
+    if not config.DENTAL_GOOGLE_SHEET_ID:
+        rows = safe_get_all_records(_worksheet(config.SHEET_STAFF))
+        totals.update(_salary_commitments_for_rows(rows))
+    else:
+        for department in sorted(_FINANCE_DEPARTMENTS):
+            with sheet_scope.use_sheet(config.sheet_id_for_department(department)):
+                rows = safe_get_all_records(_worksheet(config.SHEET_STAFF))
+            part = _salary_commitments_for_rows(rows, department)
+            totals[department] += part[department]
+    totals["Combined"] = round(sum(totals.values()), 2)
+    return totals
+
+
 def _next_cash_movement_id(ws) -> str:
     ids = ws.col_values(1)[1:]
     numbers = []

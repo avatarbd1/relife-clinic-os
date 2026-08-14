@@ -4659,7 +4659,7 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     departments = _report_departments(staff)
     now = bd_now()
     today_str = now.strftime("%Y-%m-%d")
-    this_month_str, _ = _month_bounds(now)
+    this_month_str, last_month_str = _month_bounds(now)
 
     report_data = await async_runtime.run_sheets_read(
         sheets.get_scoped_report_records, departments
@@ -4684,12 +4684,50 @@ async def reports_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     this_month_collection = sum(_sheet_amount_value(p.get("Amount", 0) or 0) for p in this_month_payments)
 
+    owner_finance_lines = []
+    if roles.Role.OWNER.value in _effective_role_strings(staff):
+        current_finance = await async_runtime.run_sheets_read(
+            sheets.get_owner_financial_dashboard, today_str
+        )
+        last_finance = await async_runtime.run_sheets_read(
+            sheets.get_owner_financial_dashboard, f"{last_month_str}-01"
+        )
+        salary_commitments = await async_runtime.run_sheets_read(
+            sheets.get_owner_monthly_salary_commitments
+        )
+        current = current_finance["Combined"]
+        previous = last_finance["Combined"]
+        fixed_salary = salary_commitments["Combined"]
+        current_actual_expense = (
+            current["Month_Clinic_Expense"] + current["Month_Salary"]
+        )
+        previous_actual_expense = (
+            previous["Month_Clinic_Expense"] + previous["Month_Salary"]
+        )
+        business_liability = current["Month_Clinic_Expense"] + fixed_salary
+        coverage_balance = current["Month_Collection"] - business_liability
+        status_line = (
+            f"🔴 এখনও খরচ ওঠেনি: ৳{abs(coverage_balance):.0f}"
+            if coverage_balance < 0 else
+            f"🟢 নিরাপদ ব্যবসায়িক লাভ: ৳{coverage_balance:.0f}"
+        )
+        owner_finance_lines = [
+            "",
+            "📊 মাসের খরচ ওঠার অবস্থা",
+            f"এই মাসে আদায়: ৳{current['Month_Collection']:.0f}",
+            f"এই মাসের actual খরচ: ৳{current_actual_expense:.0f}",
+            f"গত মাসের actual খরচ: ৳{previous_actual_expense:.0f}",
+            f"মোট ব্যবসায়িক দায়: ৳{business_liability:.0f}",
+            status_line,
+        ]
+
     lines = [
         "\U0001F4CA রিপোর্ট ও অ্যানালিটিক্স", "",
         f"\U0001F195 আজকের নতুন রোগী: {today_new_patients}",
         f"\U0001F4C8 এই মাসের ({this_month_str}) নতুন রোগী: {this_month_patients}",
         f"\U0001F4B0 আজকের আদায়: {today_collection:.0f} টাকা",
         f"\U0001F4B0 এই মাসের ({this_month_str}) আদায়: {this_month_collection:.0f} টাকা",
+        *owner_finance_lines,
         "", "\U0001F447 আরও বিস্তারিত দেখতে নিচের বাটন চাপো:",
     ]
     if config.DEPARTMENT_ALL in set(departments or ()):
@@ -7991,44 +8029,25 @@ def _owner_finance_view_text(data: dict, view: str) -> str:
         summary = data[view]
         icon = "🩺" if view == config.DEPARTMENT_PHYSIO else "🦷"
         title = f"{icon} {view} Dashboard"
-        comparison = ""
-        warning = ""
     else:
         summary = data["Combined"]
         title = "🏢 Combined Business Summary"
-        physio = data[config.DEPARTMENT_PHYSIO]
-        dental = data[config.DEPARTMENT_DENTAL]
-        comparison = (
-            "\nDepartment totals\n"
-            f"🩺 Physio: collection ৳{physio['Month_Collection']:.0f}, "
-            f"staff salary ৳{physio['Month_Salary']:.0f}\n"
-            f"net (salary বাদে) ৳{physio['Month_Net_After_Salary']:.0f}\n"
-            f"🦷 Dental: collection ৳{dental['Month_Collection']:.0f}, "
-            f"staff salary ৳{dental['Month_Salary']:.0f}\n"
-            f"net (salary বাদে) ৳{dental['Month_Net_After_Salary']:.0f}\n"
-        )
-        unclassified = summary["Unclassified_Rows"]
-        warning = (
-            "\n\n⚠️ Unclassified (totals থেকে বাদ): "
-            f"Payment {unclassified['Payments']}, Expense {unclassified['Expenses']}, "
-            f"Cash Movement {unclassified['Cash_Movements']}"
-        )
-    opening = summary["Opening"]
     closing = summary["Closing"]
+    fixed_salary = data["Salary_Commitment"][view]
+    salary_paid = summary["Month_Salary"]
+    salary_due = max(fixed_salary - salary_paid, 0)
+    total_cash = sum(closing.values())
     return (
         f"{title} — {date_str}\n\n"
-        f"আজকের collection: ৳{summary['Today_Collection']:.0f}\n"
-        f"এই মাসের collection: ৳{summary['Month_Collection']:.0f}\n"
-        f"এই মাসের clinic expense: ৳{summary['Month_Clinic_Expense']:.0f}\n"
-        f"এই মাসের staff salary: ৳{summary['Month_Salary']:.0f}\n"
-        f"এই মাসের net (salary বাদে): ৳{summary['Month_Net_After_Salary']:.0f}\n"
-        f"Household Withdrawal: ৳{summary['Month_Household_Withdrawal']:.0f}\n"
-        f"{comparison}\n"
-        "Opening → Closing custody\n"
-        f"Reception: ৳{opening['Reception']:.0f} → ৳{closing['Reception']:.0f}\n"
-        f"Home Treasury: ৳{opening['Home Treasury']:.0f} → ৳{closing['Home Treasury']:.0f}\n"
-        f"Digital/Bank: ৳{opening['Digital/Bank']:.0f} → ৳{closing['Digital/Bank']:.0f}"
-        f"{warning}"
+        "💰 বর্তমান Cash Position\n"
+        f"Reception: ৳{closing['Reception']:.0f}\n"
+        f"Home Treasury: ৳{closing['Home Treasury']:.0f}\n"
+        f"Digital/Bank: ৳{closing['Digital/Bank']:.0f}\n"
+        f"মোট হাতে আছে: ৳{total_cash:.0f}\n\n"
+        "💼 বেতন\n"
+        f"নির্ধারিত: ৳{fixed_salary:.0f}\n"
+        f"পরিশোধিত/অগ্রিম: ৳{salary_paid:.0f}\n"
+        f"বাকি: ৳{salary_due:.0f}"
     )
 
 
@@ -8049,6 +8068,9 @@ async def owner_financial_dashboard_start(
     today = bd_now().strftime("%Y-%m-%d")
     data = await async_runtime.run_sheets_read(
         sheets.get_owner_financial_dashboard, today
+    )
+    data["Salary_Commitment"] = await async_runtime.run_sheets_read(
+        sheets.get_owner_monthly_salary_commitments
     )
     await update.message.reply_text(_owner_finance_view_text(data, view))
 

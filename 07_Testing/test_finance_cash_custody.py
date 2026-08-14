@@ -638,6 +638,43 @@ class CashHandoverRoleTests(unittest.TestCase):
 
 
 class OwnerFinancialDashboardTests(unittest.TestCase):
+    def test_fixed_salary_commitment_excludes_owner_and_includes_support_roles(self):
+        rows = [
+            {"Role": "Owner", "Status": "Active", "Salary": 99999, "Primary_Department": "All"},
+            {"Role": "Therapist", "Status": "Active", "Salary": 15000, "Primary_Department": "Physio"},
+            {"Role": "Cleaner", "Status": "Active", "Salary": 1300, "Primary_Department": "Physio"},
+            {"Role": "Auditor", "Status": "Active", "Salary": 7500, "Primary_Department": "All", "Clinic_ID": "RELIFE-PHYSIO"},
+            {"Role": "Receptionist", "Status": "Inactive", "Salary": 5000, "Primary_Department": "Physio"},
+        ]
+        totals = sheets._salary_commitments_for_rows(rows)
+        self.assertEqual(totals["Physio"], 23800)
+        self.assertEqual(totals["Dental"], 0)
+
+    def test_owner_dashboard_text_only_shows_cash_and_salary(self):
+        summary = {
+            "Month_Salary": 8650,
+            "Closing": {
+                "Reception": 0,
+                "Home Treasury": 10390,
+                "Digital/Bank": 200,
+            },
+        }
+        data = {
+            "Date": "2026-08-14",
+            "Physio": summary,
+            "Dental": {"Month_Salary": 0, "Closing": {key: 0 for key in summary["Closing"]}},
+            "Combined": summary,
+            "Salary_Commitment": {"Physio": 64300, "Dental": 0, "Combined": 64300},
+        }
+        text = bot._owner_finance_view_text(data, "Combined")
+        self.assertIn("বর্তমান Cash Position", text)
+        self.assertIn("মোট হাতে আছে: ৳10590", text)
+        self.assertIn("নির্ধারিত: ৳64300", text)
+        self.assertIn("পরিশোধিত/অগ্রিম: ৳8650", text)
+        self.assertIn("বাকি: ৳55650", text)
+        self.assertNotIn("collection", text)
+        self.assertNotIn("Household Withdrawal", text)
+
     def test_department_views_preserve_scope_and_opening_balances(self):
         payment_ws, expense_ws, movement_ws, salary_ws = object(), object(), object(), object()
         records = {
