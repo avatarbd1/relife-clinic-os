@@ -29,17 +29,30 @@ def tearDownModule():
 
 
 class OwnerFinanceTopLevelTests(unittest.TestCase):
-    def test_owner_top_level_keeps_old_tabs_and_adds_finance_overview(self):
+    def test_owner_finance_submenu_is_removed(self):
         self.assertEqual(
             roles.ROLE_FINANCE_ITEMS[roles.Role.OWNER],
+            [],
+        )
+
+    def test_owner_main_menu_uses_daily_priority_layout(self):
+        self.assertEqual(
+            roles.ROLE_MENU_ROWS[roles.Role.OWNER],
             [
-                roles.MENU_FINANCE_OVERVIEW,
-                roles.MENU_CUSTODY_BALANCE,
-                roles.MENU_FINANCE_DASHBOARDS,
-                roles.MENU_FINANCE_ACCOUNTS,
-                roles.MENU_HOUSEHOLD_WITHDRAWAL,
+                [roles.MENU_HOME],
+                [roles.MENU_CUSTODY_BALANCE],
+                [roles.MENU_FINANCE_DASHBOARDS],
+                [roles.MENU_PAYMENT, roles.MENU_FINANCE_ACCOUNTS],
+                [roles.MENU_TODAY_SCHEDULE],
+                [roles.MENU_PATIENT_MGMT, roles.MENU_APPOINTMENT],
+                [roles.MENU_TREATMENT, roles.MENU_REPORTS],
+                [roles.MENU_HOUSEHOLD_WITHDRAWAL, roles.MENU_FINANCE_OVERVIEW],
+                [roles.MENU_INVENTORY, roles.MENU_AI_TOOLS],
+                [roles.MENU_DELETE_ENTRY, roles.MENU_SETTINGS],
             ],
         )
+        flattened = [item for row in roles.ROLE_MENU_ROWS[roles.Role.OWNER] for item in row]
+        self.assertNotIn(roles.MENU_FINANCE, flattened)
 
     def test_receptionist_and_manager_menus_unchanged_in_shape(self):
         # Only gains Rejected Expenses; still a flat list, not restructured.
