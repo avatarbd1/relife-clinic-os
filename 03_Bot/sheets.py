@@ -1014,6 +1014,29 @@ def get_patient_by_id_for_staff(
     return visible[0] if visible else None
 
 
+def set_missing_patient_gender_for_staff(
+    patient_id: str, gender: str, staff: dict, mappings: list[dict]
+) -> bool:
+    """Set Gender once for a visible patient; never overwrite an existing value."""
+    normalized = physio_flow.normalize_gender(gender)
+    patient = get_patient_by_id_for_staff(patient_id, staff, mappings)
+    if patient is None or not normalized:
+        return False
+    existing = physio_flow.normalize_gender(patient.get("Gender", ""))
+    if existing:
+        return existing == normalized
+    ws = _worksheet(config.SHEET_PATIENTS)
+    headers = ws.row_values(1)
+    if "Gender" not in headers:
+        return False
+    cell = ws.find(patient_id.strip(), in_column=1)
+    if cell is None:
+        return False
+    ws.update_cell(cell.row, headers.index("Gender") + 1, normalized)
+    _invalidate_cache(ws)
+    return True
+
+
 def update_patient_payment(patient_id: str, additional_paid: float, discount: float = 0) -> dict | None:
     """
     রোগীর 02_Patients শীটে Payment_Status / Total_Bill / Paid_Amount / Due_Amount

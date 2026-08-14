@@ -3,6 +3,8 @@ import re
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -109,6 +111,45 @@ class QuickPlanParsingTests(unittest.TestCase):
             if isinstance(item, ast.AsyncFunctionDef) and item.name == "tplan_quick_confirm"
         )
         self.assertIn("DEPARTMENT_DENTAL", ast.unparse(function))
+
+    def test_quick_session_choices_are_clear(self):
+        for label in ("৭ সেশন", "১৪ সেশন", "২১ সেশন", "২৮ সেশন"):
+            self.assertIn(label, self.source)
+
+
+class MissingGenderCaptureTests(unittest.TestCase):
+    def _load_writer(self, patient, worksheet=None):
+        source = (BOT_DIR / "sheets.py").read_text(encoding="utf-8")
+        function = next(
+            item for item in ast.parse(source).body
+            if isinstance(item, ast.FunctionDef)
+            and item.name == "set_missing_patient_gender_for_staff"
+        )
+        ws = worksheet or Mock()
+        namespace = {
+            "physio_flow": physio_flow,
+            "get_patient_by_id_for_staff": Mock(return_value=patient),
+            "_worksheet": Mock(return_value=ws),
+            "_invalidate_cache": Mock(),
+            "config": SimpleNamespace(SHEET_PATIENTS="02_Patients"),
+        }
+        exec(ast.unparse(function), namespace)
+        return namespace["set_missing_patient_gender_for_staff"], ws
+
+    def test_missing_gender_is_written_by_header(self):
+        ws = Mock()
+        ws.row_values.return_value = ["Patient_ID", "Full_Name", "Gender"]
+        ws.find.return_value = SimpleNamespace(row=4)
+        writer, _ = self._load_writer(
+            {"Patient_ID": "PT1", "Gender": ""}, ws
+        )
+        self.assertTrue(writer("PT1", "Female", {}, []))
+        ws.update_cell.assert_called_once_with(4, 3, "Female")
+
+    def test_existing_gender_is_never_overwritten(self):
+        writer, ws = self._load_writer({"Patient_ID": "PT1", "Gender": "Female"})
+        self.assertFalse(writer("PT1", "Male", {}, []))
+        ws.update_cell.assert_not_called()
 
 
 if __name__ == "__main__":

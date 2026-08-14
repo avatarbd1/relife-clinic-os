@@ -124,6 +124,7 @@ async def _bind_update_tenant(update: Update, context: ContextTypes.DEFAULT_TYPE
     APT_THERAPIST,
     APT_CONFIRM,
 ) = range(13)
+APT_GENDER = 13
 
 REG_PHOTO_CHOICE, REG_PHOTO_WAIT, REG_PHOTO_CONFIRM = range(90, 93)
 DENTAL_PROCEDURE, DENTAL_TOOTH, DENTAL_NOTE, DENTAL_STATUS, DENTAL_CONFIRM = range(93, 98)
@@ -253,8 +254,8 @@ COST_ITEM = 59
 
 (
     TPLAN_CATEGORY, TPLAN_TESTS, TPLAN_MODE,
-    TPLAN_QUICK_FINDINGS, TPLAN_QUICK_PROTOCOL,
-) = range(200, 205)
+    TPLAN_QUICK_FINDINGS, TPLAN_QUICK_PROTOCOL, TPLAN_QUICK_TOTAL,
+) = range(200, 206)
 
 MACHINE_LIST = [
     "Hot Pack", "Cold Pack",
@@ -594,7 +595,10 @@ def _pt_dashboard_keyboard(
 ) -> InlineKeyboardMarkup:
     if queue is None:
         queue = _therapist_today_queue(staff, show_all)
-    buttons = []
+    buttons = [[
+        InlineKeyboardButton("🕐 হাজিরা", callback_data="sched_att"),
+        InlineKeyboardButton("📋 আজকের অ্যাপয়েন্টমেন্ট", callback_data="sched_apt"),
+    ]]
     seen_history_patient_ids = set()
     for item in queue[:12]:
         if item["status"] in ("Completed", "Missed Appointment"):
@@ -2087,13 +2091,57 @@ async def apt_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         "Patient_ID": patient.get("Patient_ID", ""),
         "Patient_Name": patient.get("Full_Name", ""),
         "Department": patient.get("Department", ""),
+        "_Patient_Therapist": patient.get("Therapist", ""),
     }
     context.user_data.pop("apt_dates", None)
     await query.edit_message_text(
         f"✅ রোগী বাছাই হয়েছে: {patient.get('Full_Name')} ({patient.get('Patient_ID')})"
     )
+    if (
+        patient.get("Department") == config.DEPARTMENT_PHYSIO
+        and not physio_flow.normalize_gender(patient.get("Gender", ""))
+    ):
+        await query.message.reply_text(
+            "Room ঠিক করতে রোগীর Gender একবার নির্বাচন করুন। এটি Patient profile-এ save হবে:",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("♂️ পুরুষ", callback_data="aptgender_Male"),
+                InlineKeyboardButton("♀️ মহিলা", callback_data="aptgender_Female"),
+            ]]),
+        )
+        return APT_GENDER
     await query.message.reply_text(
         "তারিখ বেছে নাও — একাধিক দিনও বাছাই করা যাবে (একাধিকবার চাপো), তারপর 'পরের ধাপ' চাপো:",
+        reply_markup=_date_multi_keyboard(set()),
+    )
+    return APT_DATE
+
+
+async def apt_gender_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    gender = query.data.replace("aptgender_", "", 1)
+    appointment = context.user_data.get("new_appointment", {})
+    patient_id = str(appointment.get("Patient_ID", "")).strip()
+    staff = await _require_staff(update, context)
+    if staff is None or gender not in {"Male", "Female"}:
+        await query.edit_message_text("❌ Gender save করা যায়নি। আবার appointment শুরু করুন।")
+        return ConversationHandler.END
+    mappings = await _patient_department_mappings(staff)
+    saved = await async_runtime.run_sheets_write(
+        sheets.set_missing_patient_gender_for_staff,
+        patient_id, gender, staff, mappings,
+    )
+    if not saved:
+        await query.edit_message_text(
+            "⛔ Patient profile-এ Gender save করার অনুমতি নেই অথবা Gender আগে থেকেই বদলেছে।"
+        )
+        return ConversationHandler.END
+    appointment["Gender"] = gender
+    await query.edit_message_text(
+        f"✅ Gender save হয়েছে: {'পুরুষ' if gender == 'Male' else 'মহিলা'}"
+    )
+    await query.message.reply_text(
+        "তারিখ বেছে নাও — তারপর 'পরের ধাপ' চাপো:",
         reply_markup=_date_multi_keyboard(set()),
     )
     return APT_DATE
@@ -2279,6 +2327,21 @@ async def apt_time_done_callback(update: Update, context: ContextTypes.DEFAULT_T
     context.user_data.pop("apt_times", None)
     await query.edit_message_text(f"✅ সময় বাছাই করা হয়েছে: {', '.join(selected)}")
     department = context.user_data["new_appointment"].get("Department", config.DEPARTMENT_PHYSIO)
+    appointment = context.user_data["new_appointment"]
+    staff = context.user_data.get("staff", {})
+    if department == config.DEPARTMENT_PHYSIO:
+        auto_provider = str(appointment.get("_Patient_Therapist", "") or "").strip()
+        if not auto_provider and roles.Role.THERAPIST.value in _effective_role_strings(staff):
+            auto_provider = str(staff.get("Full_Name", "") or "").strip()
+        if auto_provider:
+            appointment["Therapist"] = auto_provider
+            await query.message.reply_text(
+                _apt_summary_text(appointment),
+                reply_markup=ReplyKeyboardMarkup(
+                    [["হ্যাঁ", "না"]], resize_keyboard=True, one_time_keyboard=True
+                ),
+            )
+            return APT_CONFIRM
     label = "ডেন্টিস্ট" if department == config.DEPARTMENT_DENTAL else "থেরাপিস্ট"
     await query.message.reply_text(f"{label} বেছে নাও (অথবা টাইপ করো):",
         reply_markup=await async_runtime.run_sheets_read(_therapist_keyboard, department))
@@ -2349,6 +2412,15 @@ async def apt_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     staff = context.user_data.get("staff", {})
     if text in ("হ্যাঁ", "yes", "y", "হা", "ha"):
         a = context.user_data.get("new_appointment", {})
+        patient = await _patient_by_id_for_request(
+            update, context, str(a.get("Patient_ID", "")).strip()
+        )
+        if patient is None or patient.get("Department") != a.get("Department"):
+            await update.message.reply_text(
+                "⛔ Patient/Department permission বদলেছে; appointment save হয়নি।",
+                reply_markup=_menu_keyboard(staff),
+            )
+            return ConversationHandler.END
         dates = a.get("Dates") or ([a["Date"]] if a.get("Date") else [])
         times = a.get("Times") or ([a["Time"]] if a.get("Time") else [])
         ids = []
@@ -4121,14 +4193,7 @@ def _category_keyboard() -> InlineKeyboardMarkup:
 
 def _tplan_mode_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("⚡ Quick 5", callback_data="tpmode_quick_5"),
-            InlineKeyboardButton("⚡ Quick 7", callback_data="tpmode_quick_7"),
-        ],
-        [
-            InlineKeyboardButton("⚡ Quick 10", callback_data="tpmode_quick_10"),
-            InlineKeyboardButton("⚡ Quick 15", callback_data="tpmode_quick_15"),
-        ],
+        [InlineKeyboardButton("⚡ Quick Assessment + Plan", callback_data="tpmode_quick")],
         [InlineKeyboardButton("🧾 Detailed Assessment + TP", callback_data="tpmode_detailed")],
     ])
 
@@ -4362,11 +4427,6 @@ async def tplan_mode_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             reply_markup=_category_keyboard(),
         )
         return TPLAN_CATEGORY
-    try:
-        context.user_data["tplan"]["Total_Sessions"] = int(query.data.rsplit("_", 1)[1])
-    except (KeyError, ValueError):
-        await query.answer("Quick plan-এর session button আবার চাপুন।", show_alert=True)
-        return TPLAN_MODE
     await query.edit_message_text(
         "⚡ Quick Assessment + TP\n\nসমস্যার ধরন বাছাই করো:",
         reply_markup=_quick_category_keyboard(),
@@ -4415,9 +4475,33 @@ async def tplan_quick_protocol(update: Update, context: ContextTypes.DEFAULT_TYP
     findings = context.user_data.get("tplan_quick_findings", "")
     tplan["Diagnosis"] = f"{label} | {findings}"
     await update.message.reply_text(
-        "⚡ Quick Assessment + TP\n\n"
+        "মোট কয়টি Session-এর Plan?",
+        reply_markup=ReplyKeyboardMarkup(
+            [["৭ সেশন", "১৪ সেশন"], ["২১ সেশন", "২৮ সেশন"], ["নিজে লিখুন"]],
+            resize_keyboard=True, one_time_keyboard=True,
+        ),
+    )
+    return TPLAN_QUICK_TOTAL
+
+
+async def tplan_quick_total(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    raw = update.message.text.strip()
+    if raw == "নিজে লিখুন":
+        await update.message.reply_text(
+            "Session সংখ্যা লিখুন:", reply_markup=ReplyKeyboardRemove()
+        )
+        return TPLAN_QUICK_TOTAL
+    match = re.search(r"\d+", raw)
+    if not match or int(match.group()) <= 0:
+        await update.message.reply_text("৭, ১৪, ২১, ২৮ চাপুন অথবা একটি সংখ্যা লিখুন।")
+        return TPLAN_QUICK_TOTAL
+    context.user_data["tplan"]["Total_Sessions"] = int(match.group())
+    tplan = context.user_data["tplan"]
+    await update.message.reply_text(
+        "⚡ Quick Assessment + Plan\n\n"
         f"রোগী: {tplan.get('Patient_Name')} ({tplan.get('Patient_ID')})\n"
-        f"Finding: {findings}\nSessions: {tplan.get('Total_Sessions')}\n"
+        f"Finding: {context.user_data.get('tplan_quick_findings', '')}\n"
+        f"Sessions: {tplan.get('Total_Sessions')}\n"
         f"Exercise: {tplan.get('Exercise_Plan') or '-'}\n"
         f"Electro: {tplan.get('Electrotherapy_Plan') or '-'}\n"
         f"Manual: {tplan.get('Manual_Therapy_Plan') or '-'}",
@@ -4492,8 +4576,10 @@ async def tplan_diagnosis(update: Update, context: ContextTypes.DEFAULT_TYPE):
     prev_total = prev.get("Total_Sessions", "")
     hint = f" (আগেরটা: {prev_total})" if prev_total else ""
     await update.message.reply_text(
-        f"মোট কয়টা সেশনের প্ল্যান (যেমন: 5){hint}:",
-        reply_markup=_number_keyboard([str(n) for n in range(1, 11)]),
+        f"মোট কয়টা সেশনের প্ল্যান?{hint}",
+        reply_markup=ReplyKeyboardMarkup(
+            [["৭", "১৪"], ["২১", "২৮"]], resize_keyboard=True, one_time_keyboard=True
+        ),
     )
     return TPLAN_TOTAL
 
@@ -5843,8 +5929,24 @@ async def plist_action_apt(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Patient_ID": patient.get("Patient_ID", ""),
         "Patient_Name": patient.get("Full_Name", ""),
         "Department": patient.get("Department", ""),
+        "_Patient_Therapist": patient.get("Therapist", ""),
     }
     context.user_data.pop("apt_dates", None)
+    if (
+        patient.get("Department") == config.DEPARTMENT_PHYSIO
+        and not physio_flow.normalize_gender(patient.get("Gender", ""))
+    ):
+        await query.edit_message_text(
+            f"✅ রোগী বাছাই হয়েছে: {patient.get('Full_Name')} ({patient_id})"
+        )
+        await query.message.reply_text(
+            "Room ঠিক করতে রোগীর Gender একবার নির্বাচন করুন:",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("♂️ পুরুষ", callback_data="aptgender_Male"),
+                InlineKeyboardButton("♀️ মহিলা", callback_data="aptgender_Female"),
+            ]]),
+        )
+        return APT_GENDER
     await query.edit_message_text(
         f"✅ রোগী বাছাই হয়েছে: {patient.get('Full_Name')} ({patient.get('Patient_ID')})"
     )
@@ -8831,6 +8933,9 @@ def main():
                 CallbackQueryHandler(_apt_search_cancel, pattern="^aptsearchback$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), apt_select),
             ],
+            APT_GENDER: [
+                CallbackQueryHandler(apt_gender_callback, pattern="^aptgender_(Male|Female)$"),
+            ],
             APT_DATE: [
                 CallbackQueryHandler(apt_date_toggle_callback, pattern="^aptdatetoggle_"),
                 CallbackQueryHandler(apt_date_done_callback, pattern="^aptdatedone$"),
@@ -9038,6 +9143,7 @@ def main():
             TPLAN_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_confirm)],
             TPLAN_QUICK_FINDINGS: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_quick_findings)],
             TPLAN_QUICK_PROTOCOL: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_quick_protocol)],
+            TPLAN_QUICK_TOTAL: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex(_ALL_MENU_REGEX), tplan_quick_total)],
         },
         fallbacks=[
             MessageHandler(filters.Regex(f"^{roles.MENU_BACK_MAIN}$"), _cancel_and_go_home),

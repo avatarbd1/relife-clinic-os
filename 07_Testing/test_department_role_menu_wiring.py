@@ -26,9 +26,8 @@ class MultiRoleMenuTests(unittest.TestCase):
             rows,
             [
                 [roles.MENU_HOME],
-                [roles.MENU_TODAY_SCHEDULE],
-                [roles.MENU_PATIENT_LIST],
                 [roles.MENU_MY_PATIENTS],
+                [roles.MENU_APPOINTMENT, roles.MENU_PATIENT_LIST],
                 [roles.MENU_TREATMENT_NOTE, roles.MENU_TREATMENT_PLAN],
                 [roles.MENU_PATIENT_HISTORY, roles.MENU_TREATMENT_HISTORY],
                 [roles.MENU_CLINICAL_AI],

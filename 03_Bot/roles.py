@@ -15,10 +15,10 @@ class Role(str, Enum):
 # ---- মেনু আইটেমসমূহ ----
 MENU_HOME = "🏠 হোম"
 MENU_PATIENT_REG = "👤 রোগী রেজিস্ট্রেশন"
-MENU_APPOINTMENT = "📅 অ্যাপয়েন্টমেন্ট বুকিং"
-MENU_MY_PATIENTS = "🧑‍⚕️ আমার রোগী / সেশন"
-MENU_TREATMENT_NOTE = "📝 ট্রিটমেন্ট নোট"
-MENU_TREATMENT_PLAN = "📋 এসেসমেন্ট / ট্রিটমেন্ট প্ল্যান"
+MENU_APPOINTMENT = "📅 নতুন অ্যাপয়েন্টমেন্ট"
+MENU_MY_PATIENTS = "🩺 আজকের রোগী ও সেশন"
+MENU_TREATMENT_NOTE = "📝 আজকের ট্রিটমেন্ট"
+MENU_TREATMENT_PLAN = "📋 এসেসমেন্ট ও প্ল্যান"
 MENU_TREATMENT_HISTORY = "📜 ট্রিটমেন্ট হিস্ট্রি"
 MENU_PAYMENT = "💳 পেমেন্ট তথ্য"
 MENU_REPORTS = "📊 রিপোর্ট ও অ্যানালিটিক্স"
@@ -31,7 +31,7 @@ MENU_BACK_MAIN = "🔙 মূল মেনু"
 MENU_SETTINGS = "⚙️ সেটিংস"
 MENU_ATTENDANCE = "🕐 হাজিরা"
 MENU_TODAY_APPOINTMENTS = "📋 আজকের অ্যাপয়েন্টমেন্ট"
-MENU_PATIENT_HISTORY = "📜 রোগীর ইতিহাস"
+MENU_PATIENT_HISTORY = "📂 রোগীর ফাইল"
 MENU_PATIENT_LIST = "📋 রোগীর তালিকা"
 MENU_DAILY_REGISTER = "📋 আজকের রেজিস্টার"
 MENU_STAFF_AI_QUERY = "🤖 AI প্রশ্ন করুন"
@@ -85,9 +85,8 @@ ROLE_MENU_ROWS: dict[Role, list[list[str]]] = {
     ],
     Role.THERAPIST: [
         [MENU_HOME],
-        [MENU_TODAY_SCHEDULE],
-        [MENU_PATIENT_LIST],
         [MENU_MY_PATIENTS],
+        [MENU_APPOINTMENT, MENU_PATIENT_LIST],
         [MENU_TREATMENT_NOTE, MENU_TREATMENT_PLAN],
         [MENU_PATIENT_HISTORY, MENU_TREATMENT_HISTORY],
         [MENU_CLINICAL_AI],
