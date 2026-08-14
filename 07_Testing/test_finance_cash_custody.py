@@ -91,6 +91,36 @@ class FinanceLedgerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             sheets.add_expense("ভাড়া", 100, "S1", expense_type="Transfer")
 
+    def test_generator_petrol_splits_40_60_without_double_counting(self):
+        calls = []
+
+        def capture(target_department, function, *args, **kwargs):
+            calls.append((target_department, args[1], kwargs))
+            return f"EX-{target_department}"
+
+        with patch.object(sheets, "_expense_action_for_department", side_effect=capture):
+            result = sheets.add_shared_expense(
+                "Generator Petrol", 700, "Owner", note="5 litre"
+            )
+
+        self.assertEqual(result["Allocations"], {"Physio": 280, "Dental": 420})
+        self.assertEqual(sum(item[1] for item in calls), 700)
+        self.assertEqual([item[0] for item in calls], ["Physio", "Dental"])
+        self.assertTrue(all(item[2]["status"] == "Paid" for item in calls))
+
+    def test_wifi_splits_50_50_without_double_counting(self):
+        calls = []
+
+        def capture(target_department, function, *args, **kwargs):
+            calls.append((target_department, args[1]))
+            return f"EX-{target_department}"
+
+        with patch.object(sheets, "_expense_action_for_department", side_effect=capture):
+            result = sheets.add_shared_expense("Wi-Fi", 800, "Owner")
+
+        self.assertEqual(result["Allocations"], {"Physio": 400, "Dental": 400})
+        self.assertEqual(sum(item[1] for item in calls), 800)
+
     def test_legacy_blank_is_unclassified_and_not_monthly_clinic_expense(self):
         records = [
             {"Date": "2026-08-01", "Amount": 100, "Type": ""},

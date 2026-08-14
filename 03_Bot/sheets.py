@@ -2251,7 +2251,20 @@ def add_salary_payment(
     return payment_id
 
 
-EXPENSE_CATEGORIES = ["ভাড়া", "ইউটিলিটি", "সরঞ্জাম/মেডিসিন", "মেইনটেন্যান্স", "মার্কেটিং", "অন্যান্য"]
+EXPENSE_CATEGORIES = [
+    "ভাড়া", "বিদ্যুৎ বিল", "ইউটিলিটি", "সরঞ্জাম/মেডিসিন",
+    "মেইনটেন্যান্স", "মার্কেটিং", "অন্যান্য",
+]
+SHARED_EXPENSE_ALLOCATIONS = {
+    "Generator Petrol": {
+        config.DEPARTMENT_PHYSIO: 0.40,
+        config.DEPARTMENT_DENTAL: 0.60,
+    },
+    "Wi-Fi": {
+        config.DEPARTMENT_PHYSIO: 0.50,
+        config.DEPARTMENT_DENTAL: 0.50,
+    },
+}
 
 
 def _next_expense_id(ws) -> str:
@@ -2378,6 +2391,58 @@ def add_expense(
         human_verified=status == "Paid",
     )
     return expense_id
+
+
+def add_shared_expense(
+    category: str,
+    amount: float,
+    added_by: str,
+    note: str = "",
+    paid_from: str = config.CASH_CUSTODIAN_HOME_TREASURY,
+) -> dict[str, object]:
+    """Split one shared bill into PT/DT ledger allocations.
+
+    Each department stores only its share, so department totals and combined
+    totals stay correct without counting the original bill a second time.
+    """
+    allocation = SHARED_EXPENSE_ALLOCATIONS.get(str(category).strip())
+    if allocation is None:
+        raise ValueError(f"Invalid shared expense category: {category}")
+    total = _positive_amount(amount)
+    physio_amount = round(total * allocation[config.DEPARTMENT_PHYSIO], 2)
+    dental_amount = round(total - physio_amount, 2)
+    allocated = {
+        config.DEPARTMENT_PHYSIO: physio_amount,
+        config.DEPARTMENT_DENTAL: dental_amount,
+    }
+    expense_ids = {}
+    for department in (config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL):
+        share = allocation[department]
+        allocation_note = (
+            f"Shared {category} | total ৳{total:g} | "
+            f"{department} {share * 100:g}%"
+        )
+        if note:
+            allocation_note += f" | {note}"
+        expense_ids[department] = _expense_action_for_department(
+            department,
+            add_expense,
+            category,
+            allocated[department],
+            added_by,
+            note=allocation_note,
+            expense_type=config.EXPENSE_TYPE_CLINIC,
+            paid_from=paid_from,
+            status="Paid",
+            approved_by=added_by,
+            paid_by=added_by,
+            department=department,
+        )
+    return {
+        "Total": round(total, 2),
+        "Allocations": allocated,
+        "Expense_IDs": expense_ids,
+    }
 
 
 def create_expense_request(

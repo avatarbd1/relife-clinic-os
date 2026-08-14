@@ -7014,10 +7014,14 @@ async def _expense_form_start(
     return COST_DEPARTMENT
 
 
-async def _send_expense_category_prompt(message):
+async def _send_expense_category_prompt(message, *, shared_only=False):
+    categories = (
+        list(sheets.SHARED_EXPENSE_ALLOCATIONS)
+        if shared_only else sheets.EXPENSE_CATEGORIES
+    )
     buttons = [
         [InlineKeyboardButton(cat, callback_data=f"costcat_{cat}")]
-        for cat in sheets.EXPENSE_CATEGORIES
+        for cat in categories
     ]
     await message.reply_text(
         "খরচের ক্যাটাগরি বেছে নাও:",
@@ -7030,6 +7034,20 @@ async def cost_department_callback(update: Update, context: ContextTypes.DEFAULT
     await query.answer()
     department = query.data.replace("costdept_", "", 1)
     staff = await _require_staff(update, context)
+    expense = context.user_data.get("cost", {})
+    if department == "Shared":
+        if (
+            staff is None
+            or str(staff.get("Role", "")).strip() != roles.Role.OWNER.value
+            or expense.get("Mode") != "owner_clinic"
+        ):
+            await query.edit_message_text("⛔ Shared expense শুধু Owner দিতে পারবেন।")
+            return ConversationHandler.END
+        expense["Scope"] = "Shared"
+        context.user_data["cost"] = expense
+        await query.edit_message_text("বিভাগ: PT + DT Shared")
+        await _send_expense_category_prompt(query.message, shared_only=True)
+        return COST_CATEGORY
     if staff is None or not _staff_has_finance_department(staff, department):
         await query.edit_message_text("⛔ এই Department-এর finance access নেই।")
         return ConversationHandler.END
@@ -7039,7 +7057,6 @@ async def cost_department_callback(update: Update, context: ContextTypes.DEFAULT
     if str(staff.get("Role", "")).strip() == roles.Role.OWNER.value:
         context.user_data["_owner_department"] = department
         sheet_scope.bind_sheet(config.sheet_id_for_department(department))
-    expense = context.user_data.get("cost", {})
     expense["Department"] = department
     context.user_data["cost"] = expense
     await query.edit_message_text(f"বিভাগ: {department}")
@@ -7064,12 +7081,22 @@ async def small_expense_start(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def owner_clinic_expense_start(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
-    return await _expense_form_start(
-        update,
-        context,
-        mode="owner_clinic",
-        menu_item=roles.MENU_OWNER_CLINIC_EXPENSE,
+    staff = await _require_staff(update, context)
+    if staff is None:
+        return ConversationHandler.END
+    if not _staff_can_access_menu(staff, roles.MENU_OWNER_CLINIC_EXPENSE):
+        await update.message.reply_text("⛔ এই মেনুতে তোমার অনুমতি নেই।")
+        return ConversationHandler.END
+    context.user_data["cost"] = {"Mode": "owner_clinic"}
+    await update.message.reply_text(
+        "খরচ কোন বিভাগের?",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🩺 Physio", callback_data="costdept_Physio")],
+            [InlineKeyboardButton("🦷 Dental", callback_data="costdept_Dental")],
+            [InlineKeyboardButton("🔗 PT + DT Shared", callback_data="costdept_Shared")],
+        ]),
     )
+    return COST_DEPARTMENT
 
 
 async def household_withdrawal_start(
@@ -7195,9 +7222,8 @@ async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
     if staff is None:
         return ConversationHandler.END
     expense = context.user_data.get("cost", {})
-    if not _staff_has_finance_department(
-        staff, expense.get("Department", "")
-    ):
+    is_shared = expense.get("Scope") == "Shared"
+    if not is_shared and not _staff_has_finance_department(staff, expense.get("Department", "")):
         context.user_data.pop("cost", None)
         await update.message.reply_text("⛔ এই Department-এর expense save অনুমতি নেই।")
         return ConversationHandler.END
@@ -7252,6 +7278,26 @@ async def cost_confirm_receive(update: Update, context: ContextTypes.DEFAULT_TYP
                 raise ValueError("Unknown expense workflow mode")
             if not _staff_can_access_menu(staff, menu_item):
                 raise PermissionError("Owner expense permission denied")
+            if is_shared:
+                if expense_type != config.EXPENSE_TYPE_CLINIC:
+                    raise ValueError("Shared expense must be a clinic expense")
+                result = await async_runtime.run_sheets_write(
+                    sheets.add_shared_expense,
+                    expense.get("Category", ""),
+                    expense.get("Amount", 0),
+                    actor,
+                    note=expense.get("Note", ""),
+                )
+                allocations = result["Allocations"]
+                await update.message.reply_text(
+                    "✅ Shared expense Paid হিসেবে save হয়েছে।\n"
+                    f"মোট: ৳{result['Total']:.0f}\n"
+                    f"Physio: ৳{allocations[config.DEPARTMENT_PHYSIO]:.0f}\n"
+                    f"Dental: ৳{allocations[config.DEPARTMENT_DENTAL]:.0f}",
+                    reply_markup=_menu_keyboard(staff),
+                )
+                context.user_data.pop("cost", None)
+                return ConversationHandler.END
             expense_id = await async_runtime.run_sheets_write(
                 sheets.add_expense,
                 expense.get("Category", ""),
