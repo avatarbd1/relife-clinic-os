@@ -101,12 +101,14 @@ class LiveSummaryTextTests(unittest.TestCase):
             with self.subTest(excluded=excluded):
                 self.assertNotIn(excluded, text)
 
-    def test_period_summary_keeps_the_old_wording(self):
+    def test_period_summary_shows_carry_forward_wording(self):
         summary = self._summary("2026-08-14")
         text = bot._cash_custody_summary_text(summary, "Owner")
         self.assertIn("Cash reconciliation", text)
-        self.assertIn("নির্বাচিত সময়ের net balance", text)
-        self.assertIn("এটি নির্বাচিত সময়ের movement balance", text)
+        self.assertIn("Opening cash", text)
+        self.assertIn("Net movement", text)
+        self.assertIn("Closing balance", text)
+        self.assertIn("পরের দিনের Opening cash", text)
 
     def test_non_owner_live_view_shows_only_reception(self):
         summary = self._summary(bot._LIVE_BALANCE_START_DATE)

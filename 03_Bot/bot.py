@@ -7840,6 +7840,7 @@ def _cash_custody_summary_text(summary: dict, role_str: str) -> str:
         f"⚖️ Cash reconciliation — {summary['Date']}",
         "",
         "Reception",
+        f"Opening cash: ৳{summary.get('Reception_Opening', 0):.0f}",
         f"Cash collection: ৳{summary['Cash_Collected']:.0f}",
         f"Paid ছোট খরচ: ৳{summary['Reception_Expense']:.0f}",
     ]
@@ -7855,14 +7856,16 @@ def _cash_custody_summary_text(summary: dict, role_str: str) -> str:
         lines.append(
             f"⏳ পাঠানো হয়েছে, গ্রহণ বাকি: ৳{in_transit:.0f}"
         )
+    lines.append(f"Net movement: ৳{summary['Reception_Balance']:.0f}")
     lines.append(
-        f"নির্বাচিত সময়ের net balance: ৳{summary['Reception_Balance']:.0f}"
+        f"Closing balance: ৳{summary.get('Reception_Closing', summary['Reception_Balance']):.0f}"
     )
 
     if is_owner:
         lines += [
             "",
             "Home Treasury",
+            f"Opening cash: ৳{summary.get('Home_Opening', 0):.0f}",
             f"Accepted receipt: ৳{summary['Home_Received']:.0f}",
             f"বড় clinic expense: ৳{summary['Home_Clinic_Expense']:.0f}",
             f"বেতন পরিশোধ: ৳{summary.get('Home_Salary', 0):.0f}",
@@ -7872,18 +7875,21 @@ def _cash_custody_summary_text(summary: dict, role_str: str) -> str:
         home_transit = summary.get("Home_In_Transit", 0)
         if home_transit:
             lines.append(f"⏳ পাঠানো হয়েছে, গ্রহণ বাকি: ৳{home_transit:.0f}")
+        lines.append(f"Net movement: ৳{summary['Home_Balance']:.0f}")
         lines.append(
-            f"নির্বাচিত সময়ের net balance: ৳{summary['Home_Balance']:.0f}"
+            f"Closing balance: ৳{summary.get('Home_Closing', summary['Home_Balance']):.0f}"
         )
 
         lines += [
             "",
             "Bank",
+            f"Opening cash: ৳{summary.get('Bank_Opening', 0):.0f}",
             f"Accepted receipt: ৳{summary.get('Bank_Received', 0):.0f}",
             f"খরচ: ৳{summary.get('Bank_Expense', 0):.0f}",
             f"বেতন পরিশোধ: ৳{summary.get('Bank_Salary', 0):.0f}",
             f"Transfer out: ৳{summary.get('Bank_Transfer_Out', 0):.0f}",
-            f"নির্বাচিত সময়ের net balance: ৳{summary.get('Bank_Balance', 0):.0f}",
+            f"Net movement: ৳{summary.get('Bank_Balance', 0):.0f}",
+            f"Closing balance: ৳{summary.get('Bank_Closing', summary.get('Bank_Balance', 0)):.0f}",
         ]
 
         unclassified = summary.get("Unclassified_Total", 0)
@@ -7894,10 +7900,7 @@ def _cash_custody_summary_text(summary: dict, role_str: str) -> str:
                 "এগুলো উপরের কোনো হিসাবে ধরা হয়নি। Sheet-এ Department বসালে যোগ হবে।",
             ]
 
-    lines += [
-        "",
-        "ℹ️ এটি নির্বাচিত সময়ের movement balance; আগের opening cash এতে নেই।",
-    ]
+    lines += ["", "ℹ️ Closing balance পরের দিনের Opening cash হিসেবে চলবে।"]
     return "\n".join(lines)
 
 

@@ -2797,7 +2797,8 @@ def get_cash_custody_summary(
 ) -> dict:
     """Cash reconciliation over an inclusive range, defaulting to today.
 
-    এটি নির্বাচিত সময়ের movement — opening balance এতে ধরা নেই।
+    Period activity is returned separately from the all-time balance immediately
+    before the range, so a day's closing cash carries forward to the next day.
     """
     start_date = date_str or bd_now().strftime("%Y-%m-%d")
     end_date = end_date or start_date
@@ -2887,6 +2888,62 @@ def get_cash_custody_summary(
     bank_in = _moved(accepted, "to", config.CASH_CUSTODIAN_BANK)
     bank_out = _moved(accepted, "from", config.CASH_CUSTODIAN_BANK)
 
+    # Opening cash is every recorded cash effect strictly before the selected
+    # range.  Keeping this separate from the period movement makes both the
+    # reconciliation and the carry-forward explicit.
+    def _before(value):
+        text = str(value or "").strip()[:10]
+        return bool(text) and text < start_date
+
+    prior_cash_collected = _sum_where(
+        payment_rows,
+        lambda row: _before(row.get("Date"))
+        and str(row.get("Payment_Method", "")).strip().lower() == "cash",
+    )
+    prior_paid_expenses = [
+        row for row in expense_rows
+        if _before(_cash_effective_date(row)) and _expense_is_paid(row)
+    ]
+    prior_paid_salaries = [
+        row for row in salary_rows
+        if _before(_cash_effective_date(row))
+        and str(row.get("Status", "")).strip() in ("", "Paid")
+    ]
+    prior_accepted = [
+        row for row in movement_rows
+        if _before(row.get("Date"))
+        and str(row.get("Status", "")).strip() == "Accepted"
+    ]
+
+    reception_opening = (
+        prior_cash_collected
+        + _moved(prior_accepted, "to", config.CASH_CUSTODIAN_RECEPTION)
+        - _from(prior_paid_expenses, config.CASH_CUSTODIAN_RECEPTION)
+        - _from(prior_paid_salaries, config.CASH_CUSTODIAN_RECEPTION)
+        - _moved(prior_accepted, "from", config.CASH_CUSTODIAN_RECEPTION)
+    )
+    home_opening = (
+        _moved(prior_accepted, "to", config.CASH_CUSTODIAN_HOME_TREASURY)
+        - _from(prior_paid_expenses, config.CASH_CUSTODIAN_HOME_TREASURY)
+        - _from(prior_paid_salaries, config.CASH_CUSTODIAN_HOME_TREASURY)
+        - _moved(prior_accepted, "from", config.CASH_CUSTODIAN_HOME_TREASURY)
+    )
+    bank_opening = (
+        _moved(prior_accepted, "to", config.CASH_CUSTODIAN_BANK)
+        - _from(prior_paid_expenses, config.CASH_CUSTODIAN_BANK)
+        - _from(prior_paid_salaries, config.CASH_CUSTODIAN_BANK)
+        - _moved(prior_accepted, "from", config.CASH_CUSTODIAN_BANK)
+    )
+
+    reception_movement = (
+        cash_collected - reception_expense - reception_salary - reception_out
+    )
+    home_movement = (
+        home_in - home_clinic_expense - home_salary
+        - household_withdrawal - home_out
+    )
+    bank_movement = bank_in - bank_expense - bank_salary - bank_out
+
     # Department ছাড়া সারিগুলো fail-closed নিয়মে রিপোর্ট থেকে বাদ পড়ে —
     # নীরবে হারানোর বদলে আলাদা করে দেখানো হয়।
     unclassified_expense = _sum_where(
@@ -2923,27 +2980,25 @@ def get_cash_custody_summary(
         "Reception_Salary": round(reception_salary, 2),
         "Reception_Handover": round(reception_out, 2),
         "Reception_In_Transit": round(reception_pending, 2),
-        "Reception_Balance": round(
-            cash_collected - reception_expense - reception_salary - reception_out, 2
-        ),
+        "Reception_Opening": round(reception_opening, 2),
+        "Reception_Balance": round(reception_movement, 2),
+        "Reception_Closing": round(reception_opening + reception_movement, 2),
         "Home_Received": round(home_in, 2),
         "Home_Clinic_Expense": round(home_clinic_expense, 2),
         "Home_Salary": round(home_salary, 2),
         "Household_Withdrawal": round(household_withdrawal, 2),
         "Home_Transfer_Out": round(home_out, 2),
         "Home_In_Transit": round(home_pending, 2),
-        "Home_Balance": round(
-            home_in - home_clinic_expense - home_salary
-            - household_withdrawal - home_out,
-            2,
-        ),
+        "Home_Opening": round(home_opening, 2),
+        "Home_Balance": round(home_movement, 2),
+        "Home_Closing": round(home_opening + home_movement, 2),
         "Bank_Received": round(bank_in, 2),
         "Bank_Expense": round(bank_expense, 2),
         "Bank_Salary": round(bank_salary, 2),
         "Bank_Transfer_Out": round(bank_out, 2),
-        "Bank_Balance": round(
-            bank_in - bank_expense - bank_salary - bank_out, 2
-        ),
+        "Bank_Opening": round(bank_opening, 2),
+        "Bank_Balance": round(bank_movement, 2),
+        "Bank_Closing": round(bank_opening + bank_movement, 2),
         "Unclassified_Total": round(
             unclassified_payment + unclassified_expense
             + unclassified_salary + unclassified_movement,

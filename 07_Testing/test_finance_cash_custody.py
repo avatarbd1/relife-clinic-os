@@ -380,6 +380,50 @@ class ExpenseApprovalWorkflowTests(unittest.TestCase):
         self.assertEqual(summary["Reception_Balance"], 1700)
         self.assertEqual(summary["Date"], "2026-08-10 — 2026-08-11")
 
+    def test_previous_day_closing_carries_to_next_day_opening(self):
+        payment_ws, expense_ws, movement_ws, salary_ws = (
+            object(), object(), object(), object()
+        )
+        records = {
+            payment_ws: [
+                {"Date": "2026-08-13", "Amount": 1000,
+                 "Payment_Method": "Cash"},
+            ],
+            expense_ws: [
+                {"Date": "2026-08-13", "Amount": 800,
+                 "Type": "Clinic Expense", "Status": "Paid",
+                 "Paid_From": "Reception"},
+            ],
+            movement_ws: [],
+            salary_ws: [],
+        }
+        with patch.object(
+            sheets, "_worksheet",
+            side_effect=[payment_ws, expense_ws, movement_ws, salary_ws],
+        ), patch.object(
+            sheets, "safe_get_all_records", side_effect=lambda ws: records[ws]
+        ):
+            summary = sheets.get_cash_custody_summary("2026-08-14")
+
+        self.assertEqual(summary["Reception_Opening"], 200)
+        self.assertEqual(summary["Reception_Balance"], 0)
+        self.assertEqual(summary["Reception_Closing"], 200)
+
+    def test_reconciliation_text_shows_opening_and_closing(self):
+        summary = {
+            "Date": "2026-08-14", "Start_Date": "2026-08-14",
+            "End_Date": "2026-08-14", "Cash_Collected": 0,
+            "Reception_Expense": 0, "Reception_Salary": 0,
+            "Reception_Handover": 0, "Reception_In_Transit": 0,
+            "Reception_Opening": 200, "Reception_Balance": 0,
+            "Reception_Closing": 200,
+        }
+        text = bot._cash_custody_summary_text(summary, "Receptionist")
+        self.assertIn("Opening cash: ৳200", text)
+        self.assertIn("Net movement: ৳0", text)
+        self.assertIn("Closing balance: ৳200", text)
+        self.assertIn("পরের দিনের Opening cash", text)
+
     def test_expense_range_and_default_today_are_backward_compatible(self):
         records = [
             {"Date": "2026-08-10", "Amount": 100},
