@@ -29,10 +29,11 @@ def tearDownModule():
 
 
 class OwnerFinanceTopLevelTests(unittest.TestCase):
-    def test_owner_top_level_has_exactly_four_tabs(self):
+    def test_owner_top_level_keeps_old_tabs_and_adds_finance_overview(self):
         self.assertEqual(
             roles.ROLE_FINANCE_ITEMS[roles.Role.OWNER],
             [
+                roles.MENU_FINANCE_OVERVIEW,
                 roles.MENU_CUSTODY_BALANCE,
                 roles.MENU_FINANCE_DASHBOARDS,
                 roles.MENU_FINANCE_ACCOUNTS,
@@ -93,6 +94,7 @@ class PermissionsStillWorkTests(unittest.TestCase):
 
     def test_owner_can_still_reach_every_moved_item(self):
         for item in (
+            roles.MENU_FINANCE_OVERVIEW,
             roles.MENU_PHYSIO_FINANCE_DASHBOARD, roles.MENU_DENTAL_FINANCE_DASHBOARD,
             roles.MENU_COMBINED_BUSINESS_SUMMARY, roles.MENU_SALARY,
             roles.MENU_SALARY_HISTORY, roles.MENU_MY_PAYMENTS,

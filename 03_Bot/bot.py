@@ -215,6 +215,7 @@ _ALL_MENU_ITEMS = [
     roles.MENU_FINANCE_ACCOUNTS,
     roles.MENU_REJECTED_EXPENSES,
     roles.MENU_FINANCE,
+    roles.MENU_FINANCE_OVERVIEW,
 ]
 _ALL_MENU_REGEX = "^(" + "|".join(re.escape(x) for x in _ALL_MENU_ITEMS) + ")$"
 _ATTENDANCE_MENU_LABELS = (roles.MENU_ATTENDANCE, "🏠 হাজিরা")
@@ -2541,7 +2542,7 @@ def _finance_department_keyboard(prefix: str, staff: dict) -> InlineKeyboardMark
 
 
 async def finance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await _generic_submenu(update, context, roles.ROLE_FINANCE_ITEMS, "💰 চলতি হিসাব — কী করতে চাও?")
+    await _generic_submenu(update, context, roles.ROLE_FINANCE_ITEMS, "💰 Finance — কী করতে চাও?")
 
 
 async def finance_dashboard_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4784,7 +4785,6 @@ async def rpt_owner_finance_detail_callback(update: Update, context: ContextType
     for department, icon, code in (
         (config.DEPARTMENT_PHYSIO, "🩺", "PT"),
         (config.DEPARTMENT_DENTAL, "🦷", "DT"),
-        ("Combined", "🏢", "Combined"),
     ):
         current_part = current[department]
         previous_part = previous[department]
@@ -8168,6 +8168,66 @@ async def combined_business_summary_start(update: Update, context: ContextTypes.
     await owner_financial_dashboard_start(update, context, "Combined")
 
 
+def _owner_finance_overview_text(data: dict) -> str:
+    """Owner business view: PT/DT liabilities stay separate; household is non-business."""
+    lines = [f"📒 Finance Overview — {data['Date']}"]
+    commitments = data["Salary_Commitment"]
+    for department, icon, code in (
+        (config.DEPARTMENT_PHYSIO, "🩺", "PT"),
+        (config.DEPARTMENT_DENTAL, "🦷", "DT"),
+    ):
+        summary = data[department]
+        salary = commitments[department]
+        fixed_overhead = summary.get("Month_Fixed_Overhead_Liability", 0)
+        variable = summary.get(
+            "Month_Variable_Clinic_Expense", summary["Month_Clinic_Expense"]
+        )
+        liability = _business_liability(summary, salary)
+        coverage = summary["Month_Collection"] - liability
+        coverage_text = (
+            f"খরচ উঠতে বাকি: ৳{abs(coverage):.0f}"
+            if coverage < 0 else f"খরচ উঠে উদ্বৃত্ত: ৳{coverage:.0f}"
+        )
+        lines += [
+            "",
+            f"{icon} {department} ({code})",
+            f"এই মাসের আদায়: ৳{summary['Month_Collection']:.0f}",
+            f"নির্ধারিত বেতন: ৳{salary:.0f}",
+            f"Fixed overhead: ৳{fixed_overhead:.0f}",
+            f"Variable expense: ৳{variable:.0f}",
+            f"মোট {code} দায়: ৳{liability:.0f}",
+            coverage_text,
+        ]
+    household = sum(
+        data[department]["Month_Household_Withdrawal"]
+        for department in (config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL)
+    )
+    lines += [
+        "",
+        "🏠 Household — ব্যবসার হিসাব নয়",
+        f"এই মাসে উত্তোলন: ৳{household:.0f}",
+        "ℹ️ Cash কমাবে; PT/DT দায় বা profit-এ যোগ হবে না।",
+    ]
+    return "\n".join(lines)
+
+
+async def owner_finance_overview_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    staff = await _require_staff(update, context)
+    if staff is None:
+        return
+    if not _staff_can_access_menu(staff, roles.MENU_FINANCE_OVERVIEW):
+        await update.message.reply_text("⛔ এই মেনু শুধু Owner দেখতে পারবেন।")
+        return
+    today = bd_now().strftime("%Y-%m-%d")
+    data = await async_runtime.run_sheets_read(
+        sheets.get_owner_financial_dashboard, today
+    )
+    data["Salary_Commitment"] = await async_runtime.run_sheets_read(
+        sheets.get_owner_monthly_salary_commitments
+    )
+    await update.message.reply_text(_owner_finance_overview_text(data))
+
+
 def main():
     global _tenant_resolver
     init_sentry()
@@ -8387,6 +8447,10 @@ def main():
     ))
     app.add_handler(CallbackQueryHandler(
         financial_report_end_day_callback, pattern="^finendday_"
+    ))
+    app.add_handler(MessageHandler(
+        filters.Regex(f"^{roles.MENU_FINANCE_OVERVIEW}$"),
+        owner_finance_overview_start,
     ))
     app.add_handler(MessageHandler(
         filters.Regex(f"^{roles.MENU_PHYSIO_FINANCE_DASHBOARD}$"),

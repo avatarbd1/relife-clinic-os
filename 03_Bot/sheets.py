@@ -3038,14 +3038,18 @@ def get_reception_cash_balance(department: str) -> float:
 
 _FINANCE_DEPARTMENTS = {config.DEPARTMENT_PHYSIO, config.DEPARTMENT_DENTAL}
 
-# Dental monthly commitments that must be covered even before they are paid.
-# Expense rows for the three matching categories replace (rather than add to)
-# their commitment; only an amount above the commitment increases liability.
-DENTAL_FIXED_MONTHLY_OVERHEAD = {
-    "Receptionist": 6000.0,
-    "চেম্বার ভাড়া": 10000.0,
-    "বিদ্যুৎ বিল": 3000.0,
-    "ক্লিনার বেতন": 3000.0,
+# Department-specific monthly commitments that must be covered before payment.
+# A matching paid expense replaces its commitment, preventing double counting;
+# only an amount above the commitment increases the department liability.
+FIXED_MONTHLY_OVERHEAD = {
+    config.DEPARTMENT_PHYSIO: {
+        "চেম্বার ভাড়া": 13000.0,
+    },
+    config.DEPARTMENT_DENTAL: {
+        "Receptionist": 6000.0,
+        "চেম্বার ভাড়া": 10000.0,
+        "ক্লিনার বেতন": 3000.0,
+    },
 }
 
 
@@ -3110,10 +3114,7 @@ def _department_finance_summary(
         and str(row.get("Type", "")).strip() == config.EXPENSE_TYPE_CLINIC
         and _expense_is_paid(row)
     )
-    fixed_overhead = (
-        DENTAL_FIXED_MONTHLY_OVERHEAD
-        if department == config.DEPARTMENT_DENTAL else {}
-    )
+    fixed_overhead = FIXED_MONTHLY_OVERHEAD.get(department, {})
     paid_fixed_by_category = {category: 0.0 for category in fixed_overhead}
     for row in expenses:
         category = str(row.get("Category", "")).strip()

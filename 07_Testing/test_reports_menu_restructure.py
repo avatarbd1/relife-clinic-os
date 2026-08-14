@@ -131,11 +131,32 @@ class FinanceDetailMathTests(unittest.TestCase):
     def test_dental_liability_adds_fixed_overhead_and_variable_cost_only(self):
         summary = {
             "Month_Clinic_Expense": 16500,
-            "Month_Variable_Clinic_Expense": 4000,
-            "Month_Fixed_Overhead_Liability": 22000,
+            "Month_Variable_Clinic_Expense": 6500,
+            "Month_Fixed_Overhead_Liability": 19000,
             "Month_Salary": 0,
         }
-        self.assertEqual(bot._business_liability(summary, 23000), 49000)
+        self.assertEqual(bot._business_liability(summary, 23000), 48500)
+
+    def test_finance_overview_keeps_departments_separate_and_household_outside_business(self):
+        part = {
+            "Month_Collection": 50000,
+            "Month_Clinic_Expense": 5000,
+            "Month_Variable_Clinic_Expense": 5000,
+            "Month_Fixed_Overhead_Liability": 13000,
+            "Month_Household_Withdrawal": 2000,
+        }
+        data = {
+            "Date": "2026-08-14",
+            "Physio": dict(part),
+            "Dental": dict(part, Month_Fixed_Overhead_Liability=19000),
+            "Salary_Commitment": {"Physio": 64300, "Dental": 23000},
+        }
+        text = bot._owner_finance_overview_text(data)
+        self.assertIn("মোট PT দায়", text)
+        self.assertIn("মোট DT দায়", text)
+        self.assertNotIn("Combined", text)
+        self.assertIn("Household — ব্যবসার হিসাব নয়", text)
+        self.assertIn("এই মাসে উত্তোলন: ৳4000", text)
 
 
 if __name__ == "__main__":
