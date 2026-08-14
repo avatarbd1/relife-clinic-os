@@ -5570,6 +5570,61 @@ async def thist_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
+def _physio_clinical_summary_lines(patient_id: str, patient: dict) -> list[str]:
+    """Build the current Physio clinical snapshot shown near the top of a file."""
+    active_plan = sheets.get_active_plan_for_patient(patient_id)
+    assessments = sheets.get_assessments_for_patient(patient_id)
+    latest_assessment = assessments[0] if assessments else None
+
+    registered_diagnosis = str(
+        patient.get("Diagnosis")
+        or patient.get("Problem")
+        or patient.get("Chief_Complaint")
+        or ""
+    ).strip()
+    plan_diagnosis = str((active_plan or {}).get("Diagnosis", "")).strip()
+    condition = registered_diagnosis or plan_diagnosis or "এখনও যোগ হয়নি"
+
+    lines = ["🩺 ক্লিনিক্যাল তথ্য:", f"  রোগ/প্রধান সমস্যা: {condition}"]
+    if registered_diagnosis and plan_diagnosis and plan_diagnosis != registered_diagnosis:
+        lines.append(f"  বর্তমান Finding/Diagnosis: {plan_diagnosis}")
+
+    if latest_assessment:
+        assessment_id = latest_assessment.get("Assessment_ID", "")
+        assessment_date = (
+            latest_assessment.get("Created_At")
+            or latest_assessment.get("Date")
+            or ""
+        )
+        test_data = latest_assessment.get("Test_Data") or {}
+        finding = ""
+        if isinstance(test_data, dict):
+            finding = str(test_data.get("Findings", "")).strip()
+        assessment_label = " — ".join(
+            str(value).strip() for value in (assessment_date, assessment_id) if str(value).strip()
+        ) or "রেকর্ড আছে"
+        lines.append(f"  সর্বশেষ Assessment: {assessment_label}")
+        if finding and finding not in condition:
+            lines.append(f"  Assessment Finding: {finding}")
+    else:
+        lines.append("  সর্বশেষ Assessment: এখনও যোগ হয়নি")
+
+    if active_plan:
+        plan_id = active_plan.get("Plan_ID", "") or "Active"
+        done = active_plan.get("Sessions_Done", 0) or 0
+        total = active_plan.get("Total_Sessions", 0) or 0
+        lines.extend([
+            f"  চলমান Plan: {plan_id} — Active",
+            f"  Session progress: {done}/{total}",
+            f"  Exercise: {active_plan.get('Exercise_Plan', '') or '-'}",
+            f"  Electro: {active_plan.get('Electrotherapy_Plan', '') or '-'}",
+            f"  Manual: {active_plan.get('Manual_Therapy_Plan', '') or '-'}",
+        ])
+    else:
+        lines.append("  চলমান Plan: নেই")
+    return lines
+
+
 def _build_full_history_text(patient_id: str) -> str | None:
     """রোগীর সম্পূর্ণ ইতিহাস (প্রোফাইল + পেমেন্ট + অ্যাপয়েন্টমেন্ট + ট্রিটমেন্ট নোট) টেক্সট বানায়।
     আগে hist_select_callback() আর plist_action_hist() -এ এই একই কোড হুবহু দুইবার লেখা ছিল —
@@ -5595,6 +5650,10 @@ def _build_full_history_text(patient_id: str) -> str | None:
     if therapist:
         lines.append(f"  {'Dentist' if is_dental else 'থেরাপিস্ট'}: {therapist}")
     lines.append("")
+
+    if not is_dental:
+        lines.extend(_physio_clinical_summary_lines(patient_id, patient))
+        lines.append("")
 
     package = None if is_dental else sheets.get_active_package_for_patient(patient_id)
     if package:
