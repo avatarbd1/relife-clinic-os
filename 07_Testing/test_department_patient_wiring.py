@@ -70,17 +70,43 @@ class PatientQueryAuthorizationTests(unittest.TestCase):
         self.assertEqual([row["Patient_ID"] for row in allowed], ["P1", "P2"])
         self.assertEqual(denied, [])
 
-    def test_mapping_loader_returns_only_active_rows_for_staff(self):
+    def test_mapping_loader_returns_only_active_staff_assignment(self):
+        # get_staff_department_access() is intentionally retained as a stable
+        # function name, but 08_Staff is now the single source of truth. The
+        # old Staff_Department_Access worksheet no longer drives authorization.
         rows = [
-            {"Staff_ID": "S1", "Department": "Physio", "Status": "Active"},
-            {"Staff_ID": "S1", "Department": "Dental", "Status": "Inactive"},
-            {"Staff_ID": "S2", "Department": "Dental", "Status": "Active"},
+            {
+                "Staff_ID": "S1",
+                "Role": "Manager",
+                "Primary_Department": "Physio",
+                "Status": "Active",
+            },
+            {
+                "Staff_ID": "S1",
+                "Role": "Manager",
+                "Primary_Department": "Dental",
+                "Status": "Inactive",
+            },
+            {
+                "Staff_ID": "S2",
+                "Role": "Dentist",
+                "Primary_Department": "Dental",
+                "Status": "Active",
+            },
         ]
         with patch.object(sheets, "_worksheet", return_value=object()), patch.object(
             sheets, "safe_get_all_records", return_value=rows
         ):
             result = sheets.get_staff_department_access("S1")
-        self.assertEqual(result, [rows[0]])
+        self.assertEqual(
+            result,
+            [{
+                "Staff_ID": "S1",
+                "Department": "Physio",
+                "Role": "Manager",
+                "Status": "Active",
+            }],
+        )
 
 
 class PatientHandlerAuthorizationTests(unittest.IsolatedAsyncioTestCase):
