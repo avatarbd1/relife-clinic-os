@@ -1,13 +1,13 @@
 """Authenticated HTTP bridge for Relife patient report media.
 
 The Telegram bot already owns the only durable Telegram file IDs for legacy
-patient photos.  This module extends the tiny Render health server so the
-Owner Web App can request an authorized report image without exposing the bot
-token or Telegram file IDs to the browser.
+patient photos. This module extends the tiny Render health server so the Owner
+Web App can request an authorized report image without exposing the bot token,
+Telegram file IDs, or the bridge secret to the browser URL.
 
 The bridge is fail-closed: it is disabled unless MEDIA_EXPORT_SECRET is set,
-and every request must provide that secret.  Web-facing authorization remains
-in the Owner App; this endpoint is server-to-server only.
+and every request must provide that secret in X-Relife-Media-Key. Web-facing
+authorization remains in the Owner App; this endpoint is server-to-server only.
 """
 
 from __future__ import annotations
@@ -46,9 +46,9 @@ def _json(handler, status: int, payload: object) -> None:
     )
 
 
-def _authorized(query: dict[str, list[str]]) -> bool:
+def _authorized(handler) -> bool:
     configured = os.environ.get("MEDIA_EXPORT_SECRET", "").strip()
-    supplied = (query.get("key") or [""])[0]
+    supplied = str(handler.headers.get("X-Relife-Media-Key", "")).strip()
     return bool(configured) and hmac.compare_digest(configured, supplied)
 
 
@@ -89,14 +89,20 @@ def _telegram_file_bytes(file_id: str) -> tuple[bytes, str]:
         f"https://api.telegram.org/bot{quote(token, safe=':')}/getFile?"
         f"file_id={quote(file_id, safe='')}"
     )
-    with urlopen(Request(get_file_url, headers={"User-Agent": "Relife-Media-Bridge/1"}), timeout=20) as response:
+    with urlopen(
+        Request(get_file_url, headers={"User-Agent": "Relife-Media-Bridge/1"}),
+        timeout=20,
+    ) as response:
         payload = json.loads(response.read().decode("utf-8"))
     file_path = str((payload.get("result") or {}).get("file_path") or "").strip()
     if not payload.get("ok") or not file_path:
         raise RuntimeError("Telegram getFile did not return a file path")
 
     download_url = f"https://api.telegram.org/file/bot{quote(token, safe=':')}/{file_path}"
-    with urlopen(Request(download_url, headers={"User-Agent": "Relife-Media-Bridge/1"}), timeout=30) as response:
+    with urlopen(
+        Request(download_url, headers={"User-Agent": "Relife-Media-Bridge/1"}),
+        timeout=30,
+    ) as response:
         body = response.read()
         content_type = response.headers.get_content_type() or "application/octet-stream"
     return body, content_type
@@ -113,11 +119,11 @@ def _handle_media_export(handler) -> bool:
     if not parsed.path.startswith("/internal/media-export/"):
         return False
 
-    query = parse_qs(parsed.query, keep_blank_values=True)
-    if not _authorized(query):
+    if not _authorized(handler):
         _json(handler, 404, {"ok": False})
         return True
 
+    query = parse_qs(parsed.query, keep_blank_values=True)
     department = _department((query.get("department") or [""])[0])
     if not department:
         _json(handler, 400, {"ok": False, "error": "invalid_department"})
@@ -156,7 +162,15 @@ def _handle_media_export(handler) -> bool:
         try:
             body, content_type = _telegram_file_bytes(file_id)
         except Exception as exc:
-            _json(handler, 502, {"ok": False, "error": "telegram_fetch_failed", "detail": str(exc)[:160]})
+            _json(
+                handler,
+                502,
+                {
+                    "ok": False,
+                    "error": "telegram_fetch_failed",
+                    "detail": str(exc)[:160],
+                },
+            )
             return True
 
         filename = _safe_filename(
@@ -199,7 +213,15 @@ def install_media_export_hook() -> None:
                     if _handle_media_export(handler):
                         return
                 except Exception as exc:
-                    _json(handler, 500, {"ok": False, "error": "media_bridge_error", "detail": str(exc)[:160]})
+                    _json(
+                        handler,
+                        500,
+                        {
+                            "ok": False,
+                            "error": "media_bridge_error",
+                            "detail": str(exc)[:160],
+                        },
+                    )
                     return
                 return original_do_get(handler)
 
