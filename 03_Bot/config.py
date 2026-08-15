@@ -3,11 +3,18 @@ config.py
 সব সিক্রেট/সেটিং এখান থেকে লোড হয় .env ফাইল থেকে।
 """
 
+import logging
 import os
 from pathlib import Path
 from dotenv import load_dotenv
 from gspread_append_guard import install_gspread_append_guard
 from media_export_http import install_media_export_hook
+
+# HTTP client INFO logs include full Telegram request URLs, which contain the
+# bot credential. Keep normal application logging while suppressing those
+# transport-level URLs before bot.py configures the root logger.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 # Anchor all Relife worksheet appends to the canonical A1 table before any
 # business module starts writing. This prevents Google Sheets from choosing a
