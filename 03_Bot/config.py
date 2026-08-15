@@ -6,6 +6,12 @@ config.py
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from gspread_append_guard import install_gspread_append_guard
+
+# Anchor all Relife worksheet appends to the canonical A1 table before any
+# business module starts writing. This prevents Google Sheets from choosing a
+# stray logical table to the right of the real headers.
+install_gspread_append_guard()
 
 # .env ফাইল লোড করুন (রুট ডিরেক্টরি থেকে)
 env_path = Path(__file__).resolve().parent.parent / ".env"
