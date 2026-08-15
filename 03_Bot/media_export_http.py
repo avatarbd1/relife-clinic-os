@@ -1,20 +1,24 @@
 """Authenticated HTTP bridge for Relife patient report media.
 
-The Telegram bot already owns the only durable Telegram file IDs for legacy
-patient photos. This module extends the tiny Render health server so the Owner
-Web App can request an authorized report image without exposing the bot token,
-Telegram file IDs, or the bridge secret to the browser URL.
+Legacy patient photos are durable Telegram file IDs. This module extends the
+small Render health server so the Owner Web App can stream those files without
+exposing BOT_TOKEN, Telegram file IDs, or the master bridge secret.
 
-The bridge is fail-closed: it is disabled unless MEDIA_EXPORT_SECRET is set,
-and every request must provide that secret in X-Relife-Media-Key. Web-facing
-authorization remains in the Owner App; this endpoint is server-to-server only.
+Normal server-to-server calls use X-Relife-Media-Key. A batch archive endpoint
+also accepts a short-lived HMAC signature so migration tooling can download a
+patient-wise ZIP without putting the master secret in a URL.
 """
 
 from __future__ import annotations
 
+import hashlib
 import hmac
+import io
 import json
 import os
+import re
+import time
+import zipfile
 from urllib.parse import parse_qs, quote, urlparse
 from urllib.request import Request, urlopen
 
@@ -46,8 +50,12 @@ def _json(handler, status: int, payload: object) -> None:
     )
 
 
-def _authorized(handler) -> bool:
-    configured = os.environ.get("MEDIA_EXPORT_SECRET", "").strip()
+def _secret() -> str:
+    return os.environ.get("MEDIA_EXPORT_SECRET", "").strip()
+
+
+def _header_authorized(handler) -> bool:
+    configured = _secret()
     supplied = str(handler.headers.get("X-Relife-Media-Key", "")).strip()
     return bool(configured) and hmac.compare_digest(configured, supplied)
 
@@ -59,6 +67,40 @@ def _department(value: str) -> str | None:
     if normalized == "dental":
         return "Dental"
     return None
+
+
+def _int_query(query: dict[str, list[str]], key: str, default: int) -> int:
+    try:
+        return int((query.get(key) or [str(default)])[0])
+    except (TypeError, ValueError):
+        return default
+
+
+def _batch_signature_message(
+    department: str, start: int, limit: int, expires: int
+) -> bytes:
+    return f"batch|{department}|{start}|{limit}|{expires}".encode("utf-8")
+
+
+def _signed_batch_authorized(
+    query: dict[str, list[str]], department: str, start: int, limit: int
+) -> bool:
+    configured = _secret()
+    if not configured:
+        return False
+    expires = _int_query(query, "expires", 0)
+    supplied = str((query.get("sig") or [""])[0]).strip()
+    now = int(time.time())
+    # Signed migration links are deliberately short-lived; reject both expired
+    # links and unexpectedly long-lived tickets.
+    if expires < now or expires > now + 3600 or not supplied:
+        return False
+    expected = hmac.new(
+        configured.encode("utf-8"),
+        _batch_signature_message(department, start, limit, expires),
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(expected, supplied)
 
 
 def _report_rows(department: str) -> list[dict]:
@@ -114,14 +156,72 @@ def _safe_filename(value: str, fallback: str) -> str:
     return name[:180] or fallback
 
 
+def _safe_path_part(value: str, fallback: str) -> str:
+    cleaned = re.sub(r"[\\/:*?\"<>|\x00-\x1f]+", "_", str(value or "").strip())
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" .")
+    return (cleaned[:120] or fallback)
+
+
+def _eligible_rows(department: str) -> list[dict]:
+    return [
+        row
+        for row in _report_rows(department)
+        if str(row.get("Report_ID", "")).strip()
+        and str(row.get("File_Telegram_ID", "")).strip()
+    ]
+
+
+def _batch_zip(department: str, rows: list[dict], start: int) -> bytes:
+    buffer = io.BytesIO()
+    manifest = []
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_STORED) as archive:
+        for offset, row in enumerate(rows):
+            report_id = str(row.get("Report_ID", "")).strip()
+            patient_id = str(row.get("Patient_ID", "")).strip() or "UNKNOWN"
+            patient_name = str(row.get("Patient_Name", "")).strip() or "Unknown"
+            file_name = _safe_filename(
+                str(row.get("File_Name", "")), f"{report_id}.bin"
+            )
+            patient_dir = _safe_path_part(
+                f"{patient_id} - {patient_name}", patient_id
+            )
+            archive_name = f"{patient_dir}/{report_id}_{_safe_path_part(file_name, report_id)}"
+            item = {
+                "index": start + offset,
+                "reportId": report_id,
+                "patientId": patient_id,
+                "patientName": patient_name,
+                "fileName": file_name,
+                "uploadDate": str(row.get("Upload_Date", "")).strip(),
+                "archivePath": archive_name,
+                "ok": False,
+            }
+            try:
+                body, _content_type = _telegram_file_bytes(
+                    str(row.get("File_Telegram_ID", "")).strip()
+                )
+                archive.writestr(archive_name, body)
+                item["ok"] = True
+            except Exception as exc:
+                error_path = f"{patient_dir}/{report_id}.error.txt"
+                archive.writestr(error_path, str(exc)[:500])
+                item["error"] = str(exc)[:160]
+            manifest.append(item)
+        archive.writestr(
+            "_relife_manifest.json",
+            json.dumps(
+                {"department": department, "start": start, "items": manifest},
+                ensure_ascii=False,
+                indent=2,
+            ).encode("utf-8"),
+        )
+    return buffer.getvalue()
+
+
 def _handle_media_export(handler) -> bool:
     parsed = urlparse(handler.path)
     if not parsed.path.startswith("/internal/media-export/"):
         return False
-
-    if not _authorized(handler):
-        _json(handler, 404, {"ok": False})
-        return True
 
     query = parse_qs(parsed.query, keep_blank_values=True)
     department = _department((query.get("department") or [""])[0])
@@ -129,8 +229,18 @@ def _handle_media_export(handler) -> bool:
         _json(handler, 400, {"ok": False, "error": "invalid_department"})
         return True
 
+    start = max(0, _int_query(query, "start", 0))
+    limit = min(25, max(1, _int_query(query, "limit", 25)))
+    batch_signed = (
+        parsed.path == "/internal/media-export/batch"
+        and _signed_batch_authorized(query, department, start, limit)
+    )
+    if not (_header_authorized(handler) or batch_signed):
+        _json(handler, 404, {"ok": False})
+        return True
+
     if parsed.path == "/internal/media-export/manifest":
-        rows = _report_rows(department)
+        rows = _eligible_rows(department)
         items = [
             {
                 "reportId": str(row.get("Report_ID", "")).strip(),
@@ -143,10 +253,25 @@ def _handle_media_export(handler) -> bool:
                 "department": department,
             }
             for row in rows
-            if str(row.get("Report_ID", "")).strip()
-            and str(row.get("File_Telegram_ID", "")).strip()
         ]
         _json(handler, 200, {"ok": True, "department": department, "items": items})
+        return True
+
+    if parsed.path == "/internal/media-export/batch":
+        rows = _eligible_rows(department)
+        selected = rows[start : start + limit]
+        body = _batch_zip(department, selected, start)
+        _send(
+            handler,
+            200,
+            body,
+            "application/zip",
+            Content_Disposition=(
+                f'attachment; filename="relife-{department.lower()}-media-{start:03d}.zip"'
+            ),
+            X_Relife_Total=str(len(rows)),
+            X_Relife_Batch_Count=str(len(selected)),
+        )
         return True
 
     if parsed.path == "/internal/media-export/file":
