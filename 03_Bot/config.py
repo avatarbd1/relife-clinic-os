@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from gspread_append_guard import install_gspread_append_guard
+from media_export_http import install_media_export_hook
 
 # Anchor all Relife worksheet appends to the canonical A1 table before any
 # business module starts writing. This prevents Google Sheets from choosing a
@@ -16,6 +17,10 @@ install_gspread_append_guard()
 # .env ফাইল লোড করুন (রুট ডিরেক্টরি থেকে)
 env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
+
+# Extend the tiny Render health server with a secret-protected patient media
+# bridge. The bridge stays disabled unless MEDIA_EXPORT_SECRET is configured.
+install_media_export_hook()
 
 # ---- Telegram Bot ----
 BOT_TOKEN = os.getenv("BOT_TOKEN")
