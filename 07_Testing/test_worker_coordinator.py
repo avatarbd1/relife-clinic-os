@@ -2,6 +2,7 @@ import importlib.util
 import sys
 import tempfile
 import unittest
+from datetime import date
 from pathlib import Path
 
 
@@ -174,6 +175,7 @@ class WorkerCoordinatorTests(unittest.TestCase):
         lines = self.coordinator.dashboard_lines(
             max_age_days=7,
             event_limit=1,
+            as_of=date(2026, 8, 10),
         )
 
         report = "\n".join(lines)

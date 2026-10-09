@@ -187,11 +187,12 @@ class WorkerCoordinator:
         self,
         max_age_days: int = 7,
         event_limit: int = 5,
+        as_of: date | None = None,
     ) -> list[str]:
         """Build a read-only coordination health snapshot for operators."""
         active = self.active_tasks()
         free = self.available_workers()
-        issues = self.reconciliation_issues(max_age_days)
+        issues = self.reconciliation_issues(max_age_days, as_of)
         events = self.recent_events(event_limit)
 
         lines = [
