@@ -1,5 +1,6 @@
 import asyncio
 import importlib.util
+import sys
 import threading
 import time
 import unittest
@@ -8,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "03_Bot" / "async_runtime.py"
+sys.path.insert(0, str(ROOT / "03_Bot"))
 SPEC = importlib.util.spec_from_file_location("async_runtime", MODULE_PATH)
 runtime = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
